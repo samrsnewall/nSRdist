@@ -1,4 +1,4 @@
-function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths)
+function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths, separateBySR)
 %% Read in Radiocarbon Data
 %Set up path to Mulitza et al 2022 World Atlas Dataset
 WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
@@ -22,9 +22,11 @@ if emptybreak1 ==1 || emptybreak2 == 1
 end
 
 %% Filter for SR>8 cores
-meanSR = (depth_cm(end) - depth_cm(1)./(age(end) - age(1));
-if meanSR < 8
-    return
+if separateBySR =1
+    meanSR = (depth_cm(end) - depth_cm(1))/(age(end) - age(1));
+    if meanSR < 8
+        return
+    end
 end
 
 %% Output in csv file in format Taehee wants
@@ -38,7 +40,7 @@ cc = ones(length(age), 1)*2;
 outputTable = table(depth, age, error, dR, dSTD, cc);
 %Output to txt file with tab delimiters
 
-outputFilename = fullfile("c14TrainingData_April18", corename + ".txt");
+outputFilename = fullfile("c14TrainingData_April18_highRes", corename + ".txt");
 writetable(outputTable, outputFilename, "Delimiter", '\t')
 
 end

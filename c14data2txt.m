@@ -45,6 +45,6 @@ numCores = sum(chosenCoresLog);
 
 %% Output all cores filtered data to txt files
 for i = 1:numCores
-    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i});
+    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 end
 
