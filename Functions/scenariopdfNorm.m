@@ -1,4 +1,4 @@
-function [interp_invSR, iProbs_wd, meanSR, reversalpairs, numpairs, depdiff, agediff, res_byage, res_bydepth] = scenariopdfNorm(depth, age, error, ~, date_is, plotfigs)
+function [interp_invSR, iProbs_wd, meanSR, reversalpairs, numpairs, depdiff, agediff, MSI_byage, MSI_bydepth] = scenariopdfNorm(depth, age, error, ~, date_is, plotfigs)
 %% Perform Calibrations
 %Use MatCal to calibrate each age, storing the probabilities in vector
 %ageprob (note the AGE that each prob is relating to can be found by using
@@ -33,10 +33,10 @@ agediff = deep_age - shallow_age;
 %Calculate depth difference between these ages
 depdiff = dep_is(end)-dep_is(1);
 meanSR = depdiff./agediff; % cm/y
-%Calculate resolution by age
-res_byage = agediff./length(date_is);
-%Calculate resolution by depth
-res_bydepth = depdiff./length(date_is);
+%Calculate mean sampling interval by age
+MSI_byage = agediff./length(date_is);
+%Calculate mean sampling interval by depth
+MSI_bydepth = depdiff./length(date_is);
 %calculate total depth of sediment
 
 %% Calculate age difference and probability for each pairing of ages - PDF METHOD FUNCTION

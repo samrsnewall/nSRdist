@@ -1,4 +1,4 @@
-function[scenariosNR, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, reversalpairs, numdatepairs, lengthsed,  newScenIndicator, res_byage, res_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs)
+function[scenariosNR, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, reversalpairs, numdatepairs, lengthsed,  newScenIndicator, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs)
 
 %Initiate cells to hold results from each scenario
 scenario_invSRvals = cell(1,length(scenarios));
@@ -8,8 +8,8 @@ scenario_meanSR = nan(1, length(scenarios));
 numdatepairs = nan(1, length(scenarios));
 lengthsed = nan(1, length(scenarios));
 lengthage = nan(1, length(scenarios));
-res_bydepth = nan(1, length(scenarios));
-res_byage = nan(1, length(scenarios));
+MSI_bydepth = nan(1, length(scenarios));
+MSI_byage = nan(1, length(scenarios));
 scenariosNR = cell([]);
 
 % transprobs_scenarios = zeros(3,3,length(scenarios));
@@ -18,7 +18,7 @@ for j = 1:length(scenarios)
     date_bool = contains(string(label), scenarios{j});
     date_is = find(date_bool == 1);
     scenario_labels{j} = label(date_bool == 1);
-    [scenario_invSRvals{j}, scenario_invSRprobs{j}, scenario_meanSR(j), reversalpairs, numdatepairs(j), lengthsed(j), lengthage(j), res_byage(j), res_bydepth(j)] = scenariopdfNorm(depth_cm, age, error, scenario_labels{j}, date_is, plotfigs);
+    [scenario_invSRvals{j}, scenario_invSRprobs{j}, scenario_meanSR(j), reversalpairs, numdatepairs(j), lengthsed(j), lengthage(j), MSI_byage(j), MSI_bydepth(j)] = scenariopdfNorm(depth_cm, age, error, scenario_labels{j}, date_is, plotfigs);
     %If a reversal arises, check whether it is related to any
     %duplicated depths or not
     numreversals = sum(reversalpairs);

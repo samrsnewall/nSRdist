@@ -1,4 +1,4 @@
-function [core_invSRvals, core_invSRprobs, meanSR, res_byage_mean, res_bydepth_mean, lengthsed_mean, numdatepairs_mean, scenarios, label, numreversals_mean] = oneCoreSRpdf(corename, LabIDs, incDepths, excLabIDs, excDepths, plotfigs)
+function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, scenarios, label, numreversals_mean] = oneCoreSRpdf(corename, LabIDs, incDepths, excLabIDs, excDepths, plotfigs)
 %% Read in Radiocarbon Data
 %Read in some radiocarbon data from a net cdf file
 WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
@@ -31,8 +31,8 @@ if emptybreak1 == 1 || emptybreak2 == 1
     core_invSRvals = [];
     core_invSRprobs = [];
     meanSR = NaN;
-    res_byage_mean = NaN;
-    res_bydepth_mean = NaN;
+    MSI_byage_mean = NaN;
+    MSI_bydepth_mean = NaN;
     numdatepairs_mean = NaN;
     lengthsed_mean = NaN;
     scenarios = [];
@@ -69,9 +69,9 @@ newscenarios = 1;
 
 %Run scenarios deal with reversals until there are no more reversals in any
 %scenarios
-[scenarios2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, lengthsed, newscenarios, res_byage, res_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs);
+[scenarios2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs);
 while newscenarios == 1
-    [scenarios2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, lengthsed, newscenarios, res_byage, res_bydepth] = scenariosDealWithReversals(scenarios2, depth_cm, age, error, label, corename, duplicated_depths, plotfigs);
+    [scenarios2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios2, depth_cm, age, error, label, corename, duplicated_depths, plotfigs);
 end
 
 scenarios = scenarios2;
@@ -81,8 +81,8 @@ meanSR = mean(scenario_meanSR, 'omitmissing');
 numdatepairs_mean = mean(numdatepairs, 'omitmissing');
 lengthsed_mean = mean(lengthsed, 'omitmissing');
 numreversals_mean = mean(numreversals, 'omitmissing');
-res_byage_mean = mean(res_byage, 'omitmissing');
-res_bydepth_mean = mean(res_bydepth, 'omitmissing');
+MSI_byage_mean = mean(MSI_byage, 'omitmissing');
+MSI_bydepth_mean = mean(MSI_bydepth, 'omitmissing');
 
 
 %Combine the results from each scenario, to get a core-specific pdf of

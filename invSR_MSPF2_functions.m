@@ -9,7 +9,7 @@ addpath('Functions')
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-data = readtable("../../Data/corechoices_MSPF.xlsx"); %read all metadata
+data = readtable("../CoreSpreadsheets/COPYcorechoices_MSPF.xlsx"); %read all metadata
 dataMSPF = data(data.MSPF == 1,:);
 
 %% Index Good Cores
@@ -28,8 +28,8 @@ goodIndexes = allcores(~badLog);
 %% Choose cores to analyse
 %Decide which subset of cores to look at
 subsetchooser = zeros(size(goodLog));
-subsetchooser(50:80) = 1;
-chosenCoresLog = goodLog;
+subsetchooser(5:15) = 1;
+chosenCoresLog = logical(subsetchooser);
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -49,8 +49,8 @@ numCores = sum(chosenCoresLog);
 core_invSRvals = cell(1,numCores);
 core_invSRprobs = cell(1,numCores);
 meanSR = nan(1,numCores);
-res_byage = nan(1,numCores);
-res_bydepth = nan(1,numCores);
+MSI_byage = nan(1,numCores);
+MSI_bydepth = nan(1,numCores);
 sedimentlength = nan(1,numCores);
 num14cpairs = nan(1,numCores);
 transprobs_cores= nan(3,3,numCores);
@@ -62,16 +62,17 @@ numreversals = nan(1,numCores);
 %useful information
 parfor i = 1:numCores
     disp(cores{i})
-    [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), res_byage(i), res_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+    [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 end
 
 %% Find high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
-lowSRCoresInd = meanSR<= 8;
-highSRCoresInd = meanSR >8;
+lowSRCoresLog = meanSR<= 8;
+highSRCoresLog = meanSR >8;
 
-% find top 10 highest resolution cores
-[~,highRes10CoresInd] = maxk(-res_byage, 10);
-cores(highRes10CoresInd)
+% find top 10 highest resolution cores (high resolution means low Mean
+% Sampling Interval).
+[~,highRes10CoresInd] = maxk(-MSI_byage, 10);
+highRes10CoresLog = MSI_byage <= MSI_byage(highRes10CoresInd(end));
 
 %% Combine the invSR pdfs from each core
 [master_invSRvals, allcore_invSRprobs] = combinepdfs(core_invSRvals, core_invSRprobs, sedimentlength);
@@ -82,9 +83,9 @@ cores(highRes10CoresInd)
 
 %% Plot the SR distribution from PDF method and compare with BIGMACS values
 %Load normalised SR data from BIGMACS
-normSR_BIGMACS = load("../../Data/Lin2014_sedrateratio_cm_wo_NaN.txt");
+normSR_BIGMACS = load("../BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 %Load lognormal file
-lognormdata_BIGMACS = load("../lognormal.txt");
+lognormdata_BIGMACS = load("../BIGMACSdata/lognormal.txt");
 
 figure(22)
 subplot(2,1,1)
@@ -138,9 +139,9 @@ allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 
 %% Plot the histogram of random sample counts
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresInd, 101, 'k', "High SR")
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresInd, 102, 'k', "Low SR")
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10CoresInd, 103, 'k', "High Res 10")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10CoresLog, 103, 'k', "10 Highest Res")
 figure(102)
 subplot(1,2,2)
 ylim([0 100])
@@ -163,8 +164,8 @@ lat_inc = lats(ind3);
 lon_inc = longs(ind3);
 dep_inc = depths(ind3);
 meanSR_inc = meanSR(ind3);
-res_byage_inc = res_byage(ind3);
-res_bydepth_inc = res_bydepth(ind3);
+MSI_byage_inc = MSI_byage(ind3);
+MSI_bydepth_inc = MSI_bydepth(ind3);
 
 %Make plot with locations denoted as red stars
 figure(23)
@@ -195,13 +196,13 @@ xticks(0:0.5:6)
 title("Core Depths")
 
 subplot(4,1,3)
-histogram(res_byage_inc, 20, 'FaceColor','k')
+histogram(MSI_byage_inc, 20, 'FaceColor','k')
 xlabel('Sampling Frequency by age (kyr/date)')
 ylabel('Counts')
 title("Cores' Mean Resolution By Age")
 
 subplot(4,1,4)
-histogram(res_bydepth_inc, 20, 'FaceColor','k')
+histogram(MSI_bydepth_inc, 20, 'FaceColor','k')
 %xlim([0 150])
 xlabel('Sampling Frequency by depth (cm/date)')
 ylabel('Counts')
@@ -229,4 +230,4 @@ disp("The total length of sediment used is")
 disp(sum(sedimentlength, 'omitmissing'))
 disp(sum(lengthsed_core, 'omitmissing'))
 
-%results = struct("CoreNames", core_inc, "Latitude", lat_inc, "Longitude", lon_inc, "Depths", dep_inc, "NormSRDist", [SRvals_interp; SRvalsprob_norm], "TransitionMatrix", allTM, "HistogramBinCounts", bin, "HistogramBinEdges", binedges, "nSRcounts", nSRcounts, "MeanSR", meanSR_inc, "ResolutionByAge", res_byage, "ResolutionByDepth", res_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
+%results = struct("CoreNames", core_inc, "Latitude", lat_inc, "Longitude", lon_inc, "Depths", dep_inc, "NormSRDist", [SRvals_interp; SRvalsprob_norm], "TransitionMatrix", allTM, "HistogramBinCounts", bin, "HistogramBinEdges", binedges, "nSRcounts", nSRcounts, "MeanSR", meanSR_inc, "ResolutionByAge", MSI_byage, "ResolutionByDepth", MSI_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
