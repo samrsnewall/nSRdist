@@ -44,7 +44,10 @@ excDepths = table2array(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of
 numCores = sum(chosenCoresLog);
 
 %% Output all cores filtered data to txt files
+%Decide if I want all cores or only cores with SR > 8 (0 or 1 respectively)
+sepBySRg8 = 0;
+%Run through all cores to output data to txt file
 for i = 1:numCores
-    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, sepBySRg8);
 end
 
