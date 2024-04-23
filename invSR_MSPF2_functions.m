@@ -29,7 +29,7 @@ goodIndexes = allcores(~badLog);
 %Decide which subset of cores to look at
 subsetchooser = zeros(size(goodLog));
 subsetchooser(5:15) = 1;
-chosenCoresLog = logical(subsetchooser);
+chosenCoresLog = goodLog;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -73,6 +73,9 @@ highSRCoresLog = meanSR >8;
 % Sampling Interval).
 [~,highRes10CoresInd] = maxk(-MSI_byage, 10);
 highRes10CoresLog = MSI_byage <= MSI_byage(highRes10CoresInd(end));
+
+[~,highRes15CoresInd] = maxk(-MSI_byage, 15);
+highRes15CoresLog = MSI_byage <= MSI_byage(highRes15CoresInd(end));
 
 %% Combine the invSR pdfs from each core
 [master_invSRvals, allcore_invSRprobs] = combinepdfs(core_invSRvals, core_invSRprobs, sedimentlength);
@@ -139,12 +142,9 @@ allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 
 %% Plot the histogram of random sample counts
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+% plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
+% plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10CoresLog, 103, 'k', "10 Highest Res")
-figure(102)
-subplot(1,2,2)
-ylim([0 100])
 
 %% Plot Maps of data in MATLAB
 %Find index of all cores used in the analysis
