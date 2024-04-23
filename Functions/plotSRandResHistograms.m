@@ -19,16 +19,20 @@ agediffsArray = agediffsArray(:,2:end);
 
 %% Plot histograms
 %Define bins edges for histogram
-SRbinEdges = 0:0.01:6;
+SRbinEdges = 0:0.1:6;
 agediffsBinEdges = 0:500:10000;
 
 %Calculate bin counts (using weighting for SR)
 SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
 agediffsBinCounts = makeWeightedBinCounts(agediffsArray, ones(1,length(agediffsArray)), agediffsBinEdges);
 
+SR_MixLogNorm = fitMixLogNorm(SRbinCounts);
+
 %Plot histograms of SR and of agediffs
 figure(fignumber)
 subplot(1,2,1)
+plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
+hold on
 histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges);
 xlim([0 6])
 xlabel("Normalised Sed Rate")
