@@ -17,13 +17,13 @@ gmfit = fitgmdist(data_log', numComponents, "Options", options);
 mu_fit = gmfit.mu;
 
 %Initialise std deviation vector and prob density vector
-stddev_fit = NaN(1,numcomps);
-ly = zeros(length(lx), numcomps);
+stddev_fit = NaN(1,numComponents);
+ly = zeros(length(lx), numComponents);
 
 %Pull out sttdev of each component gaussian, and then find the lognormal
 %pdf using the mean and stddev of the component gaussians as the input
 %parameters.
-for i = 1:numcomps
+for i = 1:numComponents
     stddev_fit(i) = sqrt(gmfit.Sigma(:,:,i)); %taking the square converts the variance to a stddev
     ly(:,i) = lognpdf(lx, mu_fit(i), stddev_fit(i)); % Find the y values of a lognormal using the mean and sttdeviations taken from the mixed gaussian
 end
