@@ -22,14 +22,14 @@ agediffsArray = agediffsArray(:,2:end);
 %where the number of counts is representative of their weight
 X = round(nSRcountsArray(1,:),2);
 Y = nSRcountsArray(2,:);
-[X_u, IA, IC] = unique(X);
+[X_u, ~, IC] = unique(X);
 Y_u = accumarray(IC,Y);
 Y_uR = round(Y_u);
 data = repelem(X_u,Y_uR);
 
 %Calculate the MixLogNorm from these counts
 nSRdataAsCounts = data;
-SR_MixLogNorm = fitMixLogNorm(nSRdataAsCounts);
+[SR_MixLogNorm, SR_mean, SR_variance] = fitMixLogNorm(nSRdataAsCounts, 2);
 
 %% Calculate Histogram Bin Counts
 %Define bins edges for histogram
@@ -42,17 +42,19 @@ agediffsBinCounts = makeWeightedBinCounts(agediffsArray, ones(1,length(agediffsA
 
 %Plot histograms of SR and of agediffs
 figure(fignumber)
+hold on
 subplot(1,2,1)
 yyaxis right
 plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2), 'k-')
-hold on
 yyaxis left
 histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges);
 xlim([0 6])
 xlabel("Normalised Sed Rate")
 ylabel("Counts")
+title("Mean = " + num2str(SR_mean) + "; Var = " + num2str(SR_variance))
 
 subplot(1,2,2)
+hold on
 histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
 xlabel("Age Diff (yrs)")
 ylabel("Counts")
