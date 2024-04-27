@@ -19,7 +19,8 @@ allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
 reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042"];
-badLog = contains(string(dataMSPF.CoreName),reversalDenseCores);
+problemCores = ["MD98-2181"]; %#ok<NBRAK2>
+badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
 goodLog = badLog == 0;
 badIndexes = allcores(badLog);
 %Hence create index to use only cores that passed manual inspection
@@ -58,6 +59,12 @@ corescenarios = cell(1,numCores);
 newlabels = cell(1,numCores);
 numreversals = nan(1,numCores);
 
+%% If I want to check a specific core
+    % 
+    % disp(cores{i})
+    % [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+
+%% Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
 %useful information
 parfor i = 1:numCores
@@ -142,21 +149,38 @@ allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 
 %% Plot the histogram of random sample counts
-% plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
-% plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+ plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
+ plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10CoresLog, 103, 'k', "10 Highest Res")
 
-%% Plot Maps of data in MATLAB
+%% Plot Map of data in MATLAB
 %Find index of all cores used in the analysis
 ind2 = NaN(1,numCores);
 for i = 1:numCores
     if isempty(core_invSRvals{i})
         ind2(i) = 0;
     else
-        ind2(i) =i;
+        ind2(i) =1;
     end
 end
-ind3 = ind2(ind2 ~= 0);
+ind3 = find(ind2);
+
+%Choose whether to further narrow down which cores to plot/summarise
+subsetSpecificI = 1;
+specificSubset = highRes10CoresLog;
+if subsetSpecificI == 1
+    ind4 = NaN(1,numCores);
+    for i = 1:numCores
+        if specificSubset(i) == 0
+            ind4(i) = 0;
+        else
+            ind4(i) =1;
+        end
+    end
+    ind5 = find(ind2.*ind4);
+end
+
+
 
 %Find corenames, lats, longs, depths of cores included
 core_inc = cores(ind3);
@@ -199,7 +223,7 @@ subplot(4,1,3)
 histogram(MSI_byage_inc, 20, 'FaceColor','k')
 xlabel('Sampling Frequency by age (kyr/date)')
 ylabel('Counts')
-title("Cores' Mean Resolution By Age")
+title("Cores' Mean Sampling Interval By Age")
 
 subplot(4,1,4)
 histogram(MSI_bydepth_inc, 20, 'FaceColor','k')
@@ -207,7 +231,7 @@ histogram(MSI_bydepth_inc, 20, 'FaceColor','k')
 xlabel('Sampling Frequency by depth (cm/date)')
 ylabel('Counts')
 %xticks(0:25:150)
-title("Cores' Mean Resolution By Depth")
+title("Cores' Mean Sampling Interval By Depth")
 
 %% Display some important information
 
@@ -231,3 +255,4 @@ disp(sum(sedimentlength, 'omitmissing'))
 disp(sum(lengthsed_core, 'omitmissing'))
 
 %results = struct("CoreNames", core_inc, "Latitude", lat_inc, "Longitude", lon_inc, "Depths", dep_inc, "NormSRDist", [SRvals_interp; SRvalsprob_norm], "TransitionMatrix", allTM, "HistogramBinCounts", bin, "HistogramBinEdges", binedges, "nSRcounts", nSRcounts, "MeanSR", meanSR_inc, "ResolutionByAge", MSI_byage, "ResolutionByDepth", MSI_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
+
