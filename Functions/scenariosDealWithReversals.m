@@ -40,7 +40,7 @@ for j = 1:length(scenarios)
         if ~isempty(duplicated_depths) %if there are duplicated depths
             indrevmin = contains(string(rev_labIDs), minus_labels); %find which labIDs are related to duplicated depths (0 = related, 1 = not related)
             generic_revs = sum(indrevmin,2)==2; %Find which reversals are both from ages not from duplicately dated depths
-            if ismember(1, generic_revs) %If both dates from a pairing are not from a duplicated depth, break out of for loop and re-do scenarios, with choose-one-leave-one for the reversal
+            if ~ismember(0, generic_revs) %If both dates from a pairing are not from a duplicated depth, break out of for loop and re-do scenarios, with choose-one-leave-one for the reversal
                 genrev_labIDs = cell(1,sum(generic_revs));
                 for vi = 1:sum(generic_revs)
                     gen_inds = find(generic_revs == 1);
