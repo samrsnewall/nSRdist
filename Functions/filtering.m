@@ -24,14 +24,35 @@ elseif isempty(LabIDs) % if string is empty, check for depths to include
 
     end
 else %if string has LabIDs, find out which LabIDs they are by comparing with label
-    ind = contains(string(label), string(split(LabIDs, ', ')));
-
-    %fill outputs
+    
+    %Get Good Lab IDs
+    LabIDsSplit_Raw = split(LabIDs, ', ');
+    
+    %Remove problematic whitespace that isn't removed by strip (char 65279
+    %causes many problems)
+    test4ProblematicWhitespace = contains(LabIDsSplit_Raw, char(65279));
+    if sum(test4ProblematicWhitespace) > 0
+        disp("Removing problematic whitespace")
+        LabIDsSplit_noProblemWhitespace = cell(length(LabIDsSplit_Raw),1);
+        for i = 1:length(LabIDsSplit_Raw)
+            LabIDcharProb = LabIDsSplit_Raw{i};
+            problemIndex = ismember(LabIDcharProb, char(65279));
+            LabIDcharFix = LabIDcharProb(~problemIndex);
+            LabIDsSplit_noProblemWhitespace{i} = LabIDcharFix;
+        end
+        LabIDsSplitGood = LabIDsSplit_noProblemWhitespace;
+    else
+    LabIDsSplitGood = LabIDsSplit_Raw;
+    end
+    
+    %Get indeces of labels that are in LabIDs field
+    ind = contains(strip(string(label)), strip(string(LabIDsSplitGood)));
+   
+    %fill outputs with these indeces
     age = age(ind);
     depth_cm = depth_cm(ind);
     error = error(ind);
     label = label(ind);
-
 end
 
 %% Remove manually excluded dates
