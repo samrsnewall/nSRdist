@@ -18,7 +18,7 @@ numAllCores = length(dataMSPF.CoreName);
 allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
-reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042"];
+reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042", "KNR159-5-36GGC"];
 problemCores = ["MD98-2181"]; %#ok<NBRAK2>
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
 goodLog = badLog == 0;
@@ -28,9 +28,9 @@ goodIndexes = allcores(~badLog);
 
 %% Choose cores to analyse
 %Decide which subset of cores to look at
-subsetchooser = zeros(size(goodLog));
-subsetchooser(5:15) = 1;
-chosenCoresLog = goodLog;
+subsetchooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
+subsetchooser(1:14) = 1; 
+chosenCoresLog = subsetchooser;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -59,10 +59,10 @@ corescenarios = cell(1,numCores);
 newlabels = cell(1,numCores);
 numreversals = nan(1,numCores);
 
-%% If I want to check a specific core
-    % 
-    % disp(cores{i})
-    % [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+% % If I want to check a specific core
+%     i = 63;
+%     disp(cores{i})
+%     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 
 %% Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
@@ -166,7 +166,7 @@ end
 ind3 = find(ind2);
 
 %Choose whether to further narrow down which cores to plot/summarise
-subsetSpecificI = 1;
+subsetSpecificI = 0;
 specificSubset = highRes10CoresLog;
 if subsetSpecificI == 1
     ind4 = NaN(1,numCores);
