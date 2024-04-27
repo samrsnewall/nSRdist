@@ -10,8 +10,11 @@ lx = lognorm_BIGMACS.Var1';
 options = statset('MaxIter', 2000);
 
 %Use GMFit to fit a Gaussian Mixture distribution to the log of the data
+if ~iscolumn(data_linear)
+    data_linear = data_linear';
+end
 data_log = log(data_linear);
-gmfit = fitgmdist(data_log', numComponents, "Options", options);
+gmfit = fitgmdist(data_log, numComponents, "Options", options);
 
 %Find the means of fit
 mu_fit = gmfit.mu;
