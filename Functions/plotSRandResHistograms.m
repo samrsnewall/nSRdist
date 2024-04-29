@@ -26,10 +26,17 @@ Y = nSRcountsArray(2,:);
 Y_u = accumarray(IC,Y);
 Y_uR = round(Y_u);
 data = repelem(X_u,Y_uR);
+dataLog = log(data);
 
 %Calculate the MixLogNorm from these counts
 nSRdataAsCounts = data;
-[SR_MixLogNorm, SR_mean, SR_variance] = fitMixLogNorm(nSRdataAsCounts, 2);
+[SR_MixLogNorm, logSR_MixNorm, distSRmean, distSRvariance] = fitMixLogNorm(nSRdataAsCounts, 2);
+
+%% Calculate mean and variance of data
+dataMeanLinear = mean(nSRdataAsCounts);
+dataVarLinear = var(nSRdataAsCounts);
+dataMeanLog = mean(dataLog);
+dataVarLog = var(dataLog);
 
 %% Calculate Histogram Bin Counts
 %Define bins edges for histogram
@@ -40,7 +47,7 @@ agediffsBinEdges = 0:500:10000;
 SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
 agediffsBinCounts = makeWeightedBinCounts(agediffsArray, ones(1,length(agediffsArray)), agediffsBinEdges);
 
-%Plot histograms of SR and of agediffs
+%% Plot histograms of SR and of agediffs
 figure(fignumber)
 hold on
 subplot(1,2,1)
@@ -51,7 +58,7 @@ histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges);
 xlim([0 6])
 xlabel("Normalised Sed Rate")
 ylabel("Counts")
-title("Mean = " + num2str(SR_mean) + "; Var = " + num2str(SR_variance))
+title("Mean = " + num2str(distSRmean) + "; Var = " + num2str(distSRvariance))
 
 subplot(1,2,2)
 hold on
@@ -59,4 +66,33 @@ histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
 xlabel("Age Diff (yrs)")
 ylabel("Counts")
 title(subsetName + " with " + num2str(sum(subset14cpairs)) + " age pairs")
+
+%% Plot to see how data compare to estimated distributions
+figure
+subplot(2,2,1)
+yyaxis left
+histogram(dataLog)
+yyaxis right
+plot(logSR_MixNorm(:,1), logSR_MixNorm(:,2))
+xlabel("Log SR")
+title("Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog))
+subplot(2,2,2)
+qqplot(dataLog)
+xlabel("Log SR Data")
+subplot(2,2,3)
+yyaxis left
+histogram(data)
+yyaxis right
+plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
+xlabel("SR")
+xlim([0 10])
+title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
+subplot(2,2,4)
+histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
+xlabel("Age Diff (yrs)")
+ylabel("Counts")
+title(num2str(sum(subset14cpairs)) + " age pairs")
+sgtitle(subsetName)
+
+
 end
