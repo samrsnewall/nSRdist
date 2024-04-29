@@ -98,26 +98,26 @@ dataVarLog = var(data_log);
 % title("Mean = " + num2str(meanExpOfGaussSamples) + "; Var = " + num2str(varExpOfGaussSamples))
 
 %% Plot to see how data compare to estimated distributions
-figure
-subplot(2,2,1)
-yyaxis left
-histogram(data_log)
-yyaxis right
-plot(mixNormPDF(:,1), mixNormPDF(:,2))
-xlabel("Log SR")
-
-title({"Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog)...
-    , "Dist Mean = " + num2str(distMeanLog) + "; Dist Var = " + num2str(distVarLog)})
-subplot(2,2,2)
-qqplot(data_log)
-xlabel("Log SR Data")
-subplot(2,2,[3 4])
-yyaxis left
-histogram(data_linear)
-yyaxis right
-plot(x, z)
-xlabel("SR")
-xlim([0 10])
-title({"Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear)...
-    , "Dist Mean = " + num2str(distMeanLinear) + "; Dist Var = " + num2str(distVarLinear)})
+% figure
+% subplot(2,2,1)
+% yyaxis left
+% histogram(data_log)
+% yyaxis right
+% plot(mixNormPDF(:,1), mixNormPDF(:,2))
+% xlabel("Log SR")
+% 
+% title({"Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog)...
+%     , "Dist Mean = " + num2str(distMeanLog) + "; Dist Var = " + num2str(distVarLog)})
+% subplot(2,2,2)
+% qqplot(data_log)
+% xlabel("Log SR Data")
+% subplot(2,2,[3 4])
+% yyaxis left
+% histogram(data_linear)
+% yyaxis right
+% plot(x, z)
+% xlabel("SR")
+% xlim([0 10])
+% title({"Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear)...
+%     , "Dist Mean = " + num2str(distMeanLinear) + "; Dist Var = " + num2str(distVarLinear)})
 end
