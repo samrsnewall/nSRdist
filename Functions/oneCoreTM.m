@@ -22,74 +22,20 @@ label = ncread(fnm, "Label"); %(Lab ID)
 label = string(label);
 
 %% Filter ages
-%Filter the data so it's only those with MSPF
-if strcmp(string(LabIDs), "all") %if string says all, do nothing
-elseif isempty(LabIDs) % if string is empty, check for depths to include
-    if isempty(incDepths) %if no depths and no LabIDs to include, break out of function
-        return
-    else %Choose what depths to include
-        incDepthsStr = string(split(incDepths, ', '));
-        incDepthsN = double(incDepthsStr);
-        ind = ismember(depth_cm, incDepthsN.*100);
-        age = age(ind);
-        depth_cm = depth_cm(ind);
-        error = error(ind);
-        label = label(ind);
-    end
-else %if string has LabIDs, find out which LabIDs they are by comparing with label
-    ind = contains(string(label), string(split(LabIDs, ', ')));
-    age = age(ind);
-    depth_cm = depth_cm(ind);
-    error = error(ind);
-    label = label(ind);
-end
+[age, depth_cm, error, label, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths);
 
-% Filter ages for manually removed ages
-%Remove the LabIDs of ages that are clearly erroneous (large age
-%reversal - hand picked)
-if isempty(excLabIDs)
-else
-    ind = contains(string(label), string(split(excLabIDs, ', ')));
-    ind = ind==0;
-    age = age(ind);
-    depth_cm = depth_cm(ind);
-    error = error(ind);
-    label = label(ind);
-end
-
-if isempty(excDepths)
-else
-    excDepthsStr = string(split(excDepths, ', '));
-    excDepthsN = double(excDepthsStr);
-    ind = ismember(depth_cm, excDepthsN.*100);
-    ind = ind==0;
-    age = age(ind);
-    depth_cm = depth_cm(ind);
-    error = error(ind);
-    label = label(ind);
-end
-
-% Filter ages to fit within calibration curve
-%Filter the data so it only includes those where the age is greater than
-%1000 and below 42,000 yr C14 BP. (to ensure they fit within the limits of
-%the calibration curve)
-ind = find(age-error >= 1 & age+error <=42);
-depth_cm = depth_cm(ind);
-age = age(ind);
-error = error(ind);
-label = label(ind);
-
-% Filter cores to have at least 4 dates remaining (arbitrary choice... chosen to exclude cores with v low data)
-%Filter out cores that have less than 4 dates remaining
-if length(age)<4
+if emptybreak1 == 1 || emptybreak2 == 1
     core_transnums = nan(3,3);
     core_CSE2x = nan(3,1);
     nSRcounts = [];
+    agediffs = [];
     return
 end
-
+    
+%% Create fake labels if needed (think this will not be needed in this function anymore?)
 % If there are no LabIDs, create temporary LabIDs so that scenarios can be made
 if sum(contains(label, "NaN"))~=0
+    disp("Creating Fake Labels in OneCoreTM for " + corename)
     for i = find(contains(label, "NaN"))
         label(i) = "FakeLabel" + num2str(i);
     end
@@ -105,8 +51,6 @@ for i_sce = 1:length(scenarios)
         validScenariosBool(i_sce) = 0;
     end
 end
-
-
 %% Loop through scenarios using random sampling SR calculations
 
 %Initiate empty variables
@@ -142,11 +86,6 @@ for i_sce = 1:length(scenarios)
     %% Set up years vector and reduce size of calibrated ages (by making NaN)
     m20_years = 0:55000;
     %m20_kyrs = m20_years./1000;
-
-    % input Nan where each pdf is lesser than 1e-10
-% ind1 = ageprob(:,:)<=(1e-10);
-% ageprob_Nans = ageprob;
-% ageprob_Nans(ind1) = NaN;
 
     %% Run a number of random samples, sampling each age with positivity rule
     numruns = 1500;
