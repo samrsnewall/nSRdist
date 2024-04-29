@@ -30,7 +30,7 @@ dataLog = log(data);
 
 %Calculate the MixLogNorm from these counts
 nSRdataAsCounts = data;
-[SR_MixLogNorm, logSR_MixNorm, distSRmean, distSRvariance] = fitMixLogNorm(nSRdataAsCounts, 2);
+[SR_MixLogNorm, logSR_MixNorm, ~, ~] = fitMixLogNorm(nSRdataAsCounts, 2);
 
 %% Calculate mean and variance of data
 dataMeanLinear = mean(nSRdataAsCounts);
@@ -47,25 +47,7 @@ agediffsBinEdges = 0:500:10000;
 SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
 agediffsBinCounts = makeWeightedBinCounts(agediffsArray, ones(1,length(agediffsArray)), agediffsBinEdges);
 
-%% Plot histograms of SR and of agediffs
-figure(fignumber)
-hold on
-subplot(1,2,1)
-yyaxis right
-plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2), 'k-')
-yyaxis left
-histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges);
-xlim([0 6])
-xlabel("Normalised Sed Rate")
-ylabel("Counts")
-title("Mean = " + num2str(distSRmean) + "; Var = " + num2str(distSRvariance))
 
-subplot(1,2,2)
-hold on
-histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
-xlabel("Age Diff (yrs)")
-ylabel("Counts")
-title(subsetName + " with " + num2str(sum(subset14cpairs)) + " age pairs")
 
 %% Plot to see how data compare to estimated distributions
 figure
@@ -81,11 +63,11 @@ qqplot(dataLog)
 xlabel("Log SR Data")
 subplot(2,2,3)
 yyaxis left
-histogram(data)
+histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges)
 yyaxis right
 plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
 xlabel("SR")
-xlim([0 10])
+xlim([0 6])
 title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
 subplot(2,2,4)
 histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
@@ -93,6 +75,5 @@ xlabel("Age Diff (yrs)")
 ylabel("Counts")
 title(num2str(sum(subset14cpairs)) + " age pairs")
 sgtitle(subsetName)
-
 
 end
