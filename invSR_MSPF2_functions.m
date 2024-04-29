@@ -29,8 +29,9 @@ goodIndexes = allcores(~badLog);
 %% Choose cores to analyse
 %Decide which subset of cores to look at
 subsetchooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetchooser(1:14) = 1; 
-chosenCoresLog = subsetchooser;
+subsetchooser(1:30) = 1; 
+subsetchooser(badLog) = 0;
+chosenCoresLog = goodLog;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -47,17 +48,17 @@ numCores = sum(chosenCoresLog);
 % avoid them), to calculate the meanSR, return number of dates used. 
 
 % Initialise variables to hold this information
-core_invSRvals = cell(1,numCores);
-core_invSRprobs = cell(1,numCores);
-meanSR = nan(1,numCores);
-MSI_byage = nan(1,numCores);
-MSI_bydepth = nan(1,numCores);
-sedimentlength = nan(1,numCores);
-num14cpairs = nan(1,numCores);
+core_invSRvals = cell(numcores,1);
+core_invSRprobs = cell(numcores,1);
+meanSR = nan(numcores,1);
+MSI_byage = nan(numcores,1);
+MSI_bydepth = nan(numcores,1);
+sedimentlength = nan(numcores,1);
+num14cpairs = nan(numcores,1);
 transprobs_cores= nan(3,3,numCores);
-corescenarios = cell(1,numCores);
-newlabels = cell(1,numCores);
-numreversals = nan(1,numCores);
+corescenarios = cell(numcores,1);
+newlabels = cell(numcores,1);
+numreversals = nan(numcores,1);
 
 % % If I want to check a specific core
 %     i = 63;
@@ -80,6 +81,7 @@ highSRCoresLog = meanSR >8;
 % Sampling Interval).
 [~,highRes10CoresInd] = maxk(-MSI_byage, 10);
 highRes10CoresLog = MSI_byage <= MSI_byage(highRes10CoresInd(end));
+highRes10HighSRCoresLog = highRes10CoresLog & highSRCoresLog;
 
 [~,highRes15CoresInd] = maxk(-MSI_byage, 15);
 highRes15CoresLog = MSI_byage <= MSI_byage(highRes15CoresInd(end));
@@ -149,13 +151,13 @@ allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 
 %% Plot the histogram of random sample counts
- plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
- plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10CoresLog, 103, 'k', "10 Highest Res")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10HighSRCoresLog, 103, 'k', "10 Highest Res")
 
 %% Plot Map of data in MATLAB
 %Find index of all cores used in the analysis
-ind2 = NaN(1,numCores);
+ind2 = NaN(numcores,1);
 for i = 1:numCores
     if isempty(core_invSRvals{i})
         ind2(i) = 0;
@@ -169,7 +171,7 @@ ind3 = find(ind2);
 subsetSpecificI = 0;
 specificSubset = highRes10CoresLog;
 if subsetSpecificI == 1
-    ind4 = NaN(1,numCores);
+    ind4 = NaN(numcores,1);
     for i = 1:numCores
         if specificSubset(i) == 0
             ind4(i) = 0;
@@ -179,8 +181,6 @@ if subsetSpecificI == 1
     end
     ind5 = find(ind2.*ind4);
 end
-
-
 
 %Find corenames, lats, longs, depths of cores included
 core_inc = cores(ind3);
@@ -239,7 +239,7 @@ title("Cores' Mean Sampling Interval By Depth")
 BIGMACSTM = [0.7215, 0.0940, 0.1846; 0.4328, 0.2687, 0.2985; 0.2670, 0.1041, 0.6290];
 
 %Find out how much sediment the cores used constitute
-lengthsed_core = nan(1,length(nSRcounts));
+lengthsed_core = nan(length(nSRcounts),1);
 for i = 1:length(nSRcounts)
     if isempty(nSRcounts{i})
     else
@@ -254,5 +254,6 @@ disp("The total length of sediment used is")
 disp(sum(sedimentlength, 'omitmissing'))
 disp(sum(lengthsed_core, 'omitmissing'))
 
-%results = struct("CoreNames", core_inc, "Latitude", lat_inc, "Longitude", lon_inc, "Depths", dep_inc, "NormSRDist", [SRvals_interp; SRvalsprob_norm], "TransitionMatrix", allTM, "HistogramBinCounts", bin, "HistogramBinEdges", binedges, "nSRcounts", nSRcounts, "MeanSR", meanSR_inc, "ResolutionByAge", MSI_byage, "ResolutionByDepth", MSI_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
+results = struct("CoreNames", cores, "Latitude", num2cell(lats), "Longitude", num2cell(longs), "Depths", num2cell(depths), "nSRcounts", nSRcounts, "agediffs", agediffs, "MeanSR", num2cell(meanSR), "ResolutionByAge", num2cell(MSI_byage), "ResolutionByDepth", MSI_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
+
 
