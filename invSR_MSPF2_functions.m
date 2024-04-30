@@ -19,7 +19,7 @@ allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
 reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042", "KNR159-5-36GGC"];
-problemCores = ["MD98-2181"]; %#ok<NBRAK2>
+problemCores = [];% ["MD98-2181"]; %#ok<NBRAK2>
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
 goodLog = badLog == 0;
 badIndexes = allcores(badLog);
@@ -29,9 +29,9 @@ goodIndexes = allcores(~badLog);
 %% Choose cores to analyse
 %Decide which subset of cores to look at
 subsetchooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetchooser(1:30) = 1; 
+subsetchooser(145:155) = 1; 
 subsetchooser(badLog) = 0;
-chosenCoresLog = goodLog;
+chosenCoresLog = subsetchooser;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -48,22 +48,23 @@ numCores = sum(chosenCoresLog);
 % avoid them), to calculate the meanSR, return number of dates used. 
 
 % Initialise variables to hold this information
-core_invSRvals = cell(numcores,1);
-core_invSRprobs = cell(numcores,1);
-meanSR = nan(numcores,1);
-MSI_byage = nan(numcores,1);
-MSI_bydepth = nan(numcores,1);
-sedimentlength = nan(numcores,1);
-num14cpairs = nan(numcores,1);
+core_invSRvals = cell(numCores,1);
+core_invSRprobs = cell(numCores,1);
+meanSR = nan(numCores,1);
+MSI_byage = nan(numCores,1);
+MSI_bydepth = nan(numCores,1);
+sedimentlength = nan(numCores,1);
+num14cpairs = nan(numCores,1);
 transprobs_cores= nan(3,3,numCores);
-corescenarios = cell(numcores,1);
-newlabels = cell(numcores,1);
-numreversals = nan(numcores,1);
+corescenarios = cell(numCores,1);
+newlabels = cell(numCores,1);
+numreversals = nan(numCores,1);
 
-% % If I want to check a specific core
-%     i = 63;
-%     disp(cores{i})
-%     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+% If I want to check a specific core
+    
+    % i = 106;
+    % disp(cores{i})
+    % [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 
 %% Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
@@ -153,11 +154,19 @@ allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 %% Plot the histogram of random sample counts
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+
+numNotNan = length(MSI_byage) - sum(isnan(MSI_byage));
+if numNotNan < 10
+else
+[~,highRes10CoresInd] = maxk(-MSI_byage, 10);
+highRes10CoresLog = MSI_byage <= MSI_byage(highRes10CoresInd(end));
+highRes10HighSRCoresLog = highRes10CoresLog & highSRCoresLog;
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highRes10HighSRCoresLog, 103, 'k', "10 Highest Res")
+end
 
 %% Plot Map of data in MATLAB
 %Find index of all cores used in the analysis
-ind2 = NaN(numcores,1);
+ind2 = NaN(numCores,1);
 for i = 1:numCores
     if isempty(core_invSRvals{i})
         ind2(i) = 0;
@@ -171,7 +180,7 @@ ind3 = find(ind2);
 subsetSpecificI = 0;
 specificSubset = highRes10CoresLog;
 if subsetSpecificI == 1
-    ind4 = NaN(numcores,1);
+    ind4 = NaN(numCores,1);
     for i = 1:numCores
         if specificSubset(i) == 0
             ind4(i) = 0;
