@@ -1,20 +1,21 @@
-function[scenariosNR, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, reversalpairs, numdatepairs, lengthsed,  newScenIndicator, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs)
+function[scenariosNew, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, reversalpairs, numdatepairs, lengthsed,  newScenIndicator, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, depth_cm, age, error, label, corename, duplicated_depths, plotfigs)
 
 %Initiate cells to hold results from each scenario
-scenario_invSRvals = cell(1,length(scenarios));
-scenario_invSRprobs = cell(1, length(scenarios));
-scenario_labels = cell(1, length(scenarios));
-scenario_meanSR = nan(1, length(scenarios));
-numdatepairs = nan(1, length(scenarios));
-lengthsed = nan(1, length(scenarios));
-lengthage = nan(1, length(scenarios));
-MSI_bydepth = nan(1, length(scenarios));
-MSI_byage = nan(1, length(scenarios));
-scenariosNR = cell([]);
+numscenarios = length(scenarios);
+scenario_invSRvals = cell(numscenarios, 1);
+scenario_invSRprobs = cell(numscenarios, 1);
+scenario_labels = cell(numscenarios, 1);
+scenario_meanSR = nan(numscenarios, 1);
+numdatepairs = nan(numscenarios, 1);
+lengthsed = nan(numscenarios, 1);
+lengthage = nan(numscenarios, 1);
+MSI_bydepth = nan(numscenarios, 1);
+MSI_byage = nan(numscenarios, 1);
+scenariosNew = cell([]);
 
-% transprobs_scenarios = zeros(3,3,length(scenarios));
+% transprobs_scenarios = zeros(3,3,numscenarios);
 %For each scenario, find the possible invSRvals and the probs
-for j = 1:length(scenarios)
+for j = 1:numscenarios
     date_bool = contains(string(label), scenarios{j});
     date_is = find(date_bool == 1);
     scenario_labels{j} = label(date_bool == 1);
@@ -48,7 +49,7 @@ for j = 1:length(scenarios)
                 end
                 cell_dup_depths = cell(1,1);
                 cell_dup_depths{1} = dup_depth_labels;
-                [scenariosNR, ~,~] = scenariomaker(cell_dup_depths, genrev_labIDs,label);
+                [scenariosNew, ~,~] = scenariomaker(cell_dup_depths, genrev_labIDs,label);
                 newScenIndicator = 1;
                 break
             else %If one of the dates is from a duplicated depth... Then what?
@@ -56,17 +57,17 @@ for j = 1:length(scenarios)
 
             end
         else %If there are no duplicate depths, all reversals must be generic
-            genrev_labIDs = cell(1,sum(reversalpairs));
+            genrev_labIDs = cell(1,numreversals);
             for vi = 1:sum(reversalpairs)
                 genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
             end
-            [twoscenariosNR, ~, ~] = scenariomaker([], genrev_labIDs,scenario_labels{j});
-            scenariosNR = [scenariosNR; twoscenariosNR(1); twoscenariosNR(2)];
+            [newscenariosNR, ~, ~] = scenariomaker([], genrev_labIDs,scenario_labels{j});
+            scenariosNew = [scenariosNew; newscenariosNR];
             newScenIndicator = 1;
             break
         end
     else
-    scenariosNR = [scenariosNR; scenarios(j)];
+    scenariosNew = [scenariosNew; scenarios(j)];
     newScenIndicator = 0;
     end
 end
