@@ -62,7 +62,7 @@ for j = 1:numscenarios
                 genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
             end
             [newscenariosNR, ~, ~] = scenariomaker([], genrev_labIDs,scenario_labels{j});
-            scenariosNew = [scenariosNew; newscenariosNR];
+            scenariosNew = [scenariosNew; newscenariosNR; scenarios(j+1:end)];
             newScenIndicator = 1;
             break
         end
