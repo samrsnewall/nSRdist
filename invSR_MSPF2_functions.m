@@ -19,9 +19,11 @@ allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
 reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042", "KNR159-5-36GGC"];
-problemCores = [];% ["MD98-2181"]; %#ok<NBRAK2>
+problemCores = ["MD98-2181", "SU81-18", "MD02-2550", "MD88-770"]; % These all have too many reversals...
+problemCores = ["MD98-2181"]; %#ok<NBRAK2>
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
 goodLog = badLog == 0;
+allLog = true(length(goodLog), 1);
 badIndexes = allcores(badLog);
 %Hence create index to use only cores that passed manual inspection
 goodIndexes = allcores(~badLog);
@@ -31,7 +33,7 @@ goodIndexes = allcores(~badLog);
 subsetchooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
 subsetchooser(145:155) = 1; 
 subsetchooser(badLog) = 0;
-chosenCoresLog = subsetchooser;
+chosenCoresLog = goodLog;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -41,6 +43,10 @@ incDepths = table2array(dataMSPF(chosenCoresLog, "IncludeDepths")); % take list 
 excLabIDs = table2array(dataMSPF(chosenCoresLog, "excludeLabIDs")); %take list of manually removed dates for each core
 excDepths = table2array(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of manually removed dates for each core (useful if no labels)
 numCores = sum(chosenCoresLog);
+
+%% Plot radiocarbon data from a single core (for exploratory use)
+% iPlot = 1;
+% corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
 
 %% invSR PDF Approach
 % This section runs through a quicker, less-computationally-expensive
@@ -152,8 +158,8 @@ allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
 
 %% Plot the histogram of random sample counts
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'k', "High SR")
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'k', "Low SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'r', "High SR")
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'b', "Low SR")
 
 numNotNan = length(MSI_byage) - sum(isnan(MSI_byage));
 if numNotNan < 10
@@ -178,7 +184,7 @@ ind3 = find(ind2);
 
 %Choose whether to further narrow down which cores to plot/summarise
 subsetSpecificI = 0;
-specificSubset = highRes10CoresLog;
+specificSubset = highSRCoresLog;
 if subsetSpecificI == 1
     ind4 = NaN(numCores,1);
     for i = 1:numCores
@@ -264,5 +270,4 @@ disp(sum(sedimentlength, 'omitmissing'))
 disp(sum(lengthsed_core, 'omitmissing'))
 
 results = struct("CoreNames", cores, "Latitude", num2cell(lats), "Longitude", num2cell(longs), "Depths", num2cell(depths), "nSRcounts", nSRcounts, "agediffs", agediffs, "MeanSR", num2cell(meanSR), "ResolutionByAge", num2cell(MSI_byage), "ResolutionByDepth", MSI_bydepth, "Number14Cpairs", num14cpairs, "SedimentLength", sedimentlength);
-
 
