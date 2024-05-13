@@ -15,16 +15,19 @@ label = string(label);
 %% Filter for plotting
 [ChosenMSPF, EM, ManE, NotCCR, ~,~] = filteringForPlotting(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths);
 
+
 %% Plot all radiocarbon data
 figure
+hold on
 errorbar(ChosenMSPF.depth, ChosenMSPF.age, ChosenMSPF.error, "vertical", 'o', "color", 'k', 'DisplayName', "Accepted")
-errorbar(EM.depth, EM.age, EM.error, "vertical", '.', 'color', 'r', 'DisplayName', 'Not Chosen MSPF')
+errorbar(EM.depth, EM.age, EM.error, "vertical", '.', 'color', 'r', 'DisplayName', 'Material Not Chosen')
 errorbar(ManE.depth, ManE.age, ManE.error, "vertical", 'o', 'color', 'r', 'DisplayName', "Manually Excluded")
 errorbar(NotCCR.depth, NotCCR.age, NotCCR.error, "vertical", 'x', 'color', 'r', 'DisplayName', "Outside CC Range")
+ylim([0 age(end)*1.1])
 set(gca, 'YTickLabel',get(gca,'YTick'))
 xlabel("Depth (cm)")
 ylabel(["Radiocarbon Age","(14C kyr BP)"])
-legend()
+legend("location", "southeast")
 title(corename)
 
 end
