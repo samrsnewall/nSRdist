@@ -76,4 +76,20 @@ ylabel("Counts")
 title(num2str(sum(subset14cpairs)) + " age pairs")
 sgtitle(subsetName)
 
+figure
+subplot(1,2,1)
+yyaxis left
+histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges, 'FaceColor', colour, 'FaceAlpha', 0.5)
+yyaxis right
+plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2), 'Color', colour, 'LineWidth', 2)
+xlabel("SR")
+xlim([0 6])
+title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
+subplot(1,2,2)
+histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges,'FaceColor', colour, 'FaceAlpha', 0.5)
+xlabel("Age Diff (yrs)")
+ylabel("Counts")
+title(num2str(sum(subset14cpairs)) + " age pairs")
+sgtitle(subsetName)
+
 end
