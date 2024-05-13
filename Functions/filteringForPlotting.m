@@ -5,7 +5,12 @@ emptybreak2 = 0;
 
 %% Choose only MSPF dates
 %Filter the data so it's only those with MSPF
-if strcmp(string(LabIDs), "all") %if string says all, do nothing
+if strcmp(string(LabIDs), "all") %if string says all, no dates are excluded for their material
+    logi1 = true(length(age), 1);
+    EM.age = age(~logi1);
+    EM.depth = depth(~logi1);
+    EM.error = error(~logi1);
+    EM.label = label(~logi1);
 elseif ~isempty(LabIDs) % if string is not empty, check for depths to include
     %Get Good Lab IDs
     LabIDsSplit_Raw = split(LabIDs, ', ');
@@ -48,10 +53,12 @@ elseif ~isempty(incDepths) %if there are depths to include include those
     EM.error = error(~logi1);
     EM.label = label(~logi1);
 
-
 else %if there is no information to include, signal break out of function
     emptybreak1 = 1; %return signal to break out of parent function
-    return           %break out of this function
+    EM.age = age;
+    EM.depth = depth;
+    EM.error = error;
+    EM.label = label;
 end
 
 %% Remove manually excluded (ManE) dates
@@ -73,6 +80,11 @@ elseif ~isempty(excDepths)
     ManE.error = error(logi3);
     ManE.label = label(logi3);
 else
+    logi3 = false(length(age), 1);
+        ManE.age = age(logi3);
+    ManE.depth = depth(logi3);
+    ManE.error = error(logi3);
+    ManE.label = label(logi3);
     %if there are no dates to manually exclude, move on
 end
 
@@ -84,7 +96,7 @@ end
 %Filter the data so it only includes those where the age is greater than
 %1000 and below 42,000 yr C14 BP. (to ensure they fit within the limits of
 %the calibration curve)
-logi4 = find(age-error <= 1 & age+error >=42);
+logi4 = age-error >= 1 & age+error <=42;
 NotCCR.depth = depth(~logi4);
 NotCCR.age = age(~logi4);
 NotCCR.error = error(~logi4);
@@ -95,12 +107,12 @@ NotCCR.label = label(~logi4);
 if length(age)<4
     emptybreak2 = 1;
 end
-
-ChosenInd = logi1 & ~logi3 & ~ logi4;
+%% Choose cores that fit all criteria
+ChosenLogi = logi1 & ~logi3 & logi4;
 
 %fill outputs
-ChosenMSPF.age = age(ChosenInd);
-ChosenMSPF.depth = depth(ChosenInd);
-ChosenMSPF.error = error(ChosenInd);
-ChosenMSPF.label = label(ChosenInd);
+ChosenMSPF.age = age(ChosenLogi);
+ChosenMSPF.depth = depth(ChosenLogi);
+ChosenMSPF.error = error(ChosenLogi);
+ChosenMSPF.label = label(ChosenLogi);
 end
