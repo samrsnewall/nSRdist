@@ -13,17 +13,18 @@ label = ncread(fnm, "Label"); %(Lab ID)
 label = string(label);
 
 %% Filter for plotting
-[ChosenMSPF, EM, ManE, NotCCR, ~,~] = filteringForPlotting(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths);
+[age, depth, error, ~, ~,~, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths);
 
 
 %% Plot all radiocarbon data
 figure
 hold on
-errorbar(ChosenMSPF.depth, ChosenMSPF.age, ChosenMSPF.error, "vertical", 'o', "color", 'k', 'DisplayName', "Accepted")
+errorbar(depth, age, error, "vertical", 'o', "color", 'k', 'DisplayName', "Accepted")
 errorbar(EM.depth, EM.age, EM.error, "vertical", '.', 'color', 'r', 'DisplayName', 'Material Not Chosen')
 errorbar(ManE.depth, ManE.age, ManE.error, "vertical", 'o', 'color', 'r', 'DisplayName', "Manually Excluded")
 errorbar(NotCCR.depth, NotCCR.age, NotCCR.error, "vertical", 'x', 'color', 'r', 'DisplayName', "Outside CC Range")
-ylim([0 age(end)*1.1])
+plot(ageGapTooHigh.depth, ageGapTooHigh.age, 'r-')
+%ylim([0 age(end)*1.1])
 set(gca, 'YTickLabel',get(gca,'YTick'))
 xlabel("Depth (cm)")
 ylabel(["Radiocarbon Age","(14C kyr BP)"])
