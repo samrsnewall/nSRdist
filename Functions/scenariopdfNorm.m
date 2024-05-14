@@ -6,7 +6,7 @@ function [interp_invSR, iProbs_wd, meanSR, reversalpairs, numpairs, depdiff, age
 dep_is = depth(date_is); %Depths of each age
 ageprob = zeros(55001, length(date_is));
 for i = 1:length(date_is)
-    [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', 0, 'plot', 0);
+    [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', 200, 'plot', 0);
     ageprob(:,i) = holder(:,2);
 end
 clear holder %Gets rid of variable holder
@@ -34,10 +34,9 @@ agediff = deep_age - shallow_age;
 depdiff = dep_is(end)-dep_is(1);
 meanSR = depdiff./agediff; % cm/y
 %Calculate mean sampling interval by age
-MSI_byage = agediff./length(date_is);
+MSI_byage = agediff./length(date_is); %y/date
 %Calculate mean sampling interval by depth
-MSI_bydepth = depdiff./length(date_is);
-%calculate total depth of sediment
+MSI_bydepth = depdiff./length(date_is); %cm/date
 
 %% Calculate age difference and probability for each pairing of ages - PDF METHOD FUNCTION
 %By using a function
@@ -51,7 +50,7 @@ reversalpairs = zeros(1,numpairs);
 %For each pairing, if the probability of negative age difference is
 %greater than 0.5, classify as reversal
 for m = 1:numpairs
-    if sum(agediff_probsums{m}(agediff_vals{m} <= 0)) >=0.5
+    if sum(agediff_probsums{m}(agediff_vals{m} <= 0)) >=0.75
         %disp("Likely Reversal!")
         reversalpairs(m) = 1;
     end
