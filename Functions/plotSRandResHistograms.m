@@ -1,4 +1,4 @@
-function[] = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, coreSubsetLogical, fignumber, colour, subsetName)
+function[] = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, coreSubsetLogical, ~, colour, subsetName)
 
 %% Combine all counts into one array
 %set up arrays to be concatenated into
@@ -33,7 +33,7 @@ nSRdataAsCounts = data;
 [SR_MixLogNorm, logSR_MixNorm, ~, ~] = fitMixLogNorm(nSRdataAsCounts, 2);
 
 %% Calculate mean and variance of data
-dataMeanLinear = mean(nSRdataAsCounts);
+dataMeanLinear = geomean(nSRdataAsCounts);
 dataVarLinear = var(nSRdataAsCounts);
 dataMeanLog = mean(dataLog);
 dataVarLog = var(dataLog);
