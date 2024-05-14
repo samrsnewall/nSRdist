@@ -25,7 +25,7 @@ label = string(label);
 %dates between 1 and 42 14C ky BP, and only keep cores with 4 or more
 %accepted dates
 
-[age, depth_cm, error, label, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths);
+[age, depth_cm, error, label, emptybreak1, emptybreak2,~,~,~] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths);
 
 if emptybreak1 == 1 || emptybreak2 == 1
     core_invSRvals = [];
@@ -42,8 +42,7 @@ end
     
 %Plot radiocarbon ages that fit through filtering
 if plotfigs == 1
-    figno = 1;
-    figure(figno)
+    figure()
     errorbar(depth_cm, age, error, "vertical", 'o', "color", 'k')
     set(gca, 'YTickLabel',get(gca,'YTick'))
     xlabel("Depth (cm)")
