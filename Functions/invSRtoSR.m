@@ -1,8 +1,8 @@
 function[SRvals_interp, SRvalsprob_norm] = invSRtoSR(invSRvals, invSRprobs)
 
 % Concatenate the invSRvals and probabilities at just above 0
-invSRvalsPOS = invSRvals(invSRvals>=0.0001);
-invSRprobsPOS = invSRprobs(invSRvals>=0.0001);
+invSRvalsPOS = invSRvals(invSRvals>=0.000001);
+invSRprobsPOS = invSRprobs(invSRvals>=0.000001);
 
 %Apply correction for differing bin sizes after inversion
 %find bin width in invSR space
