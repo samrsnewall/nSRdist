@@ -11,11 +11,11 @@
 
 %A few of the important choices made are:
 % - If >3/4 of possible pathways between pair of radiocarbon dates is negative, it is classified as a reversal
-% - The \DeltaR is 0±200yr
+% - The \DeltaR is 0±200yr (change this in multiMatcal.m function)
 % - Cores are split by SR at 8cm/kyr
 % - An extra subset is made by picking 10 highSR cores with most data
 
-%% Add Functions Folder to Path
+% Add Functions Folder to Path
 addpath('Functions')
 
 %% Load Metadata of MSPF cores
@@ -33,6 +33,7 @@ reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "KNR159-5-36GGC"];
 %problemCores = ["SU81-18", "MD02-2550", "MD88-770"]; % These all have too many reversals 
 problemCores = [];
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
+namedLog = contains(string(dataMSPF.CoreName), "MD02-2550");
 goodLog = badLog == 0;
 allLog = true(length(goodLog), 1);
 badIndexes = allcores(badLog);
@@ -42,12 +43,12 @@ goodIndexes = allcores(~badLog);
 
 %------- Create a subset of cores to look at if interested
 %Decide which subset of cores to look at
-subsetchooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetchooser(7) = 1; 
-subsetchooser(badLog) = 0;
+subsetChooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
+subsetChooser(1:10) = 1; 
+subsetChooser(badLog) = 0;
 
 %------- Take desired data into arrays
-chosenCoresLog = goodLog;
+chosenCoresLog = subsetChooser;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -59,8 +60,8 @@ excDepths = table2cell(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of 
 numCores = sum(chosenCoresLog);
 
 %------ Plot radiocarbon data from a single core (for exploratory use)
-% for iPlot = find(chosenCoresLog)
-% corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+% for iPlot = find(chosenCoresLog)'
+%   corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
 % end
 
 %% invSR PDF Approach
@@ -84,7 +85,7 @@ numreversals = nan(numCores,1);
 %----- Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
 %useful information
-parfor i = 1:numCores
+for i = 1:numCores
     disp(cores{i})
     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 end
@@ -93,6 +94,7 @@ end
 % high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
 lowSRCoresLog = meanSR<= 8;
 highSRCoresLog = meanSR >8;
+allCoresLog = ~isnan(meanSR);
 
 % find 10 highSR cores with most data
 % MSI_byageTOOL = MSI_byage.*highSRCoresLog; MSI_byageTOOL(isnan(MSI_byage) | MSI_byageTOOL == 0) = 9e9;
@@ -151,21 +153,27 @@ cores_transnums = nan(3,3,numCores); %Counts of each type of transition
 cores_CSE2x = nan(3,1,numCores); %Counts of the number of transitions from each starting state
 
 %------ Run through all chosen cores with random sampling approach
-parfor i =  1:numCores
+calcTM = false; %do you want TM code to be run? (False if no, True if yes)
+for i =  1:numCores
     disp(cores{i})
-    [cores_transnums(:,:,i), cores_CSE2x(:,:,i), nSRcounts{i}, agediffs{i}] = oneCoreTM(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i});
+    [cores_transnums(:,:,i), cores_CSE2x(:,:,i), nSRcounts{i}, agediffs{i}] = oneCoreTM(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, calcTM);
 end
 
-%----- Calculate all core TM
-%Calculate the number of transitions across all the cores
-allcores_transnums = sum(cores_transnums, 3, 'omitmissing');
-allcores_CSE2x = sum(cores_CSE2x, 3, 'omitmissing');
-allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
+if calcTM ~= false
+    %----- Calculate all core TM
+    %Calculate the number of transitions across all the cores
+    allcores_transnums = sum(cores_transnums, 3, 'omitmissing');
+    allcores_CSE2x = sum(cores_CSE2x, 3, 'omitmissing');
+    allcores_CSE2x_ratios = allcores_CSE2x'./(sum(allcores_CSE2x));
 
-%----- Construct the transition matrix
-allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
+    %----- Construct the transition matrix
+    allTM = [allcores_CSE2x_ratios;allcores_transnums./allcores_CSE2x];
+end
 
 %% Plot histograms of random sample counts
+%Plot histograms for High SR subset
+plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, allCoresLog, 101, 'k', "All Cores")
+
 %Plot histograms for High SR subset
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'r', "High SR")
 
