@@ -76,16 +76,24 @@ if ~isempty(excLabIDs)
     ManE.error = error(logi3);
     ManE.label = label(logi3);
 elseif ~isempty(excDepths)
-    excDepthsStr = string(split(excDepths, ', '));
-    excDepthsN = double(excDepthsStr);
+    if isa(excDepths, 'char')
+        excDepthsStr = string(split(excDepths, ', '));
+        excDepthsN = double(excDepthsStr);
+    elseif isa(excDepths, 'double')
+        excDepthsN = excDepths;
+    else
+        disp("excDepths data is not being used for a core because of data type - see filtering function")
+    end
     logi3 = ismember(depth, excDepthsN.*100);
     ManE.age = age(logi3);
     ManE.depth = depth(logi3);
     ManE.error = error(logi3);
     ManE.label = label(logi3);
+
+
 else
     logi3 = false(length(age), 1);
-        ManE.age = age(logi3);
+    ManE.age = age(logi3);
     ManE.depth = depth(logi3);
     ManE.error = error(logi3);
     ManE.label = label(logi3);
@@ -93,7 +101,7 @@ else
 end
 
 %Display warning if both excLabIDs and excDepths have information
-if ~isempty(excLabIDs) & ~isempty(excDepths)
+if ~isempty(excLabIDs) & ~isnan(excDepths)
     warning("Both excLabIDs and excDepths have information. Currently, if excLabIDs has information, excDepths will be ignored.")
 end
 %% Filter ages to fit within calibration curve
@@ -107,11 +115,7 @@ NotCCR.error = error(~logi4);
 NotCCR.label = label(~logi4);
 
 
-%% Filter cores to have at least 4 dates remaining (arbitrary choice... chosen to exclude cores with v low data)
-%Filter out cores that have less than 4 dates remaining
-if length(age)<4
-    emptybreak2 = 1;
-end
+
 %% Choose cores that fit all criteria
 ChosenLogi = logi1 & ~logi3 & logi4;
 
@@ -124,9 +128,9 @@ age = age(ChosenLogi);
 depth = depth(ChosenLogi);
 error = error(ChosenLogi);
 label = label(ChosenLogi);
-%% Note where there are age differences greater than 8kyr (using mean of uncalibrated radiocarbon age)
+%% Note where there are age differences greater than 5kyr (using mean of uncalibrated radiocarbon age)
 agediffs = diff(age); %calculate differences between means of uncalibrated radiocarbon age
-logi5 = agediffs > 8; %find locations where differences are greater than 8kyr
+logi5 = agediffs > 5; %find locations where differences are greater than 8kyr
 logi6 = false(size(age)); %initiate a logical (default = false) to denote which ages are involved in the differences greater than desired value
 if sum(logi5) ~= 0
     for i = 1:length(agediffs)
@@ -140,4 +144,14 @@ ageGapTooHigh.depth = depth(logi6);
 ageGapTooHigh.age = age(logi6);
 ageGapTooHigh.error = error(logi6);
 ageGapTooHigh.label = label(logi6);
+
+%% Break the core at place of large age gap and see if portion can be used
+
+%% Filter cores to have at least 4 dates remaining (arbitrary choice... chosen to exclude cores with v low data)
+%Filter out cores that have less than 4 dates remaining
+if length(age)<4
+    emptybreak2 = 1;
+end
+
+
 end
