@@ -3,19 +3,14 @@ function [interp_invSR, iProbs_wd, meanSR, reversalpairs, numpairs, depdiff, age
 %Use MatCal to calibrate each age, storing the probabilities in vector
 %ageprob (note the AGE that each prob is relating to can be found by using
 %the index of that probability -1).
-dep_is = depth(date_is); %Depths of each age
-ageprob = zeros(55001, length(date_is));
-for i = 1:length(date_is)
-    [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', 200, 'plot', 0);
-    ageprob(:,i) = holder(:,2);
-end
-clear holder %Gets rid of variable holder
+ageprob = multiMatcal(age, error, date_is);
+
 
 %% Set up years vector and reduce size of calibrated ages (by making NaN)
 m20_years = 0:55000;
 m20_kyrs = m20_years./1000;
 %
-% input Nan where each pdf is lesser than 1e-10
+% input Nan where each pdf is lesser than 1e-7
 ind1 = ageprob(:,:)<=(1e-7);
 ageprob_Nans = ageprob;
 ageprob_Nans(ind1) = NaN;
@@ -31,6 +26,7 @@ deep_age = m20_years(deep_maxprob_ind);
 %Calculate time between these ages
 agediff = deep_age - shallow_age;
 %Calculate depth difference between these ages
+dep_is = depth(date_is); %Depths of each age
 depdiff = dep_is(end)-dep_is(1);
 meanSR = depdiff./agediff; % cm/y
 %Calculate mean sampling interval by age
@@ -179,7 +175,6 @@ end
 %Apply a weighting by multiplying the probability of the sed rate from each
 %pair by the depth between the two dates
 mat_iProbs_wd = mat_iProbs.*deldep';
-%mat_iProbs_wd = mat_iProbs.*1'; %% TESTING!!!! NOT FOR USE IN FINAL VERSION
 
 if plotfigs == 1
     figno = figno+1;
@@ -193,7 +188,6 @@ end
 %Sum all the probabilities from each pair pdf and divide by the sum of the
 %depths between each pair to normalise.
 iProbs_wd = sum(mat_iProbs_wd, 2)./sum(deldep);
-%iProbs_wd = sum(mat_iProbs_wd, 2);
 
 if plotfigs ==1
     figno = figno+1;
