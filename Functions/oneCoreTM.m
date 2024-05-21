@@ -1,4 +1,4 @@
-function [core_transnums, core_CSE2x, nSRcounts, agediffs] = oneCoreTM(corename, scenarios, LabIDs, incDepths, excLabIDs, excDepths)
+function [core_transnums, core_CSE2x, nSRcounts, agediffs] = oneCoreTM(corename, scenarios, LabIDs, incDepths, excLabIDs, excDepths, calcTM)
 %% Return empties if core not used
 %Return Nans if core not used
 if isempty(scenarios) 
@@ -75,13 +75,13 @@ for i_sce = 1:length(scenarios)
     %Use MatCal to calibrate each age, storing the probabilities in vector
     %ageprob (note the AGE that each prob is relating to can be found by using
     %the index of that probability -1).
-    dep_is = depth_cm(date_is); %Depths of each age
-    ageprob = zeros(55001, length(date_is));
-    for i = 1:length(date_is)
-        [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', 0, 'plot', 0);
-        ageprob(:,i) = holder(:,2);
-    end
-    clear holder %Gets rid of variable holder
+    ageprob = multiMatcal(age, error, date_is);
+    % ageprob = zeros(55001, length(date_is));
+    % for i = date_is'
+    %     [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', resError, 'plot', 0);
+    %     ageprob(:,i) = holder(:,2);
+    % end
+    % clear holder %Gets rid of variable holder
 
     %% Set up years vector and reduce size of calibrated ages (by making NaN)
     m20_years = 0:55000;
@@ -111,6 +111,7 @@ for i_sce = 1:length(scenarios)
         end
 
         %% Calculate mean SR for that potential run
+            dep_is = depth_cm(date_is); %Depths of each age
         meanSR_run = (dep_is(end)-dep_is(1))./(run_age(end)-run_age(1));
 
         %% Calculate the sedrates for each pair of ages
@@ -124,10 +125,14 @@ for i_sce = 1:length(scenarios)
             agediffs = age_diffs;
         else
             nSRcounts = cat(2, nSRcounts,[normSRs; dep_diffs./(sum(validScenariosBool).*numruns)]);
-            agediffs = cat(2, age_diffs);
+            agediffs = cat(2, agediffs,age_diffs);
         end
 
-        %% Categorise normalised sed rates
+        %% Calculate Transition Matrix if desired
+        if calcTM == false
+            continue
+        end
+        %---- Categorise normalised sed rates
         %Categories are Steady, Expansion, Contraction (S, E, C)
         char_categ = '';
         for i = 1:(length(date_is)-1)
@@ -142,7 +147,7 @@ for i_sce = 1:length(scenarios)
             end
         end
 
-        %% Convert this to a transition matrix
+        %----- Convert this to a transition matrix
         %Find the number of times each transition occurs
         transnums = NaN(3,3,1);
         for jj = 1:1
@@ -167,10 +172,18 @@ for i_sce = 1:length(scenarios)
         transnums_allruns(:,:,runN) = transnums;
         CSE2x_allruns(:,:,runN) = numCSE2x;
     end
-    %Sum over all runs  
+    %Sum over all runs
+    if calcTM == false
+        continue
+    end
     sce_transnums(:,:,i_sce) = sum(transnums_allruns, 3);
     sce_CSE2x(:,:,i_sce) = sum(CSE2x_allruns, 3);
     scenarioTM(:,:,i_sce) = sum(transnums_allruns, 3)./sum(CSE2x_allruns, 3);
+end
+if calcTM == false
+    core_transnums = nan(3,3);
+    core_CSE2x = nan(3,1);
+    return
 end
 core_transnums = sum(sce_transnums, 3)./length(scenarios);
 core_CSE2x = sum(sce_CSE2x, 3)./length(scenarios);
