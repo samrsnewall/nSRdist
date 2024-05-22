@@ -74,11 +74,9 @@ end
 
 invSR_probsums = agediff_probsums;
 %% Plot outputs of pairwise pdfs
-figno = get(gcf, "Number");
 if plotfigs ==1
     %Plot all the inverse sed rate pdfs
-    figno = figno+1;
-    figure(figno)
+    figure
     for n = 1:(numpairs)
         plot(invSR_vals{1,n}./1000, invSR_probsums{1,n}, 'LineWidth', 1)
         hold on
@@ -103,8 +101,7 @@ meanSR = total_depthdiff./total_agediff; % cm/kyr
 invSR_normvals = cellfun(@(x) x*(meanSR.*(1/1000)), invSR_vals, 'un', 0);
 
 if plotfigs == 1
-    figno = figno+1;
-    figure(figno)
+    figure
     hold on
     for n = 1:(numpairs)
         plot(invSR_normvals{1,n}, invSR_probsums{1,n})
@@ -146,8 +143,7 @@ end
 
 if plotfigs ==1
     %Plot all of these interpolated pdfs
-    figno = figno+1;
-    figure(figno)
+    figure
     for ii = 1:numpairs
         plot(interp_invSR_indy{ii}(:), interp_invSRp_indy{ii}(:))
         hold on
@@ -177,8 +173,7 @@ end
 mat_iProbs_wd = mat_iProbs.*deldep';
 
 if plotfigs == 1
-    figno = figno+1;
-    figure(figno)
+    figure
     hold on
     plot(interp_invSR, mat_iProbs_wd)
     xlabel("Individual invSR Ratios weighted")
@@ -190,8 +185,7 @@ end
 iProbs_wd = sum(mat_iProbs_wd, 2)./sum(deldep);
 
 if plotfigs ==1
-    figno = figno+1;
-    figure(figno)
+    figure
     hold on
     plot(interp_invSR, iProbs_wd)
     ylabel("Probability")
