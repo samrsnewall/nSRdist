@@ -119,12 +119,16 @@ for i_sce = 1:length(scenarios)
         SRs = dep_diffs./age_diffs;
         normSRs = SRs./meanSR_run;
         %Add normSRs to vector to count them (with their weighting)
-        weightingNormaliser = (sum(validScenariosBool).*numruns);
+        weightingNormaliser = (sum(validScenariosBool).*numruns); %Find normalising value based on number of scenarios and number of runs
+        nSRinfo = [normSRs; dep_diffs./weightingNormaliser; age_diffs./weightingNormaliser]; %Set up nSR info (nSR counts, depth differences, age differences)
+        
+        %Store all nSR info in a single array, with NaNs separating info from
+        %different runs
         if runN == 1 && i_sce == 1
-            nSRcounts = [normSRs; dep_diffs./weightingNormaliser; age_diffs./weightingNormaliser];
+            nSRcounts = [nSRinfo, NaN(3,1)];
             agediffs = age_diffs;
         else
-            nSRcounts = cat(2, nSRcounts,[normSRs; dep_diffs./weightingNormaliser; age_diffs./weightingNormaliser]);
+            nSRcounts = cat(2, nSRcounts,[nSRinfo, NaN(3,1)]);
             agediffs = cat(2, agediffs,age_diffs);
         end
 
@@ -135,7 +139,7 @@ for i_sce = 1:length(scenarios)
         %---- Categorise normalised sed rates
         %Categories are Steady, Expansion, Contraction (S, E, C)
         char_categ = '';
-        for i = 1:(length(runAgeOfUsed)-1)
+        for i = 1:(length(runAgesOfUsed)-1)
             if normSRs(i) >= 0.922 && normSRs(i) <1.085
                 char_categ(i) = 'S';
 
