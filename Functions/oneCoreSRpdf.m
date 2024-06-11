@@ -1,24 +1,6 @@
 function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, scenarios, label, numreversals_mean] = oneCoreSRpdf(corename, LabIDs, incDepths, excLabIDs, excDepths, plotfigs)
 %% Read in Radiocarbon Data
-%Read in some radiocarbon data from a net cdf file
-WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-fnm = fullfile(WA_path, "Age/", corename + ".age");
-
-% %Read in global attributes of the core
-%lon = ncreadatt(fnm, "/", "Longitude");
-%lat = ncreadatt(fnm, "/", "Latitude");
-%coreDepth = ncreadatt(fnm, "/", "Water Depth");
-
-%Read in radiocarbon data from the core
-depth_m = ncread(fnm, "Depth"); %(meters)
-depth_cm = depth_m.*100; %convert to cm
-
-age = ncread(fnm, "Age dated"); %(14C kyrs BP)
-
-error = ncread (fnm, "Age +Error"); %(14C kyrs BP)
-
-label = ncread(fnm, "Label"); %(Lab ID)
-label = string(label);
+[age, depth_cm, error, label] = getDataWA(corename);
 
 %% Filtering
 %Filter for MSPF dates, remove manually determined outliers, only keep
@@ -65,6 +47,7 @@ end
 %Note, that if a scenario throws up a problematic age reversal, new
 %scenarios are constructed to avoid this.
 newscenarios = 1;
+
 
 %Run scenarios deal with reversals until there are no more reversals in any
 %scenarios
