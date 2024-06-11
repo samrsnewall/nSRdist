@@ -33,7 +33,7 @@ elseif ~isempty(LabIDs) % if string is not empty, check for depths to include
     end
 
     %Get indeces of labels that are in LabIDs field
-    logi1 = contains(strip(string(label)), strip(string(LabIDsSplitGood)));
+    logi1 = ismember(strip(string(label)), strip(string(LabIDsSplitGood)));
     if sum(logi1)~=length(LabIDsSplitGood)
         warning("Some of the LabIDs listed to be chosen in the COPYcorechoices_MSPF file do not match with the LabIDs read in from the WA2022")
     end
@@ -48,7 +48,7 @@ elseif ~isempty(incDepths) %if there are depths to include include those
     %Choose what depths to include
     incDepthsStr = string(split(incDepths, ', '));
     incDepthsN = double(incDepthsStr);
-    logi1 = ismember(depth, incDepthsN.*100);
+    logi1 = ismembertol(depth, incDepthsN.*100, 1e-6); %tolerance of 1e-6 due to low precision in core GEOFARK12
 
     %fill excluded material (EM) outputs
     EM.age = age(~logi1);
@@ -130,7 +130,7 @@ error = error(ChosenLogi);
 label = label(ChosenLogi);
 %% Note where there are age differences greater than 5kyr (using mean of uncalibrated radiocarbon age)
 agediffs = diff(age); %calculate differences between means of uncalibrated radiocarbon age
-logi5 = agediffs > 5; %find locations where differences are greater than 8kyr
+logi5 = agediffs > 5; %find locations where differences are greater than 5kyr
 logi6 = false(size(age)); %initiate a logical (default = false) to denote which ages are involved in the differences greater than desired value
 if sum(logi5) ~= 0
     for i = 1:length(agediffs)
