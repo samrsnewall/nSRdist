@@ -1,4 +1,4 @@
-function [core_transnums, core_CSE2x, nSRcounts, agediffs] = oneCoreTMRestrict(corename, scenarios, LabIDs, incDepths, excLabIDs, excDepths, calcTM)
+function [core_transnums, core_CSE2x, nSRcounts, agediffs] = oneCoreTMRestrict(corename, scenarios, LabIDs, incDepths, excLabIDs, excDepths, minAgeDiff, calcTM)
 %% Return empties if core not used
 %Return Nans if core not used
 if isempty(scenarios) 
@@ -95,10 +95,10 @@ for i_sce = 1:length(scenarios)
                 age_probs = age_probs./sum(age_probs);
                 run_age(i) = randsample(poss_ages, 1, true, age_probs);
                 %%% RESTRICTION CODE
-                %If next age is not more than 1000 years greater than
+                %If next age is not more than x years greater than
                 %previous accepted age, reject it and move to sample from next
-                %radiocarbon date
-                if run_age(i) - max(run_age(1:i-1)) < 1000
+                %radiocarbon date (x stored in input minAgeDiff)
+                if run_age(i) - max(run_age(1:i-1)) < minAgeDiff
                     run_age(i) = NaN;
                 end
             end
