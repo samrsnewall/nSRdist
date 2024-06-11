@@ -19,12 +19,14 @@ agediffsArray = agediffsArray(:,2:end);
 
 %% Fit Mix Log Norm
 %Convert the weighted nSR counts to a single dimension array of counts
-%where the number of counts is representative of their weight
+%where the number of counts is representative of their weighting
 X = round(nSRcountsArray(1,:),2);
 Y = nSRcountsArray(2,:);
 [X_u, ~, IC] = unique(X);
 Y_u = accumarray(IC,Y);
-Y_uR = round(Y_u);
+X_u = X_u(~isnan(X_u)); %Remove NaNs that separate cores and runs
+Y_u = Y_u(~isnan(Y_u)); %Remove NaNs that separate cores and runs
+Y_uR = round(Y_u.*100); %%%%%%%%%% NEED TO DO A SENSITIVITY TEST TO THIS! IF I DON'T MULTIPY Y_u BY 100 THEN MUCH DATA HAS ITS WEIGHTING ROUNDED DOWN TO 0 WEIGHT... TRY 
 data = repelem(X_u,Y_uR);
 dataLog = log(data);
 
