@@ -2,7 +2,7 @@ function[] = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, coreSubset
 
 %% Combine all counts into one array
 %set up arrays to be concatenated into
-nSRcountsArray = ones(2,1);
+nSRcountsArray = ones(3,1);
 agediffsArray = ones(1,1);
 subset14cpairs = zeros(1,length(num14cpairs));
 %Concatenate all nSRcounts that are in the desired subset
