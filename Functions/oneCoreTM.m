@@ -11,15 +11,7 @@ end
 
 %% Read in Radiocarbon Data
 %Read in some radiocarbon data from a net cdf file
-WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-fnm = fullfile(WA_path, "Age/", corename + ".age");
-%Read in radiocarbon data from the core
-depth_m = ncread(fnm, "Depth"); %(meters)
-depth_cm = depth_m.*100; %convert to cm
-age = ncread(fnm, "Age dated"); %(14C kyrs BP)
-error = ncread (fnm, "Age +Error"); %(14C kyrs BP)
-label = ncread(fnm, "Label"); %(Lab ID)
-label = string(label);
+[age, depth_cm, error, label] = getDataWA(corename);
 
 %% Filter ages
 [age, depth_cm, error, label, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths);
@@ -76,16 +68,9 @@ for i_sce = 1:length(scenarios)
     %ageprob (note the AGE that each prob is relating to can be found by using
     %the index of that probability -1).
     ageprob = multiMatcal(age, error, date_is);
-    % ageprob = zeros(55001, length(date_is));
-    % for i = date_is'
-    %     [~,~,holder,~] = matcal(age(date_is(i))*1000, error(date_is(i))*1000,  'Marine20', 'CalBP','reserr', resError, 'plot', 0);
-    %     ageprob(:,i) = holder(:,2);
-    % end
-    % clear holder %Gets rid of variable holder
 
     %% Set up years vector and reduce size of calibrated ages (by making NaN)
     m20_years = 0:55000;
-    %m20_kyrs = m20_years./1000;
 
     %% Run a number of random samples, sampling each age with positivity rule
     numruns = 1500;
@@ -100,14 +85,15 @@ for i_sce = 1:length(scenarios)
             if i == 1
                 poss_ages = m20_years;
                 age_probs = ageprob(:,i);
+                run_age(i) = randsample(poss_ages, 1, true, age_probs);
             else 
-                min_age = run_age(i-1);
+                min_age = max(run_age(1:i-1));
                 poss_ages = m20_years(m20_years>min_age);
                 age_probs = ageprob(:,i);
                 age_probs = age_probs(m20_years>min_age);
                 age_probs = age_probs./sum(age_probs);
+                run_age(i) = randsample(poss_ages, 1, true, age_probs);
             end
-            run_age(i) = randsample(poss_ages, 1, true, age_probs);
         end
 
         %% Calculate mean SR for that potential run
@@ -120,11 +106,12 @@ for i_sce = 1:length(scenarios)
         SRs = dep_diffs./age_diffs;
         normSRs = SRs./meanSR_run;
         %Add normSRs to vector to count them (with their weighting)
+        weightingNormaliser = (sum(validScenariosBool).*numruns);
         if runN == 1 && i_sce == 1
-            nSRcounts = [normSRs; dep_diffs./(sum(validScenariosBool).*numruns)];
+           nSRcounts = [normSRs; dep_diffs./weightingNormaliser; age_diffs./weightingNormaliser];
             agediffs = age_diffs;
         else
-            nSRcounts = cat(2, nSRcounts,[normSRs; dep_diffs./(sum(validScenariosBool).*numruns)]);
+            nSRcounts = cat(2, nSRcounts,[normSRs; dep_diffs./weightingNormaliser; age_diffs./weightingNormaliser]);
             agediffs = cat(2, agediffs,age_diffs);
         end
 
@@ -180,6 +167,7 @@ for i_sce = 1:length(scenarios)
     sce_CSE2x(:,:,i_sce) = sum(CSE2x_allruns, 3);
     scenarioTM(:,:,i_sce) = sum(transnums_allruns, 3)./sum(CSE2x_allruns, 3);
 end
+
 if calcTM == false
     core_transnums = nan(3,3);
     core_CSE2x = nan(3,1);
