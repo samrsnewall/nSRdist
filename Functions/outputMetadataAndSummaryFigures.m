@@ -1,4 +1,4 @@
-function[] = outputMetadataAndSummaryFigures(subsetIND, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts )
+function[] = outputMetadataAndSummaryFigures(subsetIND, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts, sedimentlength, num14cpairs)
 %% Take data of interest
 %----- Find corenames, lats, longs, depths of cores included
 core_inc = cores(subsetIND);
@@ -8,6 +8,8 @@ dep_inc = depths(subsetIND);
 meanSR_inc = meanSR(subsetIND);
 MSI_byage_inc = MSI_byage(subsetIND);
 MSI_bydepth_inc = MSI_bydepth(subsetIND);
+sedimentlength_inc = sedimentlength(subsetIND);
+num14cpairs_inc = num14cpairs(subsetIND);
 
 %% Make Map
 %----- Make map with locations denoted as red stars
@@ -60,16 +62,15 @@ BIGMACSTM = [0.7215, 0.0940, 0.1846; 0.4328, 0.2687, 0.2985; 0.2670, 0.1041, 0.6
 %Find out how much sediment the cores used constitute
 lengthsed_core = nan(length(nSRcounts),1);
 for i = 1:length(nSRcounts)
-    if isempty(nSRcounts{i})
-    else
-    lengthsed_core(i) = sum(nSRcounts{i}(2,:));
+    if ~isempty(nSRcounts{i})
+        lengthsed_core(i) = sum(nSRcounts{i}(2,:));
     end
 end
 
 %Display total number fo 14C pairs used and total length of sediment used
 disp("The total number of 14C pairs used is")
-disp(sum(num14cpairs, 'omitmissing'))
+disp(sum(num14cpairs_inc, 'omitmissing'))
 disp("The total length of sediment used is")
-disp(sum(sedimentlength, 'omitmissing'))
+disp(sum(sedimentlength_inc, 'omitmissing'))
 disp(sum(lengthsed_core, 'omitmissing'))
 
