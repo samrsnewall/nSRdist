@@ -1,6 +1,8 @@
 %% README
 %Compare many bacon gamma acc rate distributions to BIGMACS nSR dist
 
+addpath('Functions')
+
 %% Load BIGMACS nSR distribution
 BMLogNorm = load("lognormal_BIGMACS.txt");
 
