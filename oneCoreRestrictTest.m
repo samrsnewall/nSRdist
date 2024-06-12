@@ -1,4 +1,5 @@
-% This function takes one core and calculates the distribution of
+%% oneCoreRestrictTest.m
+% This script takes one core and calculates the distribution of
 % normalised Sed Rates. It does this multiple times, each with a new
 % restriction on the minimum allowed age difference
 
@@ -12,7 +13,7 @@ dataMSPF = data(data.MSPF == 1,:);
 
 %% Choose core to look at
 %Create index for a specific core
-namedLog = contains(string(dataMSPF.CoreName), "MD01-2378");
+namedLog = contains(string(dataMSPF.CoreName), "SHAK06-5K");
 
 %% Get material data from Excel
 % Get info from Excel Spreadsheet
@@ -38,27 +39,30 @@ i = 1;
 [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 
 %% Use random sampling approach to get normalised SR data
-% Restriction = agediff > 0y
+%Restriction = agediff > 0y
 ii = 1;
-[SRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
+[nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
 plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
-[~,~,TM0] = TMcalculation(nSRcounts(ii));
+[~,~,TM0] = TMcalculation(nSRcounts{ii});
 
 %% Use random sampling approach to get normalised SR data with some restriction on acceptable age differences
 % Restriction = agediff > 500y
 ii = 2;
 [nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 500);
 plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
-[~,~,TM500] = TMcalculation(nSRcounts(ii));
+[~,~,TM500] = TMcalculation(nSRcounts{ii});
 
 % Restriction = agediff > 1000y
 ii = 3;
 [nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 1000);
 plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
-[~,~,TM1000] = TMcalculation(nSRcounts(ii));
+[~,~,TM1000] = TMcalculation(nSRcounts{ii});
 
 %Restriction = agediff > 1500y
 ii = 3;
 [nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 1500);
 plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
-[~,~,TM1500] = TMcalculation(nSRcounts(ii));
+[~,~,TM1500] = TMcalculation(nSRcounts{ii});
+
+
+outputMetadataAndSummaryFigures(1, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts(1), sedimentlength, num14cpairs)
