@@ -20,7 +20,7 @@ addpath('Functions')
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-data = readtable("COPYcorechoices_MSPF.xlsx"); %read all metadata
+data = readtable("COPYcorechoices_MSPF_highRes2.xlsx"); %read all metadata
 dataMSPF = data(data.MSPF == 1,:);
 
 %------ Index Good Cores
@@ -30,10 +30,10 @@ allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
 reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "KNR159-5-36GGC"];
-%problemCores = ["SU81-18", "MD02-2550", "MD88-770"]; % These all have too many reversals 
+%problemCores = ["SU81-18", "MD88-770"]; % These all have too many reversals 
 problemCores = [];
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
-namedLog = contains(string(dataMSPF.CoreName), "MD02-2550");
+namedLog = contains(string(dataMSPF.CoreName), "GEOFARKF13");
 goodLog = badLog == 0;
 allLog = true(length(goodLog), 1);
 badIndexes = allcores(badLog);
@@ -44,11 +44,11 @@ goodIndexes = allcores(~badLog);
 %------- Create a subset of cores to look at if interested
 %Decide which subset of cores to look at
 subsetChooser = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetChooser(1:10) = 1; 
+subsetChooser(1:5) = 1; 
 subsetChooser(badLog) = 0;
 
 %------- Take desired data into arrays
-chosenCoresLog = subsetChooser;
+chosenCoresLog = goodLog;
 cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
 longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
@@ -60,9 +60,10 @@ excDepths = table2cell(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of 
 numCores = sum(chosenCoresLog);
 
 %------ Plot radiocarbon data from a single core (for exploratory use)
-% for iPlot = find(chosenCoresLog)'
-%   corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
-% end
+%for iPlot = find(chosenCoresLog)'
+for iPlot = (1:length(incDepths))
+  corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+end
 
 %% invSR PDF Approach
 % This section runs through a quick, less-computationally-expensive
@@ -85,6 +86,7 @@ numreversals = nan(numCores,1);
 %----- Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
 %useful information
+
 for i = 1:numCores
     disp(cores{i})
     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i), MSI_bydepth(i), sedimentlength(i), num14cpairs(i), corescenarios{i}, newlabels{i}, numreversals(i)] = oneCoreSRpdf(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 0);
@@ -96,9 +98,11 @@ lowSRCoresLog = meanSR<= 8;
 highSRCoresLog = meanSR >8;
 allCoresLog = ~isnan(meanSR);
 
-% find 10 highSR cores with most data
+% find 10 highest resolution
 % MSI_byageTOOL = MSI_byage.*highSRCoresLog; MSI_byageTOOL(isnan(MSI_byage) | MSI_byageTOOL == 0) = 9e9;
 % [~,highSRhighResCoresInd] = maxk(-MSI_byageTOOL, 10);
+
+% find 10 highSR cores with most data
 [~,highSRhighResCoresInd] = maxk(num14cpairs.*highSRCoresLog, 10);
 highSRhighResCoresLog = unfind(highSRhighResCoresInd, numel(cores));
 
@@ -116,7 +120,7 @@ normSR_BIGMACS = load("../BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 %Load lognormal file
 lognormdata_BIGMACS = load("../BIGMACSdata/lognormal.txt");
 
-figure(22)
+figure;
 subplot(2,1,1)
 yyaxis left
 ylabel("Depth Weighted Counts")
@@ -128,8 +132,8 @@ ylim([0 1.1])
 ylabel("Probability")
 xlabel("Sed Rate Ratio")
 xlim([0 6])
-
 legend("BIGMACS Histogram")
+
 subplot(2,1,2)
 plot(SRvals_interp, SRvalsprob_norm)
 xlim([0 6])
@@ -171,33 +175,32 @@ if calcTM ~= false
 end
 
 %% Plot histograms of random sample counts
-%Plot histograms for High SR subset
+%Plot histograms for All Cores
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, allCoresLog, 101, 'k', "All Cores")
 
 %Plot histograms for High SR subset
+if sum(highSRCoresLog > 0)
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'r', "High SR")
+end
 
 %Plot histograms for Low SR Subset
+if sum(lowSRCoresLog >0)
 plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'b', "Low SR")
+end
 
 %Plot 
 if sum(highSRCoresLog) >10
-else
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRhighResCoresLog, 103, 'k', "10 Highest Res")
+    plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRhighResCoresLog, 103, 'k', "10 Highest Res")
 end
 
 %% Plot output metadata and figures
 
 %----- Find index of all cores used in the analysis
-ind2 = NaN(numCores,1);
-for i = 1:numCores
-    if isempty(core_invSRvals{i})
-        ind2(i) = 0;
-    else
-        ind2(i) =1;
-    end
-end
-ind3 = find(ind2);
+coresUsedLog = ~cellfun('isempty', core_invSRvals);
+coresUsedInd = find(coresUsedLog);
 
-outputMetadataAndSummaryFigures(ind3, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts)
+%----- Get output metadata and summary figures for all cores used
+outputMetadataAndSummaryFigures(coresUsedInd, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts, sedimentlength, num14cpairs)
+
+
 
