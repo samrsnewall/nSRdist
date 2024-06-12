@@ -63,7 +63,7 @@ BIGMACSTM = [0.7215, 0.0940, 0.1846; 0.4328, 0.2687, 0.2985; 0.2670, 0.1041, 0.6
 lengthsed_core = nan(length(nSRcounts),1);
 for i = 1:length(nSRcounts)
     if ~isempty(nSRcounts{i})
-        lengthsed_core(i) = sum(nSRcounts{i}(2,:));
+        lengthsed_core(i) = sum(nSRcounts{i}(2,:), 'omitmissing');
     end
 end
 
