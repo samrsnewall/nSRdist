@@ -1,4 +1,4 @@
-function[mixLogNormPDF, mixNormPDF, distMeanLinear, distVarLinear] = fitMixLogNorm(data_linear, numComponents)
+function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, numComponents)
 %%% Create a mixed log normal to fit some dataset
 
 %% Set the range of x values of interest 
