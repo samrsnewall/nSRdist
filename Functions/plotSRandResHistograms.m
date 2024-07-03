@@ -22,17 +22,20 @@ agediffsArray = agediffsArray(:,2:end);
 %where the number of counts is representative of their weighting
 X = round(nSRcountsArray(1,:),2)';
 Y = nSRcountsArray(2,:);
-[X_u, ~, IC] = unique(X);
-Y_u = accumarray(IC,Y);
-X_u = X_u(~isnan(X_u)); %Remove NaNs that separate cores and runs
-Y_u = Y_u(~isnan(X_u)); %Remove NaNs that separate cores and runs
+Xclean = X(~isnan(X)); %Remove NaNs that separate cores and runs
+Yclean = Y(~isnan(X)); %Remove NaNs that separate cores and runs
+[X_u, ~, IC] = unique(Xclean);
+Y_u = accumarray(IC,Yclean);
 Y_uR = round(Y_u.*100); %%%%%%%%%% NEED TO DO A SENSITIVITY TEST TO THIS! IF I DON'T MULTIPY Y_u BY 100 THEN MUCH DATA HAS ITS WEIGHTING ROUNDED DOWN TO 0 WEIGHT... TRY 
 data = repelem(X_u,Y_uR);
 dataLog = log(data);
 
 %Calculate the MixLogNorm from these counts
 nSRdataAsCounts = data;
-[SR_MixLogNorm, logSR_MixNorm, ~, ~] = fitMixLogNorm(nSRdataAsCounts, 2);
+[SR_MixLogNorm, logSR_MixNorm, PDobject] = fitMixLogNorm(nSRdataAsCounts, 2);
+
+%% count how many estimates of nSR
+numbernSRcounts = length(Xclean);
 
 %% Calculate mean and variance of data
 dataMeanLinear = geomean(nSRdataAsCounts);
@@ -58,24 +61,24 @@ yyaxis left
 histogram(dataLog)
 yyaxis right
 plot(logSR_MixNorm(:,1), logSR_MixNorm(:,2))
-xlabel("Log SR")
+xlabel("Log nSR")
 title("Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog))
 subplot(2,2,2)
 qqplot(dataLog)
-xlabel("Log SR Data")
+xlabel("Log nSR Data")
 subplot(2,2,3)
 yyaxis left
 histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges)
 yyaxis right
 plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
-xlabel("SR")
+xlabel("nSR")
 xlim([0 6])
 title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
 subplot(2,2,4)
 histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
 xlabel("Age Diff (yrs)")
 ylabel("Counts")
-title(num2str(sum(subset14cpairs)) + " age pairs")
+title(num2str(numbernSRcounts) + " nSR estimates")
 sgtitle(subsetName)
 
 figure
@@ -84,14 +87,15 @@ yyaxis left
 histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges, 'FaceColor', colour, 'FaceAlpha', 0.5)
 yyaxis right
 plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2), 'Color', colour, 'LineWidth', 2)
-xlabel("SR")
+xlabel("nSR")
 xlim([0 6])
 title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
 subplot(1,2,2)
 histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges,'FaceColor', colour, 'FaceAlpha', 0.5)
 xlabel("Age Diff (yrs)")
 ylabel("Counts")
-title(num2str(sum(subset14cpairs)) + " age pairs")
+title(num2str(numbernSRcounts) + " nSR estimates")
 sgtitle(subsetName)
+
 
 end
