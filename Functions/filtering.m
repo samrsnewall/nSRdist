@@ -11,7 +11,7 @@ if strcmp(string(LabIDs), "all") %if string says all, no dates are excluded for 
     EM.depth = depth(~logi1);
     EM.error = error(~logi1);
     EM.label = label(~logi1);
-elseif ~isempty(LabIDs) % if string is not empty, check for depths to include
+elseif ~isempty(LabIDs) & ~isnan(LabIDs)  % if string is not empty, check for depths to include
     %Get Good Lab IDs
     LabIDsSplit_Raw = split(LabIDs, ', ');
 
@@ -43,7 +43,7 @@ elseif ~isempty(LabIDs) % if string is not empty, check for depths to include
     EM.depth = depth(~logi1);
     EM.error = error(~logi1);
     EM.label = label(~logi1);
-elseif ~isempty(incDepths) %if there are depths to include include those
+elseif ~isempty(incDepths) & ~isnan(incDepths)  %if there are depths to include include those
 
     %Choose what depths to include
     incDepthsStr = string(split(incDepths, ', '));
@@ -69,13 +69,13 @@ end
 
 %Remove the LabIDs of ages that are clearly erroneous (large age
 %reversal - hand picked)
-if ~isempty(excLabIDs)
+if ~isempty(excLabIDs) & ~isnan(excLabIDs)
     logi3 = contains(string(label), string(split(excLabIDs, ', ')));
     ManE.age = age(logi3);
     ManE.depth = depth(logi3);
     ManE.error = error(logi3);
     ManE.label = label(logi3);
-elseif ~isempty(excDepths)
+elseif ~isempty(excDepths) & ~isnan(excDepths)
     if isa(excDepths, 'char')
         excDepthsStr = string(split(excDepths, ', '));
         excDepthsN = double(excDepthsStr);
