@@ -9,6 +9,7 @@ addpath('Functions')
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
 data     = readtable("COPYcorechoices_MSPF_highRes2.xlsx"); %read all metadata
+%data = readtable("RegimeChangesCHIP/SHAK06-5K_regime3.xlsx");
 dataMSPF = data(data.MSPF == 1,:);
 
 %% Choose core to look at
@@ -31,7 +32,7 @@ numCores    = sum(chosenCoresLog);
 %% Plot radiocarbon data of chosen core
 % Plot all radiocarbon data
 iPlot = 1;
-corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
 
 %% Find reversals in the core data
 %Get reversal data, etc
@@ -58,11 +59,11 @@ ii = 3;
 plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
 [~,~,TM1000] = TMcalculation(nSRcounts{ii});
 
-%Restriction = agediff > 1500y
-ii = 3;
-[nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 1500);
-plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
-[~,~,TM1500] = TMcalculation(nSRcounts{ii});
-
-
-outputMetadataAndSummaryFigures(1, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts(1), sedimentlength, num14cpairs)
+% %Restriction = agediff > 1500y
+% ii = 3;
+% [nSRcounts{ii}, agediffs{ii}] = oneCoreTMRestrict(cores{i}, corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, 1500);
+% plotSRandResHistograms(nSRcounts(ii), agediffs(ii), num14cpairs, 1, 101, 'k', cores{1})
+% [~,~,TM1500] = TMcalculation(nSRcounts{ii});
+% 
+% 
+% outputMetadataAndSummaryFigures(1, cores, lats, longs, depths, meanSR, MSI_byage, MSI_bydepth, nSRcounts(1), sedimentlength, num14cpairs)
