@@ -84,7 +84,7 @@ elseif ~isempty(excDepths) & ~isnan(excDepths)
     else
         disp("excDepths data is not being used for a core because of data type - see filtering function")
     end
-    logi3 = ismember(depth, excDepthsN.*100);
+    logi3 = ismembertol(depth, excDepthsN.*100, 0.00001);
     ManE.age = age(logi3);
     ManE.depth = depth(logi3);
     ManE.error = error(logi3);
