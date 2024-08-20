@@ -1,4 +1,4 @@
-function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths, separateBySR)
+function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths, folderName, separateBySR)
 %% Read in Radiocarbon Data
 %Set up path to Mulitza et al 2022 World Atlas Dataset
 WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
@@ -22,7 +22,7 @@ if emptybreak1 ==1 || emptybreak2 == 1
 end
 
 %% Filter for SR>8 cores
-if separateBySR =1
+if separateBySR ==1
     meanSR = (depth_cm(end) - depth_cm(1))/(age(end) - age(1));
     if meanSR < 8
         return
@@ -40,7 +40,7 @@ cc = ones(length(age), 1)*2;
 outputTable = table(depth, age, error, dR, dSTD, cc);
 %Output to txt file with tab delimiters
 
-outputFilename = fullfile("c14TrainingData_April18_highRes", corename + ".txt");
+outputFilename = fullfile(folderName, corename + ".txt");
 writetable(outputTable, outputFilename, "Delimiter", '\t')
 
 end
