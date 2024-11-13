@@ -11,7 +11,7 @@ function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numCo
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Run gmfit
-options = statset('MaxIter', 2000);                                         %Set the number of iterations (default=500 often doesn't converge)
+options = statset('MaxIter', 1000);                                         %Set the number of iterations (default=500 often doesn't converge)
 if ~iscolumn(data_linear)                                                   %Ensure the data is in column vector form
     data_linear = data_linear';
 end
