@@ -1,4 +1,4 @@
-function[age, depth, error, label, emptybreak1, emptybreak2, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths)
+function[age, depth, error, label, emptybreak1, emptybreak2, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S)
 
 emptybreak1 = 0;
 emptybreak2 = 0;
@@ -35,7 +35,8 @@ elseif ~isempty(LabIDs) & ~isnan(LabIDs)  % if string is not empty, check for de
     %Get indeces of labels that are in LabIDs field
     logi1 = ismember(strip(string(label)), strip(string(LabIDsSplitGood)));
     if sum(logi1)~=length(LabIDsSplitGood)
-        warning("Some of the LabIDs listed to be chosen in the COPYcorechoices_MSPF file do not match with the LabIDs read in from the WA2022")
+        warning("Some of the LabIDs listed to be chosen in the COPYcorechoices_MSPF file for core" + corename + " do not match with the LabIDs read in from the WA2022")
+        pause
     end
 
     %fill excluded material (EM) outputs
@@ -67,15 +68,19 @@ end
 
 %% Remove manually excluded (ManE) dates
 
+logi31 = false(length(age), 1);
+logi32 = false(length(age), 1);
+
 %Remove the LabIDs of ages that are clearly erroneous (large age
 %reversal - hand picked)
+
+%specified by LabID
 if ~isempty(excLabIDs) & ~isnan(excLabIDs)
-    logi3 = contains(string(label), string(split(excLabIDs, ', ')));
-    ManE.age = age(logi3);
-    ManE.depth = depth(logi3);
-    ManE.error = error(logi3);
-    ManE.label = label(logi3);
-elseif ~isempty(excDepths) & ~isnan(excDepths)
+    logi31 = contains(string(label), string(split(excLabIDs, ', ')));
+end
+
+%specified by depth
+if ~isempty(excDepths) & ~isnan(excDepths)
     if isa(excDepths, 'char')
         excDepthsStr = string(split(excDepths, ', '));
         excDepthsN = double(excDepthsStr);
@@ -84,26 +89,16 @@ elseif ~isempty(excDepths) & ~isnan(excDepths)
     else
         disp("excDepths data is not being used for a core because of data type - see filtering function")
     end
-    logi3 = ismembertol(depth, excDepthsN.*100, 0.00001);
-    ManE.age = age(logi3);
-    ManE.depth = depth(logi3);
-    ManE.error = error(logi3);
-    ManE.label = label(logi3);
-
-
-else
-    logi3 = false(length(age), 1);
-    ManE.age = age(logi3);
-    ManE.depth = depth(logi3);
-    ManE.error = error(logi3);
-    ManE.label = label(logi3);
-    %if there are no dates to manually exclude, move on
+    logi32 = ismembertol(depth, excDepthsN.*100, 0.00001);
 end
 
-%Display warning if both excLabIDs and excDepths have information
-if ~isempty(excLabIDs) & ~isnan(excDepths)
-    warning("Both excLabIDs and excDepths have information. Currently, if excLabIDs has information, excDepths will be ignored.")
-end
+%Combine the two logicals and set these into Manually Excluded category
+logi3 = logi31 ==1 |logi32 ==1;
+ManE.age = age(logi3);
+ManE.depth = depth(logi3);
+ManE.error = error(logi3);
+ManE.label = label(logi3);
+
 %% Filter ages to fit within calibration curve
 %Filter the data so it only includes those where the age is greater than
 %1000 and below 42,000 yr C14 BP. (to ensure they fit within the limits of
@@ -145,11 +140,11 @@ ageGapTooHigh.age = age(logi6);
 ageGapTooHigh.error = error(logi6);
 ageGapTooHigh.label = label(logi6);
 
-%% Break the core at place of large age gap and see if portion can be used
+%% Break the core at place of large age gap and see if portion can be used?
 
-%% Filter cores to have at least 4 dates remaining (arbitrary choice... chosen to exclude cores with v low data)
-%Filter out cores that have less than 4 dates remaining
-if length(age)<4
+%% Filter cores to have at least x dates remaining (arbitrary choice... chosen to exclude cores with v low data)
+% %Filter out cores that have less than x dates remaining
+if length(age)<S.minNumberOfAges
     emptybreak2 = 1;
 end
 
