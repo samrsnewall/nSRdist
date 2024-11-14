@@ -7,6 +7,8 @@ function[repData] = makeWeightedReplicates(data, weight, dataRoundingDP, weighti
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  data           = round(data,dataRoundingDP);                   %The data are rounded so that there are less unique values to help count weightings
+ data           = data(data ~=0);                               %Zeros are removed (choice for use in gamma fitting);
+ weight         = weight(data ~=0);
 [data_u,~, IC]  = unique(data);                                 %The unique values of the data are found, with their indices
  weight_u       = accumarray(IC,weight);                        %The weighting of each unique value is combined
  weight_uR      = round(weight_u.*weightingInflationMultiplier);%The weighting of each unique value is converted to an integer
