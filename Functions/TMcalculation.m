@@ -1,18 +1,34 @@
-function[transnums, numCSE2x, coreTM] = TMcalculation(normSRs)
+function[transnums, numCSE2x, coreTM] = TMcalculation(nSRcountsCell, coreSubsetLogical)
 %This function takes in nSR counts and calculates a transition matrix from
 %it
+
+%% Combine all counts into one array
+%set up arrays to be concatenated into
+nSRcountsArray = ones(4,1);
+
+%Concatenate all nSRcounts that are in the desired subset
+for i = 1:length(nSRcountsCell)
+    if coreSubsetLogical(i) == 1
+    nSRcountsArray = cat(2, nSRcountsArray, nSRcountsCell{i});
+    end
+end
+
+%Remove the ones that were used to set up arrays
+nSRcounts = nSRcountsArray(1,2:end);
+
+%%
 
 %---- Categorise normalised sed rates
 %Categories are Steady, Expansion, Contraction (S, E, C)
 char_categ = '';
-for i = 1:(length(normSRs))
-    if normSRs(i) >= 0.922 && normSRs(i) <1.085
+for i = 1:(length(nSRcounts))
+    if nSRcounts(i) >= 0.922 && nSRcounts(i) <1.085
         char_categ(i) = 'S';
 
-    elseif normSRs(i)>=1.085 && normSRs(i) < inf
+    elseif nSRcounts(i)>=1.085 && nSRcounts(i) < inf
         char_categ(i) = 'E';
 
-    elseif normSRs(i) >= 0 && normSRs(i) < 0.922
+    elseif nSRcounts(i) >= 0 && nSRcounts(i) < 0.922
         char_categ(i) = 'C';
 
     else %If the normSR is not one of those values it'll be a NaN, which signifies the end of a run of ages.
