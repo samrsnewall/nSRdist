@@ -4,6 +4,17 @@ function[SRvals_interp, SRvalsprob_norm] = invSRtoSR(invSRvals, invSRprobs)
 invSRvalsPOS = invSRvals(invSRvals>=0.000001);
 invSRprobsPOS = invSRprobs(invSRvals>=0.000001);
 
+%Test whether the values are on equal spacing
+if length(unique(diff(invSRvals))) ~= 1
+    %Convert them to equal spacing
+    invSRvals_equalspc = min(invSRvalsPOS):0.001:max(invSRvalsPOS);
+    invSRprobs_equalspc = interp1(invSRvalsPOS, invSRprobsPOS, invSRvals_equalspc);
+    
+    %Assign these to the variables used in the next part of the code.
+    invSRvalsPOS = invSRvals_equalspc;
+    invSRprobsPOS = invSRprobs_equalspc;
+end
+
 %Apply correction for differing bin sizes after inversion
 %find bin width in invSR space
 invSRbinwidth = invSRvalsPOS(2) - invSRvalsPOS(1);
@@ -19,5 +30,6 @@ newSRvals = (1./(invSRvalsPOS - invSRbinwidth./2) + 1./(invSRvalsPOS + invSRbinw
 SRvals_interp = newSRvals(end):0.001:50; %create new spacing
 SRvalsprob_interp = interp1(newSRvals, SRvalsprob, SRvals_interp); %interpolate to it
 %normalise prob vector
-SRvalsprob_norm = SRvalsprob_interp./sum(SRvalsprob_interp);
+AUC = trapz(SRvals_interp, SRvalsprob_interp);
+SRvalsprob_norm = SRvalsprob_interp./AUC;
 end
