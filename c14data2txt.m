@@ -3,15 +3,14 @@
 % al., 2022 World Atlas data to write all MSPF data from that atlas (that
 % fits the criteria I use) into .txt files.
 
-% BEFORE RUNNING, DOUBLE CHECK WHERE THE DATA WILL BE STORED BY LOOKING
-% INTO THE FUNCTION netCDF2txt.m!!!!!!!!!
+% BEFORE RUNNING, DOUBLE CHECK WHERE THE DATA WILL BE STORED!
 
 %% Add Functions Folder to Path
 addpath('Functions')
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-data = readtable("../CoreSpreadsheets/COPYcorechoices_MSPF.xlsx"); %read all metadata
+data = readtable("COPYcorechoices_MSPF_highRes.xlsx"); %read all metadata
 dataMSPF = data(data.MSPF == 1,:);
 
 %% Index Good Cores
@@ -20,7 +19,7 @@ numAllCores = length(dataMSPF.CoreName);
 allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
-reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "MD95-2042"];
+reversalDenseCores = ["GeoB1711-4", "GIK17940-2", "H214", "SO75_3_26KL", "MD95-2042", "RC11-83"];
 badLog = contains(string(dataMSPF.CoreName),reversalDenseCores);
 goodLog = badLog == 0;
 badIndexes = allcores(badLog);
@@ -43,11 +42,23 @@ excLabIDs = table2array(dataMSPF(chosenCoresLog, "excludeLabIDs")); %take list o
 excDepths = table2array(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of manually removed dates for each core (useful if no labels)
 numCores = sum(chosenCoresLog);
 
+% plotIndexes = find(chosenCoresLog);
+% for i = 20:sum(chosenCoresLog);% find(namedLog)'
+%     iPlot = plotIndexes(i);
+%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+% end
+
 %% Output all cores filtered data to txt files
 %Decide if I want all cores or only cores with SR > 8 (0 or 1 respectively)
 sepBySRg8 = 0;
+%Set Folder Name
+folderName = "c14TrainingData_Oct17_planktonicF_highSR";
 %Run through all cores to output data to txt file
 for i = 1:numCores
-    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, sepBySRg8);
+    if ismember(i, find(highSRCoresLog))
+    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, folderName, sepBySRg8);
+    end
 end
+
+
 
