@@ -20,7 +20,7 @@ addpath('Functions')
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-data = readtable("COPYcorechoices_MSPF_highRes2.xlsx"); %read all metadata
+data = readtable("COPYcorechoices_MSPF.xlsx"); %read all metadata
 dataMSPF = data(data.MSPF == 1,:);
 
 %------ Index Good Cores
@@ -33,7 +33,8 @@ reversalDenseCores = ["GeoB1711-4", "H214", "SO75_3_26KL", "KNR159-5-36GGC"];
 %problemCores = ["SU81-18", "MD88-770"]; % These all have too many reversals 
 problemCores = [];
 badLog = contains(string(dataMSPF.CoreName),[reversalDenseCores, problemCores]);
-namedLog = contains(string(dataMSPF.CoreName), "GEOFARKF13");
+namedLog = contains(string(dataMSPF.CoreName),  "KNR159-5-125GGC");
+% "EW9209-1JPC", "EW9209-2JPC", "EW9209-3JPC", "GC34", "GeoB1503-1", "GeoB1515-1", "GeoB1720-2", "GeoB2107-3", "GeoB2109-1", "GeoB3202-1", "GeoB3938-1", "GeoB7010-2", "GIK132890-2", "GS07-150_17_2MC-A", "HYIV2015-B9", "J-11", "KNR140-51GGC", 
 goodLog = badLog == 0;
 allLog = true(length(goodLog), 1);
 badIndexes = allcores(badLog);
@@ -61,9 +62,9 @@ numCores = sum(chosenCoresLog);
 
 %------ Plot radiocarbon data from a single core (for exploratory use)
 %for iPlot = find(chosenCoresLog)'
-for iPlot = (1:length(incDepths))
-  corePlot(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
-end
+% for iPlot = (1:length(incDepths))
+%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+% end
 
 %% invSR PDF Approach
 % This section runs through a quick, less-computationally-expensive
@@ -180,19 +181,43 @@ plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, allCoresLog, 101, 'k', 
 
 %Plot histograms for High SR subset
 if sum(highSRCoresLog > 0)
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'r', "High SR")
+highSR_mixlognorm = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRCoresLog, 101, 'r', "High SR");
 end
 
 %Plot histograms for Low SR Subset
 if sum(lowSRCoresLog >0)
-plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'b', "Low SR")
+lowSR_mixlognorm = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, lowSRCoresLog, 102, 'b', "Low SR");
 end
 
 %Plot 
 if sum(highSRCoresLog) >10
-    plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRhighResCoresLog, 103, 'k', "10 Highest Res")
+    best10_mixlognorm = plotSRandResHistograms(nSRcounts, agediffs, num14cpairs, highSRhighResCoresLog, 103, 'k', "10 Highest Res")
 end
 
+%% Plot highSR against low SR mixlognormal with bigmacs log normal for comparison
+BM_lognormal = load("lognormal_BIGMACS.txt");
+
+figure;
+subplot(3,1,1)
+hold on
+plot(highSR_mixlognorm(:,1), highSR_mixlognorm(:,2), '-r')
+plot(BM_lognormal(:,1), BM_lognormal(:,2), '-k')
+ylim([0 1.4])
+xlim([0 6])
+
+subplot(3,1,2)
+hold on
+plot(lowSR_mixlognorm(:,1), lowSR_mixlognorm(:,2), '-b')
+plot(BM_lognormal(:,1), BM_lognormal(:,2), '-k')
+ylim([0 1.4])
+xlim([0 6])
+
+subplot(3,1,3)
+hold on
+plot(best10_mixlognorm(:,1), best10_mixlognorm(:,2), '.-k')
+plot(BM_lognormal(:,1), BM_lognormal(:,2), '-k')
+ylim([0 1.4])
+xlim([0 6])
 %% Plot output metadata and figures
 
 %----- Find index of all cores used in the analysis
