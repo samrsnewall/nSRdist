@@ -258,7 +258,7 @@ agediffsBinEdges = 0:500:10000;
 % [allCores_mixLog500, allCores500_histData, allCores500_diffData] = plotSRandResHistograms(dataT.nSRcounts500, x, allCoresLog, true, 3, 1000, 2, regVal, "All Cores",true);
 [allCores_mixLog1000, allCores1000_histData, allCores1000_diffData] = plotSRandResHistograms(dataT.nSRcounts1000, x,  allCoresLog,  true, 3, 1000, 2, regVal, "All Cores",true);
 [allCores_mixLog1500, allCores1500_histData, allCores1500_diffData] = plotSRandResHistograms(dataT.nSRcounts1500, x,  allCoresLog,  true, 3, 1000, 2, regVal, "All Cores",true);
-[allCores_mixLog2000, allCores2000_histData, allCores2000_diffData] = plotSRandResHistograms(dataT.nSRcounts2000, x,allCoresLog,  true, 3, 1000, 2, regVal, "All Cores",true);
+
 
 % [highSRCores_mixLog0, highSRCores0_histData, highSRCores0_diffData] = plotSRandResHistograms(dataT.nSRcounts, x, highSRCoresLog,  true, 3, 1, 2, regVal, "All Cores",true);
 % [highSRCores_mixLog500, highSRCores500_histData, highSRCores500_diffData] = plotSRandResHistograms(dataT.nSRcounts500, x, highSRCoresLog,  true, 3, 1, 2, regVal, "All Cores",true);
@@ -274,15 +274,15 @@ agediffsBinEdges = 0:500:10000;
  % %restrictions
  % [SR_MixLogNorm1Run0,   SingleRun0_95pctup,    SingleRun0_95pctdown]    = SingleRunLogNorms(nSRcounts,     allCoresLog, numruns, x, true, 3, 1000, regVal);
  % [SR_MixLogNorm1Run500, SingleRun500_95pctup,  SingleRun500_95pctdown]  = SingleRunLogNorms(nSRcounts500,  allCoresLog, numruns, x, true, 3, 1000, regVal);
-  [SR_MixLogNorm1Run1000,SingleRun1000_95pctup, SingleRun1000_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, allCoresLog, numruns, x, true, 3, 1000, regVal);
+  [SR_MixLogNorm1Run1000,SingleRun1000_95pctup, SingleRun1000_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, allCoresLog, numruns, x, 2, true, 3, 1000, regVal);
  % 
  % [SR_MixLogNorm1Run0_low,    SingleRun0_low_95pctup,    SingleRun0_low_95pctdown]    = SingleRunLogNorms(nSRcounts,     lowSRCoresLog, numruns, x, true, 3, 1000, regVal);
  % [SR_MixLogNorm1Run500_low,  SingleRun500_low_95pctup,  SingleRun500_low_95pctdown]  = SingleRunLogNorms(nSRcounts500,  lowSRCoresLog, numruns, x, true, 3, 1000, 0.0001);
- [SR_MixLogNorm1Run1000_low, SingleRun1000_low_95pctup, SingleRun1000_low_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, lowSRCoresLog, numruns, x, true, 3, 1000, 0.0001);
+ [SR_MixLogNorm1Run1000_low, SingleRun1000_low_95pctup, SingleRun1000_low_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, lowSRCoresLog, numruns, x, 2, true, 3, 1000, 0.0001);
  % 
  % [SR_MixLogNorm1Run0_high,    SingleRun0_high_95pctup,    SingleRun0_high_95pctdown]    = SingleRunLogNorms(nSRcounts,     highSRCoresLog, numruns, x, true, 3, 1000, regVal);
  % [SR_MixLogNorm1Run500_high,  SingleRun500_high_95pctup,  SingleRun500_high_95pctdown]  = SingleRunLogNorms(nSRcounts500,  highSRCoresLog, numruns, x, true, 3, 1000, regVal);
- [SR_MixLogNorm1Run1000_high, SingleRun1000_high_95pctup, SingleRun1000_high_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, highSRCoresLog, numruns, x, true, 3, 1000, regVal);
+ [SR_MixLogNorm1Run1000_high, SingleRun1000_high_95pctup, SingleRun1000_high_95pctdown] = SingleRunLogNorms(dataT.nSRcounts1000, highSRCoresLog, numruns, x, 2, true, 3, 1000, regVal);
 
  ylimits = [0 1.5];
 
@@ -321,32 +321,26 @@ agediffsBinEdges = 0:500:10000;
 
 %% All Cores histograms and res histograms
 figure;
-subplot(3,2,1)
-histogram(allCores0_histData, "BinEdges", [0:0.1:10, 1000], "Normalization", "pdf", "FaceColor",'k', "FaceAlpha",0.2)
-xlabel("nSR")
-xlim([0 6])
-subplot(3,2,2)
-histogram("BinCounts", allCores0_diffData, "BinEdges", agediffsBinEdges, "FaceColor",'k', "FaceAlpha",0.2)
-xlabel("Age Diff (yr)")
-ylim([0 4000])
+% subplot(3,2,1)
+% histogram(allCores0_histData, "BinEdges", [0:0.1:10, 1000], "Normalization", "pdf", "FaceColor",'k', "FaceAlpha",0.2)
+% xlabel("nSR")
+% xlim([0 6])
+% 
+% subplot(3,2,2)
+% histogram("BinCounts", allCores0_diffData, "BinEdges", agediffsBinEdges, "FaceColor",'k', "FaceAlpha",0.2)
+% xlabel("Age Diff (yr)")
+% ylim([0 4000])
 
 subplot(3,2,3)
 histogram(allCores1000_histData, "BinEdges", [0:0.1:10, 1000], "Normalization", "pdf", "FaceColor",'k', "FaceAlpha",0.2)
 xlabel("nSR")
 xlim([0 6])
+
 subplot(3,2,4)
 histogram("BinCounts", allCores1000_diffData, "BinEdges", agediffsBinEdges, "FaceColor",'k', "FaceAlpha",0.2)
 xlabel("Age Diff (yr)")
 ylim([0 4000])
 
-subplot(3,2,5)
-histogram(allCores2000_histData, "BinEdges", [0:0.1:10, 1000], "Normalization", "pdf", "FaceColor",'k', "FaceAlpha",0.2)
-xlabel("nSR")
-xlim([0 6])
-subplot(3,2,6)
-histogram("BinCounts", allCores2000_diffData, "BinEdges", agediffsBinEdges, "FaceColor",'k', "FaceAlpha",0.2)
-xlabel("Age Diff (yr)")
-ylim([0 4000])
 
 %% lowSR Cores histograms and res histograms
 figure;
