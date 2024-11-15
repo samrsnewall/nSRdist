@@ -22,17 +22,18 @@ addpath('Functions')
 %Check which cores have MSPF (monospecific planktonic foram) dates
 %rawdata     = readtable("COPYcorechoices_MSPF_highRes.xlsx"); %read all metadata
 %sheet = "COPYcorechoices_MSPF_highRes.xlsx";
-sheet = "COPYcore40Metadata.xlsx";
+sheet = "DataSheets/COPYcore40Metadata.xlsx";
 rawdata     = readtable(sheet);
-if sheet == "COPYcore40Metadata.xlsx"
-    rawdataMSPF = rawdata(rawdata.UseChoice == 1,:);
+if contains(sheet, "COPYcore40Metadata.xlsx")
+    %rawdataMSPF = rawdata(rawdata.UseChoice == 1,:);
+    rawdataMSPF = rawdata(ismember(rawdata.UseChoice, "PF"), :);
 else
     rawdataMSPF = rawdata(rawdata.MSPF == 1,:);
 end
 
 %% Create settings structure
 S.minNumberOfAges   = 4;      %Minimum number of ages a core must have (after filtering) to be used
-S.DeltaRError       = 200;        % Error put on the Delta R (reservoir age correction)
+S.DeltaRError       = 0;        % Error put on the Delta R (reservoir age correction)
 S.reversalCriteria  = 0.75;  %What fraction of SRs between two ages must be negative to call it a reversal
 S.weighting         = true;         %Whether or not to weight by depth (= false means no weighting)
 S.normWithRunMean   = false;    %Use a common meanSR to use when calculating normalised SR (false) or use the SR from each individual run (true).
@@ -70,7 +71,7 @@ longs       = table2array(rawdataMSPF(chosenCoresLog, "LongitudeDec"));
 depths      = table2array(rawdataMSPF(chosenCoresLog, "WaterDepthM"));
 ocean       = table2array(rawdataMSPF(chosenCoresLog, "Basin"));
 %distance2coast = table2array(rawdataMSPF(chosenCoresLog, "DistanceToCoast"));
-if sheet ~= "COPYcore40Metadata.xlsx"
+if ~contains(sheet, "COPYcore40Metadata.xlsx")
 
 LabIDs      = table2cell(rawdataMSPF(chosenCoresLog, "LabIDs")); %take list of LabIDs relating to MSPF dates of each core
 incDepths   = table2cell(rawdataMSPF(chosenCoresLog, "IncludeDepths")); % take list of depths (useful if no labels)
@@ -78,7 +79,7 @@ excLabIDs   = table2cell(rawdataMSPF(chosenCoresLog, "excludeLabIDs")); %take li
 excDepths   = table2cell(rawdataMSPF(chosenCoresLog, "excludeDepth")); %take list of manually removed dates for each core (useful if no labels)
 
 
-elseif sheet == "COPYcore40Metadata.xlsx"
+else
     LabIDs = cell(numCores, 1);
     incDepths = cell(numCores, 1);
     excLabIDs = cell(numCores, 1);
@@ -320,10 +321,10 @@ agediffs2000    = cell(numCores, 1); % Holds all the age differences for each nS
 
 dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nSRcounts2000); 
 
-%save("Results/dataT_planktonicF17_Nov7.mat", "dataT", "S")
+save("Results/dataT_planktonicF75R0_Nov13.mat", "dataT", "S")
 
 %% Calculate transition matrices for each setup
 % TM0     = TMcalculation(nSRcounts);
 % [~,~,TM1000]  = TMcalculation(nSRcounts1000, highSRCoresLog);
 
-x = 0.01:0.01:15; plotSRandResHistograms(dataT.nSRcounts500, x, ones(size(dataT.nSRcounts500)), true, 3,1,2,0,"",true)
+%x = 0.01:0.01:15; plotSRandResHistograms(dataT.nSRcounts500, x, ones(size(dataT.nSRcounts500)), true, 3,1,2,0,"",true)
