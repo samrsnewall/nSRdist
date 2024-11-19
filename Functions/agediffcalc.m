@@ -1,30 +1,38 @@
-function[agediff_vals, agediff_probsums, deldep] = agediffcalc(ageprob, ageVector, dep_is)
-%Calculate age difference and probability for each pairing of ages - PDF METHOD
-%Do some cell initialisation to store each iterations values
-numpairs = length(dep_is)-1;
+function[agediff_vals, agediff_probsums] = agediffcalc(ageprob, ageVector, numpairs, S)
+%This function calculates the age difference probability distribution
+%functions for neighbouring pairs of radiocarbon dates. In order to reduce
+%computational time, all calibrated radiocarbon pdfs have values reduced to
+%0 (by entering NaN) where they are below some threshold value S.pdfMinVal,
+%basically assuming those values are negligibly likely.
 
+%Inputs
+% ageVector - a 1D vector of length n, which holds the calendar year values
+% that were interpolated onto by matcalq
+% ageprob   - an n x m array where the mth column holds the calibration pdf of the
+% mth radiocarbon date in this scenario
+% S         - settings structure, holds value of pdfMinVal
+
+%Do some cell initialisation to store each iterations values
 agediff_vals = cell(1,numpairs);
 agediff_probsums = cell(1,numpairs);
-deldep = zeros(numpairs,1);
 
-% input Nan where each pdf is lesser than 1e-7
-ind1 = ageprob(:,:)<=(1e-6);
+% input Nan where each pdf is less than S.pdfMinVal to reduce complexity
+ind1 = ageprob(:,:)<=(S.pdfMinVal);
 ageprob_Nans = ageprob;
 ageprob_Nans(ind1) = NaN;
 
 for m = 1:(numpairs)
 
     %Find vector of years for which the two radiocarbon dates are greater
-    %than 1e-10 (using ageprob_Nans)
-    notNans1 = find(~isnan(ageprob_Nans(:,m))); %Find indices where there are no Nans in ageprob_Nans
-    notNans2 = find(~isnan(ageprob_Nans(:,m+1)));
-    ages1 = ageVector(notNans1); %Utilise fact that the indices from the MatCal output are the ages +1 (ages start at 0, increase by 1 year, indices start at 1).
+    %than S.pdfMinVal (using ageprob_Nans)
+    if m ==1
+        notNans1 = find(~isnan(ageprob_Nans(:,m))); %Find indices where there are no Nans in ageprob_Nans
+        ages1 = ageVector(notNans1);
+        probs1 = ageprob(notNans1, m);
+    end
+    notNans2 = find(~isnan(ageprob_Nans(:,m+1)));  
     ages2 = ageVector(notNans2);
-    probs1 = ageprob(notNans1, m);
     probs2 = ageprob(notNans2, m+1);
-
-    %find the depth difference between the two ages in cm
-    deldep(m) = (dep_is(m+1)-dep_is(m));
 
     %Calculate an agediff for each piecewise pairing of ages and the probability of that pairing (product
     %of probs of each age)
@@ -36,5 +44,9 @@ for m = 1:(numpairs)
     %have that SR_val within the invSR matrix
     [agediff_vals{m},~,k2] = unique(agediffs);
     agediff_probsums{m} = accumarray(k2,pair_probs(:));
+
+    %Save the trouble of repeating construction of notNans1 next iteration
+    ages1 = ages2;
+    probs1 = probs2;
 end
 end
