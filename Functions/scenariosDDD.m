@@ -4,9 +4,9 @@ function[scenarios, duplicated_depths, chosenLabels] = scenariosDDD(depth_cm, la
 %each of those depths
 
 %Assumes that all data are ordered by ascending depth
-depth_diffs             = diff(depth_cm);                               %Find difference between neighbouring depth values (data should be ordered by ascending depths)
-duplicated_firstinds    = depth_diffs <= 0.00001;                       %Find where neighbouring values don't differ (some leeway given in case data aren't processed perfectly)
-duplicated_depths       = depth_cm([duplicated_firstinds' false]);      %find which depths are duplicated
+depth_diffs             = diff(depth_cm);                                   %Find difference between neighbouring depth values (data should be ordered by ascending depths)
+duplicated_firstinds    = depth_diffs <= 0.00001;                           %Find where neighbouring values don't differ (some leeway given in case data aren't processed perfectly)
+duplicated_depths       = unique(depth_cm([duplicated_firstinds' false]));  %Find which depths are duplicated
 
 if ~isempty(duplicated_depths) %Run loop if there are duplicately dated depths
 
@@ -18,11 +18,11 @@ if ~isempty(duplicated_depths) %Run loop if there are duplicately dated depths
         duplicated_allinds          = ismember(depth_cm, duplicated_depths(idupdepth)); %Find the indices of all duplicated depths (duplicated_firstind ony gives indice of first instance of duplicated depth)
         dup_depth_LabIDs{idupdepth} = label(duplicated_allinds); %Find labels that correspond to duplicated depths.
     end
+    
     %Display the core name, the depths that have been dated multiple times,
     %and the labIDs of the dates for each depth.
     disp("Core " + string(corename) + " has " + num2str(length(duplicated_depths)) + " doubly-dated depth(s).")
     for n_dupdepth = 1:length(duplicated_depths)
-        %num_datesatdepth(n_dupdepth) = length(dup_depth_LabIDs{n_dupdepth});
         disp("Depth " + join(num2str(duplicated_depths(n_dupdepth))) + " has dates with the following labIDs " + join(dup_depth_LabIDs{n_dupdepth}))
     end
 
