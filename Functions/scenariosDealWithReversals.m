@@ -65,29 +65,24 @@ for j = 1:numScenarios
         %If reversals exist, run through process to create new scenarios,
         %removing those reversals
         if numreversals ~=0
-            %Display how many reversals there are to command window.
-            % disp("There are " + num2str(numreversals) + " reversals in scenario " + ...
-            %     num2str(j) + " of core " + string(corename))
-
             % Note down the labIDs of the dates for which there is a reversal
-            % Initiate cell
-            rev_labIDs = strings(numreversals,2);
-            for iii = 1:numreversals 
-                iv  = find(reversalpairs == 1);
+            rev_labIDs = strings(numreversals,2);                          %Initiate
+            for iii = 1:numreversals
                 %find lab IDs for each reversal, each row represents a reversal
                 %pairing
+                iv  = find(reversalpairs == 1);
                 rev_labIDs(iii,1) = scenario_labels{j}(iv(iii));
                 rev_labIDs(iii,2) = scenario_labels{j}(iv(iii)+1);
             end
+
             %Find out if any of the reversal pairings are related to
             %duplicated depths
             uniqueDepthLabels        = label(~ismember(depth_cm, duplicated_depths));
             if ~isempty(duplicated_depths) %if there are duplicated depths
                 indrevmin       = ismember(string(rev_labIDs), uniqueDepthLabels);   %find which labIDs are related to duplicated depths (0 = related, 1 = not related)
-                generic_revs    = sum(indrevmin,2)==2;                          %Find which reversals are both from ages not from duplicately dated depths
                 OneDateDDDrev   = sum(indrevmin,2)==1;                          %Find which reversals have only one age from a duplicately dated depth
 
-                if ismember(1,OneDateDDDrev) %If one of the dates is from a duplicated depth then remove the date that isn't from the duplicated depth
+                if ismember(1,OneDateDDDrev) %If any reversals have one date from a duplicated depth then remove the date that isn't from the duplicated depth (for all such reversals)
                     rev_labIDs      = rev_labIDs(OneDateDDDrev, :);
                     date2removeLog  = ~ismember(rev_labIDs, chosenLabels{j});   %Find logical of date not from the duplicated depth, which will be removed
                     date2remove     = rev_labIDs(date2removeLog);               %Find label of date...
@@ -98,50 +93,29 @@ for j = 1:numScenarios
                     chosenLabels2   = chosenLabels;
                     newScenIndicator= 1;
                     break
-                elseif  ismember(1, generic_revs) %If both dates from any pairing are not from a duplicated depth, update scenario with choose one leave one for those reversals, break out of loop
-                    genrev_labIDs = cell(1,sum(generic_revs));
-                    for vi = 1:sum(generic_revs)
-                        gen_inds            = find(generic_revs == 1);
-                        genrev_labIDs{1,vi} = rev_labIDs(gen_inds(vi),:)';
-                    end
-                    [newscenariosNR, ~,~]       = scenariomaker([], genrev_labIDs,scenario_labels{j});
-                    numNew                      = length(newscenariosNR);
-                    chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
-                    scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
-                    scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
-                    chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
-                    newScenIndicator = 1;
-                    break
-                else    %If both dates are from duplicated depths, update with choose one and leave one
-                    num = sum(~generic_revs);
-                    genrev_labIDs = cell(1,num);
-                    for vi = 1:num
-                        gen_inds            = find(generic_revs ~= 1);
-                        genrev_labIDs{1,vi} = rev_labIDs(gen_inds(vi),:)';
-                    end
-                    [newscenariosNR, ~,~]       = scenariomaker([], genrev_labIDs,scenario_labels{j});
-                    numNew                      = length(newscenariosNR);
-                    chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
-                    scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
-                    scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
-                    chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
-                    newScenIndicator = 1;
-                    break
                 end
-            else %If there are no duplicate depths, all reversals must be generic, so update with choose one leave one
-                genrev_labIDs = cell(1,numreversals);
-                for vi = 1:sum(reversalpairs)
-                    genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
-                end
-                [newscenariosNR, ~, ~]      = scenariomaker([], genrev_labIDs,scenario_labels{j});
-                numNew                      = length(newscenariosNR);
-                chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
-                scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
-                scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
-                chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
-                newScenIndicator = 1;
-                break
+            %If any reversals have both dates not from a duplicated depth, update scenario with choose one leave one for those reversals
+            %If any reversals have both dates from duplicated depths, update with choose one and leave one
+            %Hence, if there are no reversals with only one date
+            %part of a duplicated depth, then we want to update all
+            %scenarios by leaving one choosing one for each
+            %reversal, the same as how to treat if there are no
+            %duplicate depths
             end
+
+            %If there are no duplicate depths, all reversals must be generic, so update with choose one leave one
+            genrev_labIDs = cell(1,numreversals);
+            for vi = 1:sum(reversalpairs)
+                genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
+            end
+            [newscenariosNR, ~, ~]      = scenariomaker([], genrev_labIDs,scenario_labels{j});
+            numNew                      = length(newscenariosNR);
+            chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
+            scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
+            scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
+            chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
+            newScenIndicator = 1;
+            break
         end
     end
 
