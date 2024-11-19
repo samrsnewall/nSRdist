@@ -1,4 +1,4 @@
-function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightbydepthQ, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ)
+function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightbydepthQ, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
 %%% This function takes some normalised sedimentation rate data in cell
 %%% format, combines the counts into a single array, applies the weighting
 %%% and then fits a mixture log normal to the result. It will also plot the
@@ -37,19 +37,27 @@ end
 %Remove the ones that were used to set up arrays
 nSRcountsArray = nSRcountsArray(:,2:end);
 
+%Remove NaNs that are used to separate cores and runs
+NaNLog = isnan(nSRcountsArray(1,:));
+nSRcountsArray = nSRcountsArray(:,~NaNLog);
+
+%% Remove information from age pairs not within 0.5-4.5kyr
+
+if fitS.Lin2014AgeFiltering
+    L2014Log = nSRcountsArray(4,:) < 4500 & nSRcountsArray(4,:) > 500;
+    nSRcountsArray = nSRcountsArray(:,L2014Log);
+end
+
 %% Fit Mix Log Norm
 %Convert the weighted nSR counts to a single dimension array of counts
 %where the number of counts is representative of their weighting
 nSR = nSRcountsArray(1,:)'; %nSR data
 depthWeights = nSRcountsArray(2,:);  %weightings
 agedifferences = nSRcountsArray(4,:);
-nSRclean = nSR(~isnan(nSR)); %Remove NaNs that separate cores and runs
-dWeightsclean = depthWeights(~isnan(nSR)); %Remove NaNs that separate cores and runs
-agedifferencesclean = agedifferences(~isnan(nSR));
 if weightbydepthQ == 0
-    data = nSRclean; 
+    data = nSR; 
 else
-    data = makeWeightedReplicates(nSRclean, dWeightsclean, weightRepDP, weightRepInflator);
+    data = makeWeightedReplicates(nSR, depthWeights, weightRepDP, weightRepInflator);
 end
 dataLog = log(data);
 
@@ -61,7 +69,7 @@ end
 [SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue);
 
 %% count how many estimates of nSR
-numbernSRcounts = length(nSRclean);
+numbernSRcounts = length(nSR);
 
 %% Calculate mean and variance of data
 nSRdataAsCounts = data;
@@ -80,8 +88,8 @@ agediffsBinEdges = 0:500:10000;
 %Calculate bin counts (using weighting for SR)
 SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
 histData = data;
-logSRbinCounts = makeWeightedBinCounts(log(nSRclean), dWeightsclean, logSRbinEdges);
-agediffsBinCounts = makeWeightedBinCounts(agedifferencesclean, dWeightsclean, agediffsBinEdges);
+logSRbinCounts = makeWeightedBinCounts(log(nSR), depthWeights, logSRbinEdges);
+agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffsBinEdges);
 
 %% Compare histogram of "weighted data" to weighted histogram of data
 figure;
