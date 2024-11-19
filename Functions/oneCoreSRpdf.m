@@ -1,6 +1,10 @@
-function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, ageModes, scenarios, label, numreversals_mean, scenario_meanSR] = oneCoreSRpdf(corename, LabIDs, incDepths, excLabIDs, excDepths, S, plotfigs)
+function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, ageModes, scenarios, label, numreversals_mean, scenario_meanSR] = oneCoreSRpdf(corename, dataLoc, LabIDs, incDepths, excLabIDs, excDepths, S, plotfigs)
 %% Read in Radiocarbon Data
-[age, depth_cm, error, label] = getDataWA(corename);
+if dataLoc == "WA"
+    [age, depth_cm, error, label] = getDataWA(corename);
+elseif dataLoc == "Lin2014"
+    [age, depth_cm, error, label] = getDatatxt(corename);
+end
 
 %% Filtering
 %Filter for MSPF dates, remove manually determined outliers, only keep
@@ -45,8 +49,8 @@ end
 %Check to make sure there aren't duplicated labels in the core data. If
 %there are, replace them with Fake Labels so they don't mess up tests for
 %uniqueness later on
-[uniqueLabels, uniqueIdx] = unique(label);
-if length(uniqueIdx) ~= length(label);
+[~, uniqueIdx] = unique(label);
+if length(uniqueIdx) ~= length(label)
     for ilabel = 1:length(label)
         label(ilabel) = "xFakeLabel" + num2str(ilabel);
     end
@@ -58,12 +62,14 @@ end
 %% For each scenario, run the calculations for calculating inverse sed rate
 %Note, that if a scenario throws up a problematic age reversal, new
 %scenarios are constructed to avoid this.
-newscenarios = 1;
-scenariosCFR = zeros(size(scenarios));
+
+date_is = 1:length(age);
+[ageprobAll, calAge] = multiMatcalQ(age, error, date_is, S);
 
 %Run scenarios deal with reversals until there are no more reversals in any
 %scenarios
-[scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, depth_cm, age, error, label, corename, duplicated_depths, S, plotfigs);
+scenariosCFR = zeros(size(scenarios)); %Initialise vector to signify whether a given scenario has been confirmed to have no reversals (1 if no reversals, 0 if not yet)                                                                 
+[scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, S, plotfigs);
 while newscenarios == 1
     %Check whether any scenarios are replicas of each other
     scenlengths = cellfun(@length, scenarios2); %Get lengths of each scenario
@@ -71,24 +77,28 @@ while newscenarios == 1
     scenarios2keep = [];
     shifter = 0;
     for i = 1:length(Uscenlengths)
-        scenLog = scenlengths == Uscenlengths(i);   %Find each scenario that is a given length
-        sameLengthScens = scenarios2(scenLog);  %Get these scenarios in a cell array
+        scenLog = scenlengths == Uscenlengths(i);                           %Find each scenario that is a given length
+        sameLengthScens = scenarios2(scenLog);                              %Get these scenarios in a cell array
         scenArray = strings(Uscenlengths(i), sum(scenLog));
         for j = 1:sum(scenLog)
-            scenArray(:,j) = sameLengthScens{j}; %Convert them into a string array
+            scenArray(:,j) = sameLengthScens{j};                            %Convert them into a string array
         end
-        [~, scenarios2keepI, ~] = unique(scenArray', 'rows'); %Find all the unique rows (akin to unique scenarios)
-        if length(scenarios2keepI) ~= sum(scenLog)
-            % disp("Getting rid of a duplicate scenario!")
-        end
-        scenarios2keep = [scenarios2keep; scenarios2keepI + shifter];
+        [~, scenarios2keepI, ~] = unique(scenArray', 'rows');               %Find all the unique rows (akin to unique scenarios)
+        scenarios2keepIs = sort(scenarios2keepI);
+        scenarios2keep = [scenarios2keep; scenarios2keepIs + shifter];       %#ok<AGROW>
         shifter = shifter + sum(scenLog);
     end
     scenarios2 = scenarios2(scenarios2keep);
     scenarios2CFR = scenarios2CFR(scenarios2keep);
     chosenLabels2 = chosenLabels2(scenarios2keep);
 
-    [scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios2, scenarios2CFR, chosenLabels2, depth_cm, age, error, label, corename, duplicated_depths, S,plotfigs);
+    % disp(num2str(sum(scenarios2CFR)) + " scenarios confirmed with no reversals")
+     disp("size of scenarios vector " + num2str(length(scenarios2)))
+
+    [scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals,...
+        scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs,...
+        ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth]...
+     = scenariosDealWithReversals(scenarios2, scenarios2CFR, chosenLabels2, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, S,plotfigs);
 end
 
 scenarios = scenarios2;
@@ -107,8 +117,13 @@ MSI_bydepth_mean = mean(MSI_bydepth, 'omitmissing');
 
 %Combine the results from each scenario, to get a core-specific pdf of
 %invSRvals
-if ~isempty(scenarios)
-[core_invSRvals, core_invSRprobs] = combinepdfs(scenario_invSRvals, scenario_invSRprobs, lengthsed);
+if S.pdfMethod
+    if ~isempty(scenarios)
+        [core_invSRvals, core_invSRprobs] = combinepdfs(scenario_invSRvals, scenario_invSRprobs, lengthsed);
+    else
+        core_invSRvals = [];
+        core_invSRprobs = [];
+    end
 else
     core_invSRvals = [];
     core_invSRprobs = [];
