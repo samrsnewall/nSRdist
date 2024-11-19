@@ -103,13 +103,11 @@ ManE.label = label(logi3);
 %Filter the data so it only includes those where the age is greater than
 %1000 and below 42,000 yr C14 BP. (to ensure they fit within the limits of
 %the calibration curve)
-logi4 = age-error >= 1 & age+error <=42;
+logi4 = age-error >= S.c14AgeLim(1) & age+error <=S.c14AgeLim(2);
 NotCCR.depth = depth(~logi4);
 NotCCR.age = age(~logi4);
 NotCCR.error = error(~logi4);
 NotCCR.label = label(~logi4);
-
-
 
 %% Choose cores that fit all criteria
 ChosenLogi = logi1 & ~logi3 & logi4;
