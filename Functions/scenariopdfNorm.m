@@ -1,4 +1,4 @@
-function [interp_invSR, iProbs_wdN, meanSR, reversalpairs, numpairs, ageMode, depdiff, agediff, MSI_byage, MSI_bydepth] = scenariopdfNorm(depth,date_is, ageprob, calAge, S, plotfigs)
+function [interp_invSR, iProbs_wdN, meanSR, reversalpairs, numpairs, ageMode, depdiff, agediff, MSI_byage, MSI_bydepth, IDpairs, agediffV] = scenariopdfNorm(depth,date_is,label, ageprob, calAge, IDpairs, agediffV, S, plotfigs)
 %% Perform Calibrations
 %Use MatCal to calibrate each age, storing the probabilities in vector
 %ageprob (note the AGE that each prob is relating to can be found by using
@@ -30,7 +30,8 @@ MSI_bydepth = depdiff./length(date_is); %cm/date
 %% Calculate age difference and probability for each pairing of ages - PDF METHOD FUNCTION
 %By using a function
 numpairs = length(date_is)-1;
-[agediff_vals, agediff_probsums] = agediffcalc(ageprob, calAge, numpairs, S);
+label_is = label(date_is);
+[agediff_vals, agediff_probsums, IDpairs, agediffV] = agediffcalc(ageprob, calAge, numpairs, label_is, IDpairs, agediffV, S);
 
 %Calculate depth differences between each pairing of ages;
 deldep = diff(dep_is);
