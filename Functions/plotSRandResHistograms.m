@@ -66,7 +66,7 @@ dataLog = log(data);
 if a>b
     data = data';
 end
-[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue);
+[SR_MixLogNorm, logSR_MixNorm, ~] = fitMixLogNorm(data, x, components, regularizationValue);
 
 %% count how many estimates of nSR
 numbernSRcounts = length(nSR);
@@ -92,26 +92,26 @@ logSRbinCounts = makeWeightedBinCounts(log(nSR), depthWeights, logSRbinEdges);
 agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffsBinEdges);
 
 %% Compare histogram of "weighted data" to weighted histogram of data
-figure;
-subplot(1,2,1)
-histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges)
-xlim([0 6])
-title("Weighted by summing weights")
-subplot(1,2,2)
-histogram(data, "BinEdges", SRbinEdges)
-xlim([0 6])
-title("Weighted by replicating data")
+% figure;
+% subplot(1,2,1)
+% histogram("BinCounts", SRbinCounts, "BinEdges", SRbinEdges)
+% xlim([0 6])
+% title("Weighted by summing weights")
+% subplot(1,2,2)
+% histogram(data, "BinEdges", SRbinEdges)
+% xlim([0 6])
+% title("Weighted by replicating data")
 % 
 %% compare histogram of weighted log data to weighted histogram of log data
-figure;
-subplot(1,2,1)
-histogram("BinCounts", logSRbinCounts, "BinEdges", logSRbinEdges)
-xlim([-4 4])
-title("Weighted by summing weights")
-subplot(1,2,2)
-histogram(dataLog, "BinEdges", logSRbinEdges)
-xlim([-4 4])
-title("Weighted by replicating data")
+% figure;
+% subplot(1,2,1)
+% histogram("BinCounts", logSRbinCounts, "BinEdges", logSRbinEdges)
+% xlim([-4 4])
+% title("Weighted by summing weights")
+% subplot(1,2,2)
+% histogram(dataLog, "BinEdges", logSRbinEdges)
+% xlim([-4 4])
+% title("Weighted by replicating data")
 % 
 % %% Get true weighted histograms of nSR and lognSR
 % figure;
