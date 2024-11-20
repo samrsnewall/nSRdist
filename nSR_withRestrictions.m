@@ -25,6 +25,7 @@ addpath('Functions')
 %sheet = "DataSheets/COPYcore40Metadata.xlsx";
 sheet = "DataSheets/COPYcore40MetadataAndLin2014.xlsx";
 LinOnly =0;
+PFOnly = 0;
 rawdata     = readtable(sheet);
 if ~contains(sheet, "COPYcore40Metadata")
     rawdataMSPF = rawdata(rawdata.MSPF == 1,:);
@@ -33,6 +34,8 @@ elseif ~contains(sheet, "AndLin2014")
 else
     if LinOnly == 1
         rawdataMSPF = rawdata(rawdata.Lin2014 == 1, :);
+    elseif PFOnly == 1
+        rawdataMSPF = rawdata(rawdata.WAuse == 1);
     else
         rawdataMSPF = rawdata(rawdata.WAuse == 1 | rawdata.Lin2014Keep == 1,:);
     end
@@ -40,15 +43,16 @@ end
 
 %% Create settings structure
 S.minNumberOfAges   = 4;        %Minimum number of ages a core must have (after filtering) to be used
-S.DeltaRError       = 200;        %Error put on the Delta R (reservoir age correction)
+S.DeltaRError       = 0;      %Error put on the Delta R (reservoir age correction)
 S.reversalCriteria  = 0.75;     %What fraction of SRs between two ages must be negative to call it a reversal
-S.weighting         = true;     %Whether or not to weight by depth (= false means no weighting)
-S.normWithRunMean   = false;    %Use a common meanSR to use when calculating normalised SR (false) or use the SR from each individual run (true).
 S.removeLargeGaps   = true;     %Whether to manually remove large age gaps or leave them in
-S.modifyLin2014Data = false;    %Whether to use dates as used by Lin2014 or to include my own modifications to remove reversals or large age gaps
-S.c14AgeLim         = [1 42];   %Cutoffs for radiocarbon ages, in kyr %Choose [1 42] normally
+S.modifyLin2014Data = true;     %Whether to use dates as used by Lin2014 or to include my own modifications to remove reversals or large age gaps
+S.c14AgeLim         = [0 42];   %Cutoffs for radiocarbon ages, in kyr %Choose [1 42] normally
 S.pdfMinVal         = 1e-6;     %Cutoff to reduce size of radiocarbon pdf vector to accelerate calculations
 S.pdfMethod         = false;    %Whether to complete all of the pdf method or simply use it for multiply dated depths and reversals
+S.weighting         = true;     %Whether or not to weight by depth (= false means no weighting)
+S.normWithRunMean   = false;    %Use a common meanSR to use when calculating normalised SR (false) or use the SR from each individual run (true).
+S.useModes          = false;     %Calculate nSR distribution with the mode of each radiocarbon distribution, not sampling
 
 %% Choose cores to look at
 %------ Index Good Cores
@@ -73,7 +77,7 @@ goodIndexes = allcores(~badLog);
 namedLog           = ismember(string(rawdataMSPF.CoreName), "DSDP594");
 allLog             = true(length(goodLog), 1);
 subsetChooser      = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetChooser(1:10)  = 1; 
+subsetChooser(1:end)  = 1; 
 subsetChooser = subsetChooser == 1 & goodLog == 1;
 
 %% Get material data from Excel
@@ -141,23 +145,9 @@ for i = 1:numCores
 end
 disp("Created all scenarios")
 
-% Find mean calibrated ages used in all scenarios of each core
-% 
-% for i = 1:numCores
-%     scen = corescenarios{i};
-%     usedIDs{i} = [];
-%     for j = 1:length(scen)
-%         scenIDs = scen{j};
-%         newIDs = scenIDs(~contains(scenIDs, usedIDs));
-%         usedIDs{i} = [usedIDs{i}; newIDs];
-%     end
-% 
-% 
-% end
-
 %% Create a table that holds all useful metadata
 agecoverage = sedimentlength./meanSR;
-dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes, sedimentlength, agecoverage, num14cpairs, MSI_byage, MSI_bydepth, LabIDs, incDepths, excLabIDs, excDepths, core_invSRvals, core_invSRprobs, corescenarios);
+dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes, sedimentlength, agecoverage, num14cpairs, MSI_byage, MSI_bydepth, LabIDs, incDepths, excLabIDs, excDepths, core_invSRvals, core_invSRprobs, corescenarios, scenario_meanSR);
 
 %% ------ Define Subsets of interest
 % high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
@@ -194,7 +184,7 @@ nSRcounts       = cell(numCores, 1); % Holds all the nSR counts (which form hist
 agediffs        = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
 for i =  1:numCores
-    [nSRcounts{i}, agediffs{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, S, 0);
+    [nSRcounts{i}, agediffs{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 0);
 end
 
 % ------ Run through all chosen cores with random sampling approach,
@@ -218,7 +208,7 @@ disp("c")
 nSRcounts1000   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs1000    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-for i =  1:numCores
+parfor i =  1:numCores
     [nSRcounts1000{i}, agediffs1000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, S, 1000);
 end
 disp("d")
@@ -230,7 +220,7 @@ disp("d")
 nSRcounts1500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs1500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-for i =  1:numCores
+parfor i =  1:numCores
     [nSRcounts1500{i}, agediffs1500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, S, 1500);
 end
 disp("e")
@@ -250,10 +240,9 @@ dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nS
 metadataLog = allCoresLog;
 outputMetadataAndSummaryFigures(allCoresLog,dataT)
 
-%save("Results/dataT_Lin2014Only_Nov19S3.mat", "dataT", "S")
+%save("Results/dataT_PFAndLin2014_Nov19S1.mat", "dataT", "S")
 
 %% Calculate transition matrices for each setup
-% TM0     = TMcalculation(nSRcounts);
 % [~,~,TM1000]  = TMcalculation(nSRcounts1000, highSRCoresLog);
 
 %x = 0.01:0.01:15; plotSRandResHistograms(dataT.nSRcounts500, x, ones(size(dataT.nSRcounts500)), true, 3,1,2,0,"",true)
@@ -265,10 +254,11 @@ lognorm_BIGMACS = readtable("lognormal_BIGMACS.txt");                       % (u
 x = lognorm_BIGMACS.Var1';
 numruns2sample = 400;
 desiredLog = highSRCoresLog;
-desiredRestriction = dataT.nSRcounts500;
+desiredRestriction = nSRcounts;
 respectiveString = "HighSR500";
+fitS.Lin2014AgeFiltering = 1;
 
-[mixLogAllruns] = plotSRandResHistograms(desiredRestriction, x, desiredLog, true, 3, 1, 2, 0, respectiveString,true);
+[mixLogAllruns] = plotSRandResHistograms(desiredRestriction, x, desiredLog, true, 3, 1, 2, 0, respectiveString,true, fitS);
 
 figure;
 hold on
