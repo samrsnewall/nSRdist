@@ -1,17 +1,17 @@
-function[scenariosNew, scenariosNewCFR, chosenLabels2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, reversalpairs, numDatePairs, ageModes, lengthSed,  newScenIndicator, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, S, plotfigs)
+function[scenariosNew, scenariosNewCFR, chosenLabels2, scenario_invSRvals2, scenario_invSRprobs2, scenario_meanSR2, numdatepairs2, ageModes2, lengthSed2,  newScenIndicator, MSI_byage2, MSI_bydepth2, IDpairs, agediffV] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numdatepairs, ageModes, lengthSed, MSI_byage, MSI_bydepth, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, IDpairs, agediffV, S, plotfigs)
 
 %Initiate cells to hold results from each scenario
 numScenarios        = length(scenarios);
-scenario_invSRvals  = cell(numScenarios, 1);
-scenario_invSRprobs = cell(numScenarios, 1);
-scenario_labels     = cell(numScenarios, 1);
-scenario_meanSR     = nan(numScenarios, 1);
-numDatePairs        = nan(numScenarios, 1);
-ageModes            = cell(numScenarios, 1);
-lengthSed           = nan(numScenarios, 1);
-lengthAge           = nan(numScenarios, 1);
-MSI_bydepth         = nan(numScenarios, 1);
-MSI_byage           = nan(numScenarios, 1);
+scenario_invSRvals2  = cell(numScenarios, 1);
+scenario_invSRprobs2 = cell(numScenarios, 1);
+scenario_labels2     = cell(numScenarios, 1);
+scenario_meanSR2     = nan(numScenarios, 1);
+numdatepairs2       = nan(numScenarios, 1);
+ageModes2            = cell(numScenarios, 1);
+lengthSed2           = nan(numScenarios, 1);
+lengthAge2           = nan(numScenarios, 1);
+MSI_bydepth2         = nan(numScenarios, 1);
+MSI_byage2           = nan(numScenarios, 1);
 scenariosNew        = cell(numScenarios, 1);
 scenariosNewCFR     = zeros(numScenarios, 1);
 chosenLabels2       = cell(numScenarios, 1);
@@ -21,22 +21,28 @@ for j = 1:numScenarios
     if scenariosCFR(j) == 0
         date_bool           = ismember(string(label), scenarios{j});
         date_is             = find(date_bool == 1);
-        scenario_labels{j}  = label(date_bool == 1);
+        scenario_labels2{j}  = label(date_bool == 1);
 
         %Choose ages in this scenario
         ageprob = ageprobAll(:,date_is);
 
         %Check to make sure there aren't duplicated labels in the scenario. If
         %there are remove one
-        [uniqueLabels, uniqueIdx] = unique(scenario_labels{j});
-        if length(uniqueIdx) ~= length(scenario_labels{j})
-            scenario_labels{j} = uniqueLabels;
+        [uniqueLabels, uniqueIdx] = unique(scenario_labels2{j});
+        if length(uniqueIdx) ~= length(scenario_labels2{j})
+            scenario_labels2{j} = uniqueLabels;
         end
 
-        [scenario_invSRvals{j}, scenario_invSRprobs{j}, scenario_meanSR(j),...
-            reversalpairs, numDatePairs(j), ageModes{j}, lengthSed(j),...
-            lengthAge(j), MSI_byage(j), MSI_bydepth(j)] =...
-            scenariopdfNorm(depth_cm, date_is, ageprob, calAge, S, plotfigs);
+        [scenario_invSRvals2{j}, scenario_invSRprobs2{j}, scenario_meanSR2(j),...
+            reversalpairs, numdatepairs2(j), ageModes{j}, lengthSed2(j),...
+            lengthAge2(j), MSI_byage2(j), MSI_bydepth2(j), IDpairs, agediffV] =...
+            scenariopdfNorm(depth_cm, date_is, label, ...
+            ageprob, calAge, IDpairs, agediffV, S, plotfigs);
+
+        if sum(size(ageModes{j})) == 0
+            a = 1;
+        end
+
 
         %Find number of reversals
         numreversals = sum(reversalpairs);
@@ -45,16 +51,16 @@ for j = 1:numScenarios
             %Will be too many scenarios, do not analyse core
             disp("Too many scenarios in core" + corename + ": " + num2str(numreversals))
             numScenarios = 0;
-            scenario_invSRvals  = cell(numScenarios, 1);
-            scenario_invSRprobs = cell(numScenarios, 1);
+            scenario_invSRvals2  = cell(numScenarios, 1);
+            scenario_invSRprobs2 = cell(numScenarios, 1);
             % scenario_labels     = cell(numScenarios, 1);
-            scenario_meanSR     = nan(numScenarios, 1);
-            numDatePairs        = nan(numScenarios, 1);
-            ageModes            = [];
-            lengthSed           = nan(numScenarios, 1);
+            scenario_meanSR2     = nan(numScenarios, 1);
+            numdatepairs2        = nan(numScenarios, 1);
+            ageModes2            = [];
+            lengthSed2           = nan(numScenarios, 1);
             % lengthAge           = nan(numScenarios, 1);
-            MSI_bydepth         = nan(numScenarios, 1);
-            MSI_byage           = nan(numScenarios, 1);
+            MSI_bydepth2         = nan(numScenarios, 1);
+            MSI_byage2           = nan(numScenarios, 1);
             scenariosNew        = cell([]);
             scenariosNewCFR     = [];
             chosenLabels2       = cell([]);
@@ -71,8 +77,8 @@ for j = 1:numScenarios
                 %find lab IDs for each reversal, each row represents a reversal
                 %pairing
                 iv  = find(reversalpairs == 1);
-                rev_labIDs(iii,1) = scenario_labels{j}(iv(iii));
-                rev_labIDs(iii,2) = scenario_labels{j}(iv(iii)+1);
+                rev_labIDs(iii,1) = scenario_labels2{j}(iv(iii));
+                rev_labIDs(iii,2) = scenario_labels2{j}(iv(iii)+1);
             end
 
             %Find out if any of the reversal pairings are related to
@@ -91,6 +97,14 @@ for j = 1:numScenarios
                     scenariosNew    = scenarios;
                     scenariosNewCFR = scenariosCFR;
                     chosenLabels2   = chosenLabels;
+                    scenario_invSRvals2 = scenario_invSRvals;
+                    scenario_invSRprobs2 = scenario_invSRvals;
+                    scenario_meanSR2 = scenario_meanSR;
+                    numdatepairs2 = numdatepairs;
+                    ageModes2 = ageModes;
+                    lengthSed2 = lengthSed;
+                    MSI_bydepth2 = MSI_bydepth;
+                    MSI_byage2 = MSI_bydepth;
                     newScenIndicator= 1;
                     break
                 end
@@ -108,21 +122,46 @@ for j = 1:numScenarios
             for vi = 1:sum(reversalpairs)
                 genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
             end
-            [newscenariosNR, ~, ~]      = scenariomaker([], genrev_labIDs,scenario_labels{j});
+            [newscenariosNR, ~, ~]      = scenariomaker([], genrev_labIDs,scenario_labels2{j});
             numNew                      = length(newscenariosNR);
             chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
             scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
             scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
             chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
+            scenario_invSRvals2         = [scenario_invSRvals(1:j-1); scenario_invSRvals2(j+1:end); cell(numNew,1)];
+            scenario_invSRprobs2         = [scenario_invSRprobs(1:j-1); scenario_invSRprobs2(j+1:end); cell(numNew,1)];
+            scenario_meanSR2         = [scenario_meanSR(1:j-1); scenario_meanSR2(j+1:end); nan(numNew,1)];
+            numdatepairs2           = [numdatepairs(1:j-1); numdatepairs2(j+1:end); nan(numNew, 1)];
+            ageModes2         = [ageModes(1:j-1); ageModes2(j+1:end); cell(numNew,1)];
+            lengthSed2         = [lengthSed(1:j-1); lengthSed2(j+1:end); nan(numNew,1)];
+            MSI_bydepth2         = [MSI_bydepth(1:j-1); MSI_bydepth2(j+1:end); nan(numNew,1)];
+            MSI_byage2         = [MSI_byage(1:j-1); MSI_byage2(j+1:end); nan(numNew,1)];
             newScenIndicator = 1;
             break
         end
-    end
+    
 
     %If the scenario shows no reversals, include it in the new scenario
     %list and label that it has been Checked For Reversals.
     scenariosNew(j)     = scenarios(j);
     scenariosNewCFR(j)  = 1;
+    ageModes2(j)        = ageModes(j);
     chosenLabels2(j)    = chosenLabels(j);
+    
+    %Transfer over all other information
+    else
+    scenariosNew(j)     = scenarios(j);
+    scenariosNewCFR(j)  = 1;
+    ageModes2(j)        = ageModes(j);
+    chosenLabels2(j)    = chosenLabels(j);
+    scenario_invSRvals2{j} = scenario_invSRvals{j};
+    scenario_invSRprobs2{j} = scenario_invSRprobs{j};
+    scenario_meanSR2(j) = scenario_meanSR(j);
+    numdatepairs2(j) = numdatepairs(j);
+    lengthSed2(j) = lengthSed(j);
+    MSI_bydepth2(j) = MSI_bydepth(j);
+    MSI_byage2(j) = MSI_byage(j);
+    end
+    
     newScenIndicator    = 0;
 end
