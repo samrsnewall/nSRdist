@@ -1,4 +1,4 @@
-function[SR_MixLogNorm1Run, c95up, c95down, mus,Sigmas] = SingleRunLogNorms(nSRcounts, coreLog, numruns, x, numComponents, weightQ, weightRepDP, weightRepInflator, regularizationVal)
+function[SR_MixLogNorm1Run, c95up, c95down, mus,Sigmas] = SingleRunLogNorms(nSRcounts, coreLog, numruns, x, numComponents, weightQ, weightRepDP, weightRepInflator, regularizationVal, fitS)
 
 %Initialise vector
 SR_MixLogNorm1Run = NaN(length(x), numruns);
@@ -33,6 +33,11 @@ for i = 1:numruns
         OneRunData         = cat(2, OneRunData, nSRcount_1core1run);
     end
 
+    if fitS.Lin2014AgeFiltering
+        L2014Log = OneRunData(4,:) < 4500 & OneRunData(4,:) > 500;
+        OneRunData = OneRunData(:,L2014Log);
+    end
+
 
     %% Weighting Data
     if weightQ == 1 %This indicates whether to weight by depth or not
@@ -62,6 +67,7 @@ for i = 1:numruns
     if a>b
         data = data';
     end
+    
 
     %Fit a mix log normal to the data
     [SR_MixLogNorm1RunHOLDER, ~, gmfit] = fitMixLogNorm(data, x, numComponents, regularizationVal); %If this is taking too long, try reducing the weightRepInflator value
