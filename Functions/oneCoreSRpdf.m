@@ -68,17 +68,41 @@ date_is = 1:length(age);
 
 %Run scenarios deal with reversals until there are no more reversals in any
 %scenarios
-scenariosCFR = zeros(size(scenarios)); %Initialise vector to signify whether a given scenario has been confirmed to have no reversals (1 if no reversals, 0 if not yet)                                                                 
-[scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs, ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, S, plotfigs);
+scenariosCFR = zeros(size(scenarios)); %Initialise vector to signify whether a given scenario has been confirmed to have no reversals (1 if no reversals, 0 if not yet) 
+IDpairs = strings(0);
+agediffV = {};
+numScenarios = length(scenarios);
+scenario_invSRvals  = cell(numScenarios, 1);
+scenario_invSRprobs = cell(numScenarios, 1);
+scenario_meanSR     = nan(numScenarios, 1);
+numdatepairs        = nan(numScenarios, 1);
+ageModes            = cell(numScenarios, 1);
+lengthsed           = nan(numScenarios, 1);
+MSI_bydepth         = nan(numScenarios, 1);
+MSI_byage           = nan(numScenarios, 1);
+
+[scenarios, scenariosCFR, chosenLabels, scenario_invSRvals,...
+    scenario_invSRprobs, scenario_meanSR, numdatepairs,...
+    ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth, IDpairs, agediffV]...
+    = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels,... %%%%%%
+    scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, ...
+    numdatepairs,ageModes, lengthsed, MSI_byage, MSI_bydepth, ...
+    depth_cm, ageprobAll, calAge, label, corename, duplicated_depths,...
+    IDpairs, agediffV, S, plotfigs);
+
+if newscenarios == 1
+    scenariosCFR(:) = 0; %This ensures all scenarios get ageMode, lengthsed, etc information
+end
+
 while newscenarios == 1
     %Check whether any scenarios are replicas of each other
-    scenlengths = cellfun(@length, scenarios2); %Get lengths of each scenario
+    scenlengths = cellfun(@length, scenarios); %Get lengths of each scenario
     Uscenlengths = unique(scenlengths);         %Find how many different lengths
     scenarios2keep = [];
     shifter = 0;
     for i = 1:length(Uscenlengths)
         scenLog = scenlengths == Uscenlengths(i);                           %Find each scenario that is a given length
-        sameLengthScens = scenarios2(scenLog);                              %Get these scenarios in a cell array
+        sameLengthScens = scenarios(scenLog);                              %Get these scenarios in a cell array
         scenArray = strings(Uscenlengths(i), sum(scenLog));
         for j = 1:sum(scenLog)
             scenArray(:,j) = sameLengthScens{j};                            %Convert them into a string array
@@ -88,32 +112,44 @@ while newscenarios == 1
         scenarios2keep = [scenarios2keep; scenarios2keepIs + shifter];       %#ok<AGROW>
         shifter = shifter + sum(scenLog);
     end
-    scenarios2 = scenarios2(scenarios2keep);
-    scenarios2CFR = scenarios2CFR(scenarios2keep);
-    chosenLabels2 = chosenLabels2(scenarios2keep);
+    scenarios = scenarios(scenarios2keep);
+    scenariosCFR = scenariosCFR(scenarios2keep);
+    chosenLabels = chosenLabels(scenarios2keep);
+    scenario_invSRvals = scenario_invSRvals(scenarios2keep);
+    scenario_invSRprobs = scenario_invSRprobs(scenarios2keep);
+    scenario_meanSR = scenario_meanSR(scenarios2keep);
+    numdatepairs = numdatepairs(scenarios2keep);
+    ageModes =  ageModes(scenarios2keep);
+    lengthsed = lengthsed(scenarios2keep);
+    MSI_byage = MSI_byage(scenarios2keep);
+    MSI_bydepth = MSI_bydepth(scenarios2keep);
 
-    % disp(num2str(sum(scenarios2CFR)) + " scenarios confirmed with no reversals")
-     disp("size of scenarios vector " + num2str(length(scenarios2)))
+    % % disp(num2str(sum(scenarios2CFR)) + " scenarios confirmed with no reversals")
+    %  disp("size of scenarios vector " + num2str(length(scenarios2)))
 
-    [scenarios2, scenarios2CFR, chosenLabels2, scenario_invSRvals,...
-        scenario_invSRprobs, scenario_meanSR, numreversals, numdatepairs,...
-        ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth]...
-     = scenariosDealWithReversals(scenarios2, scenarios2CFR, chosenLabels2, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, S,plotfigs);
+    [scenarios, scenariosCFR, chosenLabels, scenario_invSRvals,...
+        scenario_invSRprobs, scenario_meanSR, numdatepairs,...
+        ageModes, lengthsed, newscenarios, MSI_byage, MSI_bydepth, IDpairs, agediffV]...
+     = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels,... %%%%%%
+    scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, ...
+    numdatepairs,ageModes, lengthsed, MSI_byage, MSI_bydepth, ...
+    depth_cm, ageprobAll, calAge, label, corename, duplicated_depths,...
+    IDpairs, agediffV, S, plotfigs);
+
+    if sum(size(ageModes)) == 0;
+        a = 1;
+    end
 end
-
-scenarios = scenarios2;
 
 %Calculate means of interested variables across all scenarios
 meanSR = mean(scenario_meanSR, 'omitmissing');
 numdatepairs_mean = mean(numdatepairs, 'omitmissing');
 lengthsed_mean = mean(lengthsed, 'omitmissing');
-numreversals_mean = mean(numreversals, 'omitmissing');
+numreversals_mean = 999; %mean(numreversals, 'omitmissing'); %Making this 999 for ease right now
 MSI_byage_mean = mean(MSI_byage, 'omitmissing');
 MSI_bydepth_mean = mean(MSI_bydepth, 'omitmissing');
 
 %Find all possible ageModes from all scenarios
-
-
 
 %Combine the results from each scenario, to get a core-specific pdf of
 %invSRvals
