@@ -11,7 +11,7 @@ function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCoun
 %set up arrays to be concatenated into
 nSRcountsArray = ones(4,1);
 
-if weightbydepthQ == 0
+if fitS.weighting == "none"
     %Concatenate all nSRcounts that are in the desired subset, choosing
     %only 1000 possible histories from each core (this allows the different
     %scenarios to be accounted for without letting them overweight the influence of that
@@ -54,10 +54,12 @@ end
 nSR = nSRcountsArray(1,:)'; %nSR data
 depthWeights = nSRcountsArray(2,:);  %weightings
 agedifferences = nSRcountsArray(4,:);
-if weightbydepthQ == 0
+if fitS.weighting == "none"
     data = nSR; 
-else
+elseif fitS.weighting == "depth"
     data = makeWeightedReplicates(nSR, depthWeights, weightRepDP, weightRepInflator);
+elseif fitS.weighting == "age"
+    data = makeWeightedReplicates(nSR, agedifferences, weightRepDP, weightRepInflator);
 end
 dataLog = log(data);
 
@@ -102,7 +104,7 @@ agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffs
 % xlim([0 6])
 % title("Weighted by replicating data")
 % 
-%% compare histogram of weighted log data to weighted histogram of log data
+% %% compare histogram of weighted log data to weighted histogram of log data
 % figure;
 % subplot(1,2,1)
 % histogram("BinCounts", logSRbinCounts, "BinEdges", logSRbinEdges)
@@ -132,7 +134,7 @@ agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffs
 % histogram(data, "BinEdges", SRbinEdges, "Normalization", "pdf")
 % xlim([0 6])
 % title("Weighted by replicating data")
-% 
+
 
 %% Plot to see how data compare to estimated distributions
 if plotQ == 1
