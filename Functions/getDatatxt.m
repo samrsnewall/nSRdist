@@ -1,7 +1,7 @@
 function[age, depth_cm, error, label] = getDatatxt(corename)
 
 %Set path to folder with all txt files
-txt_path = "/Users/samnewall/Documents/MATLAB/nSRdist_code/Lin2014Cores";
+txt_path = "/Users/samnewall/Documents/MATLAB/nSRdist_code/Lin2014Cores/BchronInput";
 
 %Get names of all files
 openfile = dir(txt_path);
