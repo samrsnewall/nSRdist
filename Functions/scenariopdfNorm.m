@@ -180,9 +180,11 @@ if S.pdfMethod
 
     %Apply a weighting by multiplying the probability of the sed rate from each
     %pair by the depth between the two dates
-    if S.weighting == true
+    if S.weighting == "depth"
         mat_iProbs_wd = mat_iProbs.*deldep';
-    else
+    elseif S.weighting == "age"
+        mat_iProbs_wd = mat_iProbs; %THIS CANNOT WEIGHT BY AGE!
+    elseif S.weighting == "none"
         mat_iProbs_wd = mat_iProbs;
     end
 
