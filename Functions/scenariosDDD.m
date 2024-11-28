@@ -21,10 +21,10 @@ if ~isempty(duplicated_depths) %Run loop if there are duplicately dated depths
     
     %Display the core name, the depths that have been dated multiple times,
     %and the labIDs of the dates for each depth.
-    disp("Core " + string(corename) + " has " + num2str(length(duplicated_depths)) + " doubly-dated depth(s).")
-    for n_dupdepth = 1:length(duplicated_depths)
-        disp("Depth " + join(num2str(duplicated_depths(n_dupdepth))) + " has dates with the following labIDs " + join(dup_depth_LabIDs{n_dupdepth}))
-    end
+    % disp("Core " + string(corename) + " has " + num2str(length(duplicated_depths)) + " doubly-dated depth(s).")
+    % for n_dupdepth = 1:length(duplicated_depths)
+    %     disp("Depth " + join(num2str(duplicated_depths(n_dupdepth))) + " has dates with the following labIDs " + join(dup_depth_LabIDs{n_dupdepth}))
+    % end
 
     [scenarios, chosenLabels, ~] = scenariomaker(dup_depth_LabIDs, [], label);
 else
