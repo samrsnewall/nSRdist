@@ -1,4 +1,4 @@
-function[LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, LinOnly, S)
+function[LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, S)
 
 %Initialise cells
 numCores    = sum(chosenCoresLog);
@@ -20,7 +20,7 @@ dataLoc = strings(numCores,1);
 
 %If we are only using Lin 2014 data, check whether we want to modify,
 %get modifications and leave function
-if LinOnly
+if S.useLin && ~S.usePF
     dataLoc(data.Lin2014 == 1) = "Lin2014";
     if S.modifyLin2014Data
         reversalIDs  = table2cell(data(:, "Lin2014ManualExclude"));
