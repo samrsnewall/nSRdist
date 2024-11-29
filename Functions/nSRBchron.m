@@ -1,7 +1,16 @@
 function[modenSRinfo, nSRcounts] = nSRBchron(corename, S)
-
-%Find Bchron output data, load mode Data
+%Find Bchron output data
 coreDir = fullfile("/Users/samnewall/Documents/MATLAB/nSRdist_code/Lin2014Cores/BchronOutputM09",corename);
+
+if ~isfolder(coreDir) %If the folder doesn't exist, run Bchronology
+    disp("Running Bchronology for core " + corename)
+    cmnd = "/usr/local/bin/Rscript /Users/samnewall/Documents/MATLAB/nSRdist_code/runBchron.R " + corename;
+    [status, ~] = system(cmnd);
+    disp("|============================================================| 100%")
+    
+end
+
+%Load mode data
 modeData = readtable(fullfile(coreDir, "modeChron.csv"), "ReadVariableNames",true);
 %load individual run data
 thetaData = readmatrix(fullfile(coreDir, "theta.csv"), "NumHeaderLines",1);
@@ -13,7 +22,7 @@ modeAge = modeData.modeChron;
 pctReject = modeData.rejectedAgePct;
 
 %Handle doubly-dated depths (not sure how Lin2014 handled this)
-[depths, ia, ic]  = unique(depths);
+[depths, ia, ~]  = unique(depths);
 modeAge = modeAge(ia);
 pctReject = pctReject(ia);
 thetaData = thetaData(:,ia);
