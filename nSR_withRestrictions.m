@@ -18,28 +18,6 @@
 %% Add folder of necessary functions to path
 addpath('Functions')
 
-%% Load Metadata of MSPF cores
-%Check which cores have MSPF (monospecific planktonic foram) dates
-%sheet = "DataSheets/COPYcorechoices_MSPF_highRes.xlsx";
-%sheet = "DataSheets/COPYcore40Metadata.xlsx";
-sheet = "DataSheets/COPYcore40MetadataAndLin2014.xlsx";
-LinOnly =1;
-PFOnly = 0;
-rawdata     = readtable(sheet);
-if ~contains(sheet, "COPYcore40Metadata")
-    rawdataMSPF = rawdata(rawdata.MSPF == 1,:);
-elseif ~contains(sheet, "AndLin2014")
-    rawdataMSPF = rawdata(ismember(rawdata.UseChoice, "PF"), :);
-else
-    if LinOnly == 1
-        rawdataMSPF = rawdata(rawdata.Lin2014 == 1, :);
-    elseif PFOnly == 1
-        rawdataMSPF = rawdata(rawdata.WAuse == 1, :);
-    else
-        rawdataMSPF = rawdata(rawdata.WAuse == 1 | rawdata.Lin2014Keep == 1,:);
-    end
-end
-
 %% Create settings structure
 S.minNumberOfAges   = 4;        %Minimum number of ages a core must have (after filtering) to be used
 S.DeltaRError       = 200;      %Error put on the Delta R (reservoir age correction)
@@ -53,6 +31,30 @@ S.weighting         = "depth";  %How to weight (options are "depth", "age", or "
 S.normWithRunMean   = false;    %Use a common meanSR to use when calculating normalised SR (false) or use the SR from each individual run (true).
 S.useModes          = false;    %Calculate nSR distribution with the mode of each radiocarbon distribution, not sampling
 S.useBchron         = true;
+S.useLin            = true;
+S.usePF             = true;
+
+%% Load Metadata of MSPF cores
+%Check which cores have MSPF (monospecific planktonic foram) dates
+%sheet = "DataSheets/COPYcorechoices_MSPF_highRes.xlsx";
+%sheet = "DataSheets/COPYcore40Metadata.xlsx";
+sheet = "DataSheets/COPYcore40MetadataAndLin2014.xlsx";
+
+rawdata     = readtable(sheet);
+if ~contains(sheet, "COPYcore40Metadata")
+    rawdataMSPF = rawdata(rawdata.MSPF == 1,:);
+elseif ~contains(sheet, "AndLin2014")
+    rawdataMSPF = rawdata(ismember(rawdata.UseChoice, "PF"), :);
+else
+    if S.useLin && ~S.usePF
+        rawdataMSPF = rawdata(rawdata.Lin2014 == 1, :);
+    elseif ~S.useLin && S.usePF
+        rawdataMSPF = rawdata(rawdata.WAuse == 1, :);
+    elseif S.useLin && S.usePF
+        rawdataMSPF = rawdata(rawdata.WAuse == 1 | rawdata.Lin2014Keep == 1,:);
+    end
+end
+
 
 %% Choose cores to look at
 %------ Index Good Cores
@@ -64,7 +66,7 @@ allcores    = 1:numAllCores;
 %(goodLog)
 %reversalDenseCores = ["H214", "KNR159-5-36GGC", "MD02-2550", "GIK17940-2", "MD07-3076"];
 reversalDenseCores = "PLACEMENTSTRING";
-if LinOnly == 1
+if  S.useLin && ~S.usePF
     reversalDenseCores = "PLACEMENTSTRING";
     latitudeRestrictionLog = ones(numAllCores, 1);
 else
@@ -105,7 +107,7 @@ elseif ~contains(sheet, "AndLin2014")
     dataLoc = strings(numCores,1);
 dataLoc(:) = "WA";
 else
-    [LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, LinOnly, S);
+    [LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, S);
 end
 
 % %% Plot cores age depth models
@@ -239,7 +241,7 @@ agediffs2000    = cell(numCores, 1); % Holds all the age differences for each nS
 %     [nSRcounts2000{i}, agediffs2000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 2000);
 % end
 
-%%
+%% 
 % ------ Use Bchron outputs
 bchronMode = cell(numCores, 1);
 bchronProb = cell(numCores, 1);
