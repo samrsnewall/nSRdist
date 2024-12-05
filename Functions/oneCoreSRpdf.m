@@ -90,9 +90,9 @@ MSI_byage           = nan(numScenarios, 1);
     depth_cm, ageprobAll, calAge, label, corename, duplicated_depths,...
     IDpairs, agediffV, S, plotfigs);
 
-if newscenarios == 1
-    scenariosCFR(:) = 0; %This ensures all scenarios get ageMode, lengthsed, etc information
-end
+% if newscenarios == 1
+%     scenariosCFR(:) = 0; %This ensures all scenarios get ageMode, lengthsed, etc information
+% end
 
 while newscenarios == 1
     %Check whether any scenarios are replicas of each other
@@ -124,8 +124,8 @@ while newscenarios == 1
     MSI_byage = MSI_byage(scenarios2keep);
     MSI_bydepth = MSI_bydepth(scenarios2keep);
 
-    % % disp(num2str(sum(scenarios2CFR)) + " scenarios confirmed with no reversals")
-    %  disp("size of scenarios vector " + num2str(length(scenarios2)))
+    % % disp(num2str(sum(scenariosCFR)) + " scenarios confirmed with no reversals")
+      %disp("size of scenarios vector " + num2str(length(scenarios)))
 
     [scenarios, scenariosCFR, chosenLabels, scenario_invSRvals,...
         scenario_invSRprobs, scenario_meanSR, numdatepairs,...
