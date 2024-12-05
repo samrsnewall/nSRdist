@@ -1,4 +1,4 @@
-function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numComponents, regularizationVal)
+function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numComponents, regularizationVal, replicates)
 %%% Create a mixed log normal to fit some dataset (if weighted, this must
 %%% already be applied to data). This function applies a regularization
 %%% value. A regularization value of 0 is the same as not regularising.
@@ -16,16 +16,14 @@ if ~iscolumn(data_linear)                                                   %Ens
     data_linear = data_linear';
 end
 data_log = log(data_linear);                                                %Take logarithm of data
-gmfit    = fitgmdist(data_log, numComponents, "Options", options, ...       %Fit mix log normal to logarithm of data
-    'RegularizationValue',regularizationVal);                               %Apply a regularisation value if needed
-
+gmfit    = fitgmdist(data_log, numComponents, "Options", options, ...       %Fit mix normal to logarithm of data
+    'RegularizationValue',regularizationVal, 'Replicates', replicates);                               %Apply a regularisation value if needed
 
 %Initialise std deviation vector and prob density vector
 stddev_fit  = NaN(1,numComponents);
 y           = zeros(length(x), numComponents);
 lx          = log(x);
 ly          = zeros(length(lx), numComponents);
-
 
 %Pull out sttdev of each component gaussian, and then find the lognormal
 %pdf using the mean and stddev of the component gaussians as the input
