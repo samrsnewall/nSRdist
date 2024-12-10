@@ -57,6 +57,8 @@ coreTM(4,:) = transnums(3,:)./numCSE2x(3);
 %Decide how to weight
 if S.weighting == "depth"
     weights   = nSRcountsArray(2, :);
+elseif S.weighting == "age"
+    weights = nSRcountsArray(4,:)./1000; % dividing by 1000 to convert units from yr to kyr
 else
     weights = ones(size(nSRcountsArray(2,:)));
 end
