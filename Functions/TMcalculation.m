@@ -1,24 +1,11 @@
-function[transnums, numCSE2x, coreTM] = TMcalculation(nSRcountsCell, coreSubsetLogical)
+function[transnums, numCSE2x, coreTM, TMweighted] = TMcalculation(nSRcountsCell, coreSubsetLogical, S)
 %This function takes in nSR counts and calculates a transition matrix from
-%it
-
+%it.
 %% Combine all counts into one array
-%set up arrays to be concatenated into
-nSRcountsArray = ones(4,1);
+nSRcountsArray = countsCell2Array(nSRcountsCell, coreSubsetLogical);
+nSRcounts = nSRcountsArray(1,:);
 
-%Concatenate all nSRcounts that are in the desired subset
-for i = 1:length(nSRcountsCell)
-    if coreSubsetLogical(i) == 1
-    nSRcountsArray = cat(2, nSRcountsArray, nSRcountsCell{i});
-    end
-end
-
-%Remove the ones that were used to set up arrays
-nSRcounts = nSRcountsArray(1,2:end);
-
-%%
-
-%---- Categorise normalised sed rates
+%% --- Calculate TM without weights
 %Categories are Steady, Expansion, Contraction (S, E, C)
 char_categ = '';
 for i = 1:(length(nSRcounts))
@@ -64,4 +51,64 @@ coreTM(1,:) = numCSE2x./sum(numCSE2x);
 coreTM(2,:) = transnums(1,:)./numCSE2x(1);
 coreTM(3,:) = transnums(2,:)./numCSE2x(2);
 coreTM(4,:) = transnums(3,:)./numCSE2x(3);
+
+%% Calculate TM with weights
+
+%Decide how to weight
+if S.weighting == "depth"
+    weights   = nSRcountsArray(2, :);
+else
+    weights = ones(size(nSRcountsArray(2,:)));
+end
+
+%Set up empty character and weight vectors
+charV = '';
+weightV = ones(0,0);
+%Decide which category the nSR count belongs to
+for i = 1:length(nSRcounts)
+    if nSRcounts(i) >= 0.922 && nSRcounts(i) <1.085
+        charAdd = 'S';
+    elseif nSRcounts(i)>=1.085 && nSRcounts(i) < inf
+        charAdd = 'E';
+    elseif nSRcounts(i) >= 0 && nSRcounts(i) < 0.922
+        charAdd = 'C';
+    else
+        charAdd = 'b';
+    end
+    %If the nSR is in the same category as the previous one (i.e., the last
+    %one added to the charV vector), just add the weights. If not, add a
+    %new entry to the charV and weightV vectors.
+    if i ~= 1 && charAdd == charV(end)
+        weightV(end) = weightV(end) + weights(i);
+    else
+        charV = append(charV, charAdd);
+        
+        weightV = [weightV; weights(i)];
+    end
+end
+
+% Find the number of times for each transition
+transCounts = NaN(3,3);
+transCounts(1,1) = sum(weightV(charV == 'C')) - sum(charV == 'C');
+transCounts(1,2) = length(strfind(charV, "CS")); %Probability of Contraction to Steady
+transCounts(1,3) = length(strfind(charV, "CE")); %Probability of Contraction to Expansion
+transCounts(2,1) = length(strfind(charV, "SC")); %Probability of Steady to Contraction
+transCounts(2,2) = sum(weightV(charV == 'S')) - sum(charV == 'S');
+transCounts(2,3) = length(strfind(charV, "SE")); %Probability of Steady to Expansion
+transCounts(3,1) = length(strfind(charV, "EC")); %Probability of Expansion to Contraction
+transCounts(3,2) = length(strfind(charV, "ES")); %Probability of Expansion to Steady
+transCounts(3,3) = sum(weightV(charV == 'E')) - sum(charV == 'E');
+
+% Get the total number of transitions from any given state
+numTrans = sum(transCounts, 2);
+
+% Calculate the transition matrix
+TM = NaN(4,3);
+TM(1,:) = numTrans./sum(numTrans);
+TM(2,:) = transCounts(1,:)./numTrans(1);
+TM(3,:) = transCounts(2,:)./numTrans(2);
+TM(4,:) = transCounts(3,:)./numTrans(3);
+
+TMweighted = TM;
+
 end
