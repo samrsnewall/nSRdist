@@ -122,7 +122,7 @@ for ix = 1:numruns;
         normSRs = SRs./(scenario_meanSR(i_sce)./1000);
     end
     %Add normSRs to vector to count them (with their weighting)
-    weightingNormaliser = numruns; %Find normalising value based on number of scenarios and number of runs
+    weightingNormaliser = numruns; %Find normalising value based on number of runs
     nSRinfo = [normSRs; dep_diffs./weightingNormaliser; dep_diffs; age_diffs]; %Set up nSR info (nSR counts, weighting, depth differences, age differences)
 
     %Store all nSR info in a single array, with NaNs separating info from
