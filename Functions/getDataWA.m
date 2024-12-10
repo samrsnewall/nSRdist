@@ -1,6 +1,5 @@
-function[age, depth_cm, error, label] = getDataWA(corename)
-WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-fnm = fullfile(WA_path, "Age/", corename + ".age");
+function[age, depth_cm, error, label] = getDataWA(corename, S)
+fnm = fullfile(S.WApath, "Age/", corename + ".age");
 %Read in radiocarbon data from the core
 depth_m     = ncread(fnm, "Depth"); %(meters)
 depth_cm    = depth_m.*100; %convert to cm
