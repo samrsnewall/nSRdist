@@ -95,16 +95,16 @@ for j = 1:numScenarios
                     dates2keepLog   = ~ismember(scenarios{j}, date2remove);     %Find logicals of dates to keep from scenario
                     scenarios{j}    = scenarios{j}(dates2keepLog);              %Override the old scenario with the new scenario
                     scenariosNew    = scenarios;
-                    scenariosNewCFR = scenariosCFR;
+                    scenariosNewCFR = [scenariosNewCFR(1:j-1);scenariosCFR(j:end)];
                     chosenLabels2   = chosenLabels;
-                    scenario_invSRvals2 = scenario_invSRvals;
-                    scenario_invSRprobs2 = scenario_invSRvals;
-                    scenario_meanSR2 = scenario_meanSR;
-                    numdatepairs2 = numdatepairs;
-                    ageModes2 = ageModes;
-                    lengthSed2 = lengthSed;
-                    MSI_bydepth2 = MSI_bydepth;
-                    MSI_byage2 = MSI_bydepth;
+                    %scenario_invSRvals2 = [scenario_invSRvals2(1:j-1); scenario_invSRvals();
+                    %scenario_invSRprobs2 = scenario_invSRvals;
+                    % scenario_meanSR2 = scenario_meanSR;
+                    % numdatepairs2 = numdatepairs;
+                    % ageModes2 = ageModes;
+                    % lengthSed2 = lengthSed;
+                    % MSI_bydepth2 = MSI_bydepth;
+                    % MSI_byage2 = MSI_bydepth;
                     newScenIndicator= 1;
                     break
                 end
