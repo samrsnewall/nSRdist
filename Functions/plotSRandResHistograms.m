@@ -1,4 +1,4 @@
-function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightbydepthQ, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
+function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightbydepthQ, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
 %%% This function takes some normalised sedimentation rate data in cell
 %%% format, combines the counts into a single array, applies the weighting
 %%% and then fits a mixture log normal to the result. It will also plot the
@@ -9,33 +9,7 @@ function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCoun
 
 %% Combine all counts into one array
 %set up arrays to be concatenated into
-nSRcountsArray = ones(4,1);
-
-if fitS.weighting == "none"
-    %Concatenate all nSRcounts that are in the desired subset, choosing
-    %only 1000 possible histories from each core (this allows the different
-    %scenarios to be accounted for without letting them overweight the influence of that
-    %core).
-    for i = 1:length(nSRcounts)
-        if coreSubsetLogical(i) == 1
-            corenSRcounts = nSRcounts{i};
-            numHistories = length(corenSRcounts);
-            chosenHistoriesI = randi(numHistories, 1,1000);
-            chosenHistories = corenSRcounts(:,chosenHistoriesI);
-            nSRcountsArray = cat(2, nSRcountsArray, chosenHistories);
-        end
-    end
-else
-    %Concatenate all nSRcounts that are in the desired subset
-    for i = 1:length(nSRcounts)
-        if coreSubsetLogical(i) == 1
-            nSRcountsArray = cat(2, nSRcountsArray, nSRcounts{i});
-        end
-    end
-end
-
-%Remove the ones that were used to set up arrays
-nSRcountsArray = nSRcountsArray(:,2:end);
+nSRcountsArray = countsCell2Array(nSRcounts, coreSubsetLogical);
 
 %Remove NaNs that are used to separate cores and runs
 NaNLog = isnan(nSRcountsArray(1,:));
@@ -68,7 +42,24 @@ dataLog = log(data);
 if a>b
     data = data';
 end
-[SR_MixLogNorm, logSR_MixNorm, ~] = fitMixLogNorm(data, x, components, regularizationValue);
+[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue, 5);
+
+%% Perform chi2gof on gmfit
+%Create cdf of distribution
+%Get the parameters of the mixed gaussian in log space
+mu1 = gmfit.mu(1); sigma1 = sqrt(gmfit.Sigma(1));
+mu2 = gmfit.mu(2); sigma2 = sqrt(gmfit.Sigma(2));
+w1  = gmfit.ComponentProportion(1);
+w2  = gmfit.ComponentProportion(2);
+
+%Create the cdf function handle
+mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
+
+desiredSum = length(dataLog);
+binN = fitS.chi2binN;
+[h,p,chistats] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN);
+gcf;
+title("chi2gof of Data vs Best Fit MLN")
 
 %% count how many estimates of nSR
 numbernSRcounts = length(nSR);
