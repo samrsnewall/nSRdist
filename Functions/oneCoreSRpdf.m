@@ -1,9 +1,9 @@
 function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, ageModes, scenarios, label, numreversals_mean, scenario_meanSR] = oneCoreSRpdf(corename, dataLoc, LabIDs, incDepths, excLabIDs, excDepths, S, plotfigs)
 %% Read in Radiocarbon Data
 if dataLoc == "WA"
-    [age, depth_cm, error, label] = getDataWA(corename);
+    [age, depth_cm, error, label] = getDataWA(corename, S);
 elseif dataLoc == "Lin2014"
-    [age, depth_cm, error, label] = getDatatxt(corename);
+    [age, depth_cm, error, label] = getDatatxt(corename, S);
 end
 
 %% Filtering
