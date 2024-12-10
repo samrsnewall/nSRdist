@@ -70,7 +70,7 @@ for i = 1:numruns
     
 
     %Fit a mix log normal to the data
-    [SR_MixLogNorm1RunHOLDER, ~, gmfit] = fitMixLogNorm(data, x, numComponents, regularizationVal); %If this is taking too long, try reducing the weightRepInflator value
+    [SR_MixLogNorm1RunHOLDER, ~, gmfit] = fitMixLogNorm(data, x, numComponents, regularizationVal, 1); %If this is taking too long, try reducing the weightRepInflator value
 
     %Get mus and sigmas from 
     mus     = zeros(numruns,1);
