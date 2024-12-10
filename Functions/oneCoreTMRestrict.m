@@ -10,9 +10,9 @@ end
 %% ------- Read in Radiocarbon Data
 %Read in some radiocarbon data from a net cdf file
 if dataLoc == "WA"
-    [age, depth_cm, error, label] = getDataWA(corename);
+    [age, depth_cm, error, label] = getDataWA(corename, S);
 elseif dataLoc == "Lin2014"
-    [age, depth_cm, error, label] = getDatatxt(corename);
+    [age, depth_cm, error, label] = getDatatxt(corename, S);
 end
 %% ------- Filter ages
 [age, depth_cm, error, label, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S);
