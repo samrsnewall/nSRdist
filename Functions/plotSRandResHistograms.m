@@ -36,6 +36,7 @@ elseif fitS.weighting == "age"
     data = makeWeightedReplicates(nSR, agedifferences, weightRepDP, weightRepInflator);
 end
 dataLog = log(data);
+numSRcalcs = size(nSRcountsArray, 2);
 
 %Calculate the MixLogNorm from these counts
 [a,b] = size(data);
@@ -55,8 +56,12 @@ w2  = gmfit.ComponentProportion(2);
 %Create the cdf function handle
 mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
 
-desiredSum = length(dataLog);
+%Set up certain important parameters
+%desiredSum = length(dataLog);
+desiredSum = numSRcalcs;
 binN = fitS.chi2binN;
+
+%Perform chi2gof
 [h,p,chistats] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN);
 gcf;
 title("chi2gof of Data vs Best Fit MLN")
