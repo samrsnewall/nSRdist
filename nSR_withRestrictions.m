@@ -13,82 +13,100 @@
 % sheet - which metadata xlsx sheet to use
 % problemCores - cores to avoid using because of poor data or excessive
 % computational expense
+% S - Settings to use throughout the code
 % 
 
 %% Add folder of necessary functions to path
 addpath('Functions')
 
 %% Create settings structure
+
+%Set up paths to sandbox, full path to Rscript, and World Atlas data on
+%computer
+S.sandboxPath       = "/Users/samnewall/Documents/MATLAB/nSRdist_code";
+S.RscriptPath       = "/usr/local/bin/Rscript";
+S.WApath            = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
+
+%Set up setting choices for nSR calculations
 S.minNumberOfAges   = 4;        %Minimum number of ages a core must have (after filtering) to be used
 S.DeltaRError       = 200;      %Error put on the Delta R (reservoir age correction)
 S.reversalCriteria  = 0.75;     %What fraction of SRs between two ages must be negative to call it a reversal
 S.removeLargeGaps   = false;    %Whether to manually remove large age gaps or leave them in
-S.modifyLin2014Data = true;     %Whether to use dates as used by Lin2014 or to include my own modifications to remove reversals or large age gaps
-S.c14AgeLim         = [0 42];   %Cutoffs for radiocarbon ages, in kyr %Choose [1 42] normally
+S.modifyLin2014Data = false;    %Whether to use dates as used by Lin2014 or to include my own modifications to remove reversals or large age gaps
+S.c14AgeLim         = [0 45];   %Cutoffs for radiocarbon ages, in kyr %Choose [1 42] normally
 S.pdfMinVal         = 1e-6;     %Cutoff to reduce size of radiocarbon pdf vector to accelerate calculations
 S.pdfMethod         = false;    %Whether to complete all of the pdf method or simply use it for multiply dated depths and reversals
 S.weighting         = "depth";  %How to weight (options are "depth", "age", or "none")
 S.normWithRunMean   = false;    %Use a common meanSR to use when calculating normalised SR (false) or use the SR from each individual run (true).
 S.useModes          = false;    %Calculate nSR distribution with the mode of each radiocarbon distribution, not sampling
-S.useBchron         = true;
-S.useLin            = true;
-S.usePF             = true;
+S.useBchron         = true;     %
+S.useLin            = true;     %Use the ages from Lin2014 database 
+S.usePF             = false;    %Use the ages I've added
+S.BchronFolderName  = '-';      %What folder to get BchronInputs from
+S.BchronOutlier     = 0.05;     %Value to input to Bchrons OutlierProbs
+S.BchronCalCurve    ="Marine09";%What calibration curve to use in Bchron
+S.BchronReDo        = false;     %Whether to redo all Bchron regardless of whether there is already an existing Bchron run available. Options are false and true
+
+%% Do I want to replicate Lin2014 approach?
+
+S.replicateLin2014 = 1;
+
+if S.replicateLin2014 == 1
+    S.modifyLin2014Data = false;
+    S.c14AgeLim = [0 50];
+    S.useBchron = true;
+    S.BchronCalCurve = "Marine09";
+end
+
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-%sheet = "DataSheets/COPYcorechoices_MSPF_highRes.xlsx";
-%sheet = "DataSheets/COPYcore40Metadata.xlsx";
 sheet = "DataSheets/COPYcore40MetadataAndLin2014.xlsx";
-
 rawdata     = readtable(sheet);
-if ~contains(sheet, "COPYcore40Metadata")
-    rawdataMSPF = rawdata(rawdata.MSPF == 1,:);
-elseif ~contains(sheet, "AndLin2014")
-    rawdataMSPF = rawdata(ismember(rawdata.UseChoice, "PF"), :);
-else
-    if S.useLin && ~S.usePF
-        rawdataMSPF = rawdata(rawdata.Lin2014 == 1, :);
-    elseif ~S.useLin && S.usePF
-        rawdataMSPF = rawdata(rawdata.WAuse == 1, :);
-    elseif S.useLin && S.usePF
-        rawdataMSPF = rawdata(rawdata.WAuse == 1 | rawdata.Lin2014Keep == 1,:);
-    end
+
+% Select relevant information based on what subsets of data has been chosen
+if S.useLin && ~S.usePF
+    rawdataMSPF = rawdata(rawdata.Lin2014 == 1, :);
+elseif ~S.useLin && S.usePF
+    rawdataMSPF = rawdata(rawdata.WAuse == 1, :);
+elseif S.useLin && S.usePF
+    rawdataMSPF = rawdata(rawdata.WAuse == 1 | rawdata.Lin2014Keep == 1,:);
 end
 
-
-%% Choose cores to look at
-%------ Index Good Cores
-%Create index for all cores
+%% Create logical to choose all good cores
+%Number of All Cores
 numAllCores = length(rawdataMSPF.CoreName);
-allcores    = 1:numAllCores;
 
-%Create logical of cores without those that have been manually removed
-%(goodLog)
-%reversalDenseCores = ["H214", "KNR159-5-36GGC", "MD02-2550", "GIK17940-2", "MD07-3076"];
-reversalDenseCores = "PLACEMENTSTRING";
+%Name of any problem cores (useful if wanting to exclude a single core)
+problemCores = "PLACEMENTSTRING";
+badLog             = ismember(string(rawdataMSPF.CoreName),problemCores);
+
+%Restrict which cores to analyse based on metadata, such as depth or
+%latitude
 if  S.useLin && ~S.usePF
-    reversalDenseCores = "PLACEMENTSTRING";
     latitudeRestrictionLog = ones(numAllCores, 1);
+    depthRestrictionLog    = rawdataMSPF.WaterDepthM >= 1000;
 else
     latitudeRestrictionLog = abs(rawdataMSPF.LatitudeDec) <= 40;
+    depthRestrictionLog    = rawdataMSPF.WaterDepthM >= 1000;
 end
-problemCores       = []; %reversals are mixed with duplicated depths, haven't figured out how to handle this yet
-badLog             = ismember(string(rawdataMSPF.CoreName),[reversalDenseCores, problemCores]);
-badIndexes         = allcores(badLog);
-restrictions       = latitudeRestrictionLog;
-goodLog            = badLog == 0 & restrictions == 1;
-goodIndexes = allcores(~badLog);
 
-%Create some other useful logical, to test all cores, only 1 core (defined by name), or a
-%subset of cores (defined by index)
-namedLog           = ismember(string(rawdataMSPF.CoreName), "H214");
-allLog             = true(length(goodLog), 1);
-subsetChooser      = logical(zeros(numAllCores, 1)); %#ok<LOGL>
-subsetChooser(1:end)  = 1; 
+%Therefore create logical of all good cores
+restrictions       = latitudeRestrictionLog & depthRestrictionLog;
+goodLog            = badLog == 0 & restrictions == 1;
+
+
+%% Create some other useful logicals
+%Test a core based on it's name
+namedLog = ismember(string(rawdataMSPF.CoreName), "H214");   
+
+%Test a subset of cores
+subsetChooser = false(numAllCores, 1);
+subsetChooser(1:end) = 1; 
 subsetChooser = subsetChooser == 1 & goodLog == 1;
 
 %% Get material data from Excel
-% Get info from Excel Spreadsheet
+% Get relevant metadata from Excel Spreadsheet into useful variables
 chosenCoresLog = goodLog;
 numCores    = sum(chosenCoresLog);
 cores       = table2array(rawdataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
@@ -97,26 +115,28 @@ longs       = table2array(rawdataMSPF(chosenCoresLog, "LongitudeDec"));
 depths      = table2array(rawdataMSPF(chosenCoresLog, "WaterDepthM"));
 ocean       = table2array(rawdataMSPF(chosenCoresLog, "Basin"));
 %distance2coast = table2array(rawdataMSPF(chosenCoresLog, "DistanceToCoast"));
-if ~contains(sheet, "COPYcore40Metadata")
-[LabIDs, incDepths, excLabIDs, excDepths] = extract1(rawdataMSPF, chosenCoresLog);
-dataLoc = strings(numCores,1);
-dataLoc(:) = "WA";
 
-elseif ~contains(sheet, "AndLin2014")
-    [LabIDs, incDepths, excLabIDs, excDepths] = extract2(rawdataMSPF, chosenCoresLog, S);
-    dataLoc = strings(numCores,1);
-dataLoc(:) = "WA";
-else
-    [LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, S);
-end
+[LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, S);
 
+%% Plot calibrated radiocarbon dates against depth
 % %% Plot cores age depth models
-% %------ Plot radiocarbon data from a single core (for exploratory use)
-% % for iPlot = 1
+%
 %  for iPlot = (1:length(cores))
-% 
 %   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, S)
 % end
+
+%% Get nSR values using Bchron (Mode and Probability)
+% ------ Use Bchron outputs
+bchronMode   = cell(numCores, 1);
+bchronMedian = cell(numCores, 1);
+bchronProb   = cell(numCores, 1);
+
+for i = 1:numCores
+[bchronMode{i}, bchronMedian{i}, bchronProb{i}] = nSRBchron(cores{i}, dataLoc(i), S);
+end
+
+%% Get transition matrix using Bchron Mode
+ [~,~,TMBchronMode]  = TMcalculation(bchronMode, true(numCores,1), S);
 
 %% invSR PDF Approach
 % This section runs through a quick, less-computationally-expensive
@@ -142,12 +162,11 @@ scenario_meanSR = cell(numCores, 1);
 %Calculate SR distribution for each core, as well as meanSR and other
 %useful information
 for i = 1:numCores
-    % disp("Working on " + cores{i})
+     disp("Working on " + cores{i})
     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i),...
         MSI_bydepth(i), sedimentlength(i), num14cpairs(i), ageModes{i},...
         corescenarios{i}, newlabels{i}, numreversals(i), scenario_meanSR{i}]...
         = oneCoreSRpdf(cores{i}, dataLoc(i), LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, S, 0);
-    % disp("Done with " + cores{i})
 end
 disp("Created all scenarios")
 
@@ -155,7 +174,7 @@ disp("Created all scenarios")
 agecoverage = sedimentlength./meanSR;
 dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes, sedimentlength, agecoverage, num14cpairs, MSI_byage, MSI_bydepth, LabIDs, incDepths, excLabIDs, excDepths, core_invSRvals, core_invSRprobs, corescenarios, scenario_meanSR);
 
-%% ------ Define Subsets of interest
+%% ------ Define Subsets of interest from calculated metadata
 % high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
 depth1000Log = depths > 1000;
 lowSRCoresLog   = meanSR<= 8 & depth1000Log;
@@ -166,7 +185,7 @@ allCoresLog     = ~isnan(meanSR) & depth1000Log;
 [~,highSRhighResCoresInd]   = maxk(num14cpairs.*highSRCoresLog, 10);
 highSRhighResCoresLog       = unfind(highSRhighResCoresInd, numel(cores));
 
- %% plot figure showing all the ages being used
+ %% Plot figure showing all the ages being used
 % %plotAgeModes(depth1000Log, ageModes, cores)
 %plotAgeModes2Subsets(ageModes, cores, highSRCoresLog, lowSRCoresLog)
 
@@ -180,16 +199,13 @@ highSRhighResCoresLog       = unfind(highSRhighResCoresInd, numel(cores));
 %------ Run through all chosen cores with random sampling approach,
 % RESTRICTION ON MINIMUM AGE DIFFERENCE = 0
 
-% for i = 1:numCores
-%     corescenarios{i} = labels{i}
-% end
-
 %Initiate variables
 disp("a")
 nSRcounts       = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs        = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
 for i =  1:numCores
+    disp(cores{i})
     [nSRcounts{i}, agediffs{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 0);
 end
 
@@ -201,7 +217,7 @@ disp("b")
 nSRcounts500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-for i =  1:numCores
+parfor i =  1:numCores
     [nSRcounts500{i}, agediffs500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 500);
 end
 
@@ -214,7 +230,7 @@ disp("c")
 nSRcounts1000   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs1000    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-for i =  1:numCores
+parfor i =  1:numCores
     [nSRcounts1000{i}, agediffs1000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1000);
 end
 disp("d")
@@ -226,9 +242,9 @@ disp("d")
 nSRcounts1500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs1500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-% for i =  1:numCores
-%     [nSRcounts1500{i}, agediffs1500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
-% end
+parfor i =  1:numCores
+    [nSRcounts1500{i}, agediffs1500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
+end
 disp("e")
 % ------ Run through all chosen cores with random sampling approach,
 % RESTRICTION ON MINIMUM AGE DIFFERENCE = 2000
@@ -237,19 +253,10 @@ disp("e")
 nSRcounts2000   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs2000    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-% for i =  1:numCores
-%     [nSRcounts2000{i}, agediffs2000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 2000);
-% end
-
-%% 
-% ------ Use Bchron outputs
-bchronMode = cell(numCores, 1);
-bchronProb = cell(numCores, 1);
- 
-for i = 1:numCores
-[bchronMode{i}, bchronProb{i}] = nSRBchron(cores{i}, S);
-disp(i)
+parfor i =  1:numCores
+    [nSRcounts2000{i}, agediffs2000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 2000);
 end
+
 %%
 
 dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nSRcounts2000, bchronMode, bchronProb); 
@@ -257,10 +264,10 @@ dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nS
 metadataLog = allCoresLog;
 outputMetadataAndSummaryFigures(allCoresLog,dataT)
 
-%save("Results/dataT_PFandLin_Nov20S1_largegaps.mat", "dataT", "S")
+save("Results/dataT_LinOnly_LinMethod_Dec10.mat", "dataT", "S")
 
 %% Calculate transition matrices for each setup
-% [~,~,TM1000]  = TMcalculation(nSRcounts1000, highSRCoresLog);
+
 
 %x = 0.01:0.01:15; plotSRandResHistograms(dataT.nSRcounts500, x, ones(size(dataT.nSRcounts500)), true, 3,1,2,0,"",true)
 
@@ -271,42 +278,58 @@ lognorm_BIGMACS = readtable("lognormal_BIGMACS.txt");                       % (u
 x = lognorm_BIGMACS.Var1';
 BIGMACShist = readmatrix("BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 BIGMACShist = BIGMACShist(:,4);
+[MLN_BIGMACS, ~, gmfitBM] = fitMixLogNorm(BIGMACShist, x, 2, 0, 5);
 numruns2sample = 400;
 desiredLog = highSRCoresLog;
 desiredRestriction = nSRcounts500;
 respectiveString = "HighSR500";
 fitS.Lin2014AgeFiltering = 1;
-fitS.weighting = "depth"; 
+fitS.weighting = "depth";
+fitS.chi2binN = 10;
 
 [mixLogAllruns] = plotSRandResHistograms(desiredRestriction, x, desiredLog, true, 3, 1, 2, 0, respectiveString,true, fitS);
 
 figure;
 hold on
-plot(x, mixLogAllruns(:,2), '-r')
-plot(x, lognorm_BIGMACS.Var2)
+%plot(x, mixLogAllruns(:,2), '-r')
+plot(x, MLN_BIGMACS(:,2), '--r')
+plot(x, lognorm_BIGMACS.Var2, '--k')
 xlim([0 5])
 
 %% Try plotSRandResHistograms for bchronMode data
-oneCoreLog = allCoresLog;
-oneCoreLog(2:end) = 0;
+% oneCoreLog = allCoresLog;
+% oneCoreLog(2:end) = 0;
 [mixLogBchronMode, BchronModeHist] = plotSRandResHistograms(bchronMode, x, allCoresLog, 1, 3, 1, 2, 0, "", 1, fitS);
+[mixLogBchronMed, BchronMedHist] = plotSRandResHistograms(bchronMedian, x, allCoresLog, 1, 3, 1, 2, 0, "", 1, fitS);
 [mixLogBchronProb, BchronProbHist] = plotSRandResHistograms(bchronProb, x, allCoresLog, 1, 3, 1, 2, 0, "", 1, fitS);
 
 figure;
 subplot(2,1,1)
 hold on
-plot(x, mixLogBchronMode(:,2), '-r')
-histogram(BchronModeHist, 'Normalization','pdf')
-xlim([0 15])
+histogram(BIGMACShist, 'Normalization','pdf', 'FaceColor', [0.5, 0.5, 0.5])
+plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
+xlim([0 6])
+xlabel("nSR")
+title("Original BIGMACS")
 subplot(2,1,2)
 hold on
-plot(x, lognorm_BIGMACS.Var2, '-k')
-histogram(BIGMACShist, 'Normalization','pdf')
-xlim([0 15])
+histogram(BchronModeHist, 'Normalization','pdf')
+plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
+plot(x, mixLogBchronMode(:,2), '-r', 'LineWidth',2)
+xlim([0 6])
+xlabel("nSR")
+title("Repeated by Newall")
 
 figure;
 hold on
-plot(x, mixLogBchronMode(:,2), '-r')
-plot(x, mixLogBchronProb(:,2), '-b')
-plot(x, lognorm_BIGMACS.Var2, '-k')
+histogram(BchronProbHist, 'Normalization', 'pdf')
+plot(x, mixLogBchronProb(:,2))
+xlim([0 10])
+xlabel("nSR")
+
+figure;
+hold on
+plot(x, mixLogBchronMode(:,2), '-r', 'LineWidth',2)
+plot(x, mixLogBchronProb(:,2), '-b', 'LineWidth',2)
+plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
 xlim([0 6])
