@@ -23,9 +23,7 @@ else
     disp("chi2gof: Reject H0 - p = " + num2str(p))
 end
 
-%
-%Get pdf numerically from cdf to use in plots
-%THE PDF IS NOT COMING OUT CORRECTLY! FIX THIS
+%Get pdf from cdf by differentiating
 step = 1e-5;
 pdfFH = @(t) (cdfFH(t+step)-cdfFH(t-step))/(2*step);
 x = linspace(min(data), max(data), 100);
@@ -34,11 +32,13 @@ x = linspace(min(data), max(data), 100);
 figure;
 hold on
 yyaxis("left")
-histogram('BinCounts',obsCountsDown, 'BinEdges', binEdges, 'FaceColor', 'r', "DisplayName", "Observed Counts")
-histogram('BinCounts', expCounts, 'BinEdges', binEdges, 'FaceColor', 'k', "DisplayName","Expected Counts")
+hObs = histogram('BinCounts',obsCountsDown, 'BinEdges', binEdges, 'FaceColor', 'r', "DisplayName", "Observed Counts");
+hExp = histogram('BinCounts', expCounts, 'BinEdges', binEdges, 'FaceColor', 'k', "DisplayName","Expected Counts");
 ylabel("Counts")
 yyaxis("right")
-plot(x, pdfFH(x), 'k', 'LineWidth', 2, "DisplayName", "Fitted PDF")
+lFitted = plot(x, pdfFH(x), 'k', 'LineWidth', 2, "DisplayName", "Fitted PDF");
+lpval = plot(nan, nan, 'LineStyle', 'none', 'DisplayName', "p = " + num2str(p, 3));
+lchi2stat = plot(nan, nan, 'LineStyle', 'none', 'DisplayName', "chi2stat = "  + num2str(chistats.chi2stat, 3));
 ylabel("PDF")
 xlabel("log nSR")
 legend()
