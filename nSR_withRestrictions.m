@@ -41,11 +41,11 @@ S.normWithRunMean   = false;    %Use a common meanSR to use when calculating nor
 S.useModes          = false;    %Calculate nSR distribution with the mode of each radiocarbon distribution, not sampling
 S.useBchron         = true;     %
 S.useLin            = true;     %Use the ages from Lin2014 database 
-S.usePF             = false;    %Use the ages I've added
+S.usePF             = true;    %Use the ages I've added
 S.BchronFolderName  = '-';      %What folder to get BchronInputs from
 S.BchronOutlier     = 0.05;     %Value to input to Bchrons OutlierProbs
 S.BchronCalCurve    ="Marine09";%What calibration curve to use in Bchron
-S.BchronReDo        = false;     %Whether to redo all Bchron regardless of whether there is already an existing Bchron run available. Options are false and true
+S.BchronReDo        = true;     %Whether to redo all Bchron regardless of whether there is already an existing Bchron run available. Options are false and true
 
 %% Do I want to replicate Lin2014 approach?
 
@@ -53,7 +53,8 @@ S.replicateLin2014 = 1;
 
 if S.replicateLin2014 == 1
     S.modifyLin2014Data = false;
-    S.c14AgeLim = [0 50];
+    S.DeltaRError = 0;
+    S.c14AgeLim = [0 48]; %Code has problems when age gets too large, gets to edge of calibration curve
     S.useBchron = true;
     S.BchronCalCurve = "Marine09";
 end
@@ -143,6 +144,12 @@ end
 % estimator of SR to find any reversals, create scenarios, to calculate the
 % meanSR and the number of dates used overall
 
+if S.replicateLin2014
+    %Code has problems when ages get too large, because they get to the
+    %edge of the vector that is returned by MatCal
+    S.c14AgeLim = [0 48];
+end
+
 %------ Initialise variables to hold this information
 core_invSRvals  = cell(numCores,1);
 core_invSRprobs = cell(numCores,1);
@@ -212,12 +219,14 @@ end
 % ------ Run through all chosen cores with random sampling approach,
 % RESTRICTION ON MINIMUM AGE DIFFERENCE = 500
 
+%%
+
 %Initiate variables
 disp("b")
 nSRcounts500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
-parfor i =  1:numCores
+for i =  1:numCores
     [nSRcounts500{i}, agediffs500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 500);
 end
 
@@ -259,12 +268,12 @@ end
 
 %%
 
-dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nSRcounts2000, bchronMode, bchronProb); 
+dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nSRcounts2000, bchronMode, bchronMedian, bchronProb); 
 
 metadataLog = allCoresLog;
 outputMetadataAndSummaryFigures(allCoresLog,dataT)
 
-save("Results/dataT_LinOnly_LinMethod_Dec10.mat", "dataT", "S")
+save("Results/dataT_LinandPF_LinMethod_Dec10.mat", "dataT", "S")
 
 %% Calculate transition matrices for each setup
 
