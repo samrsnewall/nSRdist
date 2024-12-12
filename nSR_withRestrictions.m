@@ -23,7 +23,7 @@ addpath('Functions')
 
 %Set up paths to sandbox, full path to Rscript, and World Atlas data on
 %computer
-S.sandboxPath       = "/Users/samnewall/Documents/MATLAB/nSRdist_code";
+S.sandboxPath       = "/Volumes/ExtDrive850X/MATLAB/nSRdist_code";
 S.RscriptPath       = "/usr/local/bin/Rscript";
 S.WApath            = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
 
