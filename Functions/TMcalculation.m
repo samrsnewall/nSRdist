@@ -84,8 +84,7 @@ for i = 1:length(nSRcounts)
         weightV(end) = weightV(end) + weights(i);
     else
         charV = append(charV, charAdd);
-        
-        weightV = [weightV; weights(i)];
+        weightV = [weightV; weights(i)]; %#ok<AGROW>
     end
 end
 
