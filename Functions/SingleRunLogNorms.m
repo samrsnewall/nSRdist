@@ -1,7 +1,10 @@
-function[SR_MixLogNorm1Run, c95up, c95down, mus,Sigmas] = SingleRunLogNorms(nSRcounts, coreLog, numruns, x, numComponents, weightQ, weightRepDP, weightRepInflator, regularizationVal, fitS)
+function[SR_MixLogNorm1Run, c95up, c95down, mus,Sigmas, outS] = SingleRunLogNorms(nSRcounts, coreLog, numruns, x, numComponents,  weightRepDP, weightRepInflator, regularizationVal, fitS)
 
 %Initialise vector
 SR_MixLogNorm1Run = NaN(length(x), numruns);
+weightedC = cell(1,numruns);
+numCpairs = NaN(1,numruns);
+chi2stats = NaN(1,numruns);
 
 %Clean out any cores that returned empty nSR vectors
 nSRcountsChosen = nSRcounts(coreLog);
@@ -40,13 +43,19 @@ for i = 1:numruns
 
 
     %% Weighting Data
-    if weightQ == 1 %This indicates whether to weight by depth or not
+    if fitS.weighting == "depth" %This indicates whether to weight by depth or not
         inputData       = OneRunData(1,:);
         weights         = OneRunData(3,:); %Weights by depth, not the mixed weighting of depth and scenarios
         inputDataClean  = inputData(~isnan(inputData));
         weightsClean    = weights(~isnan(weights));
         data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
-    else
+    elseif fitS.weighting == "age"
+        inputData       = OneRunData(1,:);
+        weights         = OneRunData(4,:); %Weights by depth, not the mixed weighting of depth and scenarios
+        inputDataClean  = inputData(~isnan(inputData));
+        weightsClean    = weights(~isnan(weights));
+        data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
+    elseif fitS.weighting == "none"
         %Set up data as unweighted input data
         data = OneRunData(1,:);
     end
@@ -67,10 +76,9 @@ for i = 1:numruns
     if a>b
         data = data';
     end
-    
-
+   
     %Fit a mix log normal to the data
-    [SR_MixLogNorm1RunHOLDER, ~, gmfit] = fitMixLogNorm(data, x, numComponents, regularizationVal, 1); %If this is taking too long, try reducing the weightRepInflator value
+    [SR_MixLogNorm1RunHOLDER, ~, gmfit] = fitMixLogNorm(data, x, numComponents, regularizationVal, fitS.mln1RunReps); %If this is taking too long, try reducing the weightRepInflator value
 
     %Get mus and sigmas from 
     mus     = zeros(numruns,1);
@@ -79,6 +87,14 @@ for i = 1:numruns
         mus(i)      = gmfit.mu;
         Sigmas(i)   = gmfit.Sigma;
     end
+
+    %Run chi2gof on the fit
+    numSRcalcs = numel(inputDataClean);
+    [h, p, chiStat] = chi2gof_vsMLN(gmfit, log(data), numSRcalcs, fitS);
+
+    weightedC{i} = data;
+    numCpairs(i) = numSRcalcs;
+    chi2stats(i) = chiStat.chi2stat;
 
     % % Plot histogram and mix log norm for each run
     % if i < 10
@@ -90,8 +106,12 @@ for i = 1:numruns
 end
 
 %Find 95% confidence intervals
-sortedCols  = sort(SR_MixLogNorm1Run');
+sortedCols  = sort(SR_MixLogNorm1Run'); %#ok<TRSRT>
 c95up       = sortedCols(numruns.*0.975, :);
 c95down     = sortedCols(numruns.*0.025, :);
 
+%Put some useful info into an output structure
+outS.weightedC = weightedC;
+outS.numCpairs = numCpairs;
+outS.chi2stats = chi2stats;
 end
