@@ -1,25 +1,25 @@
 function[modenSRinfo, mediannSRinfo, nSRcounts] = nSRBchron(corename, dataLoc, S)
 %Find Bchron output data
-if S.useLin && ~S.usePF
-    BchronFolder = "BchronLin2014";
-
-else
-    BchronFolder= "Bchron";
-end
+BchronFolder = S.BchronFolderName;
 
 %Set up directory to where the Bchron Data is
 coreDir = fullfile(S.sandboxPath, BchronFolder, "Outputs",corename);
-%folderName = S.BchronFolderName;
 
 %Bring in which calibration curve will be used
 calCurve = S.BchronCalCurve;
 
-%If the Bchron Data folder doesn't exist, run Bchronology
+%If the BchronData Output folder doesn't exist, run Bchronology
 if ~isfolder(coreDir) || S.BchronReDo 
-    
-    %Set up name of input file
-    c14input = fullfile(S.sandboxPath, BchronFolder, "Inputs",corename + "_radiocarbon.txt");
 
+    %If Bchron Data inputs folder doesn't exist, create it
+    inputsFolder = fullfile(S.sandboxPath, BchronFolder, "Inputs");
+    if ~isfolder(inputsFolder)
+        mkdir(inputsFolder)
+    end
+
+    %Set up name of Bchron input file
+    c14input = fullfile(S.sandboxPath, BchronFolder, "Inputs",corename + "_radiocarbon.txt");
+    
     %If the input file doesn't exist, create it
     if ~isfile(c14input) || S.BchronReDo
         %Get the radiocarbon data from our sources (either World Atlas or
