@@ -1,4 +1,4 @@
-function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightbydepthQ, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
+function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit, numSRcalcs, h, p, chiStat] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
 %%% This function takes some normalised sedimentation rate data in cell
 %%% format, combines the counts into a single array, applies the weighting
 %%% and then fits a mixture log normal to the result. It will also plot the
@@ -43,7 +43,7 @@ numSRcalcs = size(nSRcountsArray, 2);
 if a>b
     data = data';
 end
-[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue, 5);
+[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue, fitS.mlnReps);
 
 %% Perform chi2gof on gmfit
 %Create cdf of distribution
@@ -62,7 +62,7 @@ desiredSum = numSRcalcs;
 binN = fitS.chi2binN;
 
 %Perform chi2gof
-[h,p,chistats] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN);
+[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN, fitS);
 gcf;
 title("chi2gof of Data vs Best Fit MLN")
 
