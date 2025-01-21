@@ -1,0 +1,78 @@
+function[interiorEdges] = iterateBinSize(expCounts, cdfFH, interiorEdges, desiredSum, minCountNumber, maxCountNumber)
+%If the bins have less than 5 counts or more than 12, recalculate bin
+%counts until all bins fit this criteria
+smallbins = expCounts < minCountNumber;
+bigbins = expCounts > maxCountNumber;
+binSizeTester = smallbins| bigbins;
+
+while(sum(binSizeTester) ~=0)
+    %If the first bin is too big, find a good size
+    if binSizeTester(1) == 1
+        %Find a good lowest bin boundary
+        intEdgeMin = min(interiorEdges);
+        if intEdgeMin >0
+            intEdgeMinEst = intEdgeMin/10;
+        else
+            intEdgeMinEst = intEdgeMin*10;
+        end
+        minVals2Try = linspace(intEdgeMinEst, max(interiorEdges), 100);
+        expCountsMin = desiredSum.*cdfFH(minVals2Try);
+        minEdgeInd = find(expCountsMin > minCountNumber & expCountsMin <maxCountNumber, 1 );
+        minimumBinEdge = minVals2Try(minEdgeInd);
+        interiorEdges = sort([minimumBinEdge, interiorEdges]); %#ok<AGROW>
+        expProbs = diff([0, cdfFH(interiorEdges), 1]);
+        expCounts = expProbs.*desiredSum;
+        %Test again
+        smallbins = expCounts < minCountNumber;
+        bigbins = expCounts > maxCountNumber;
+        binSizeTester = smallbins| bigbins;
+    end
+    %If the last bin is too big, find a good size
+    if binSizeTester(end) == 1
+        %Find a good lowest bin boundary
+        intEdgeMax = max(interiorEdges);
+        if intEdgeMax >0
+            intEdgeMaxEst = intEdgeMax*10;
+        else
+            intEdgeMaxEst = intEdgeMax/10;
+        end
+        maxVals2Try = linspace(min(interiorEdges),intEdgeMaxEst, 100);
+        expCountsmax = desiredSum.*cdfFH(maxVals2Try);
+        maxEdgeInd = find(expCountsmax < desiredSum-minCountNumber & expCountsmax > desiredSum - maxCountNumber, 1 );
+        maximumBinEdge = maxVals2Try(maxEdgeInd);
+        interiorEdges = sort([interiorEdges, maximumBinEdge]); %#ok<AGROW>
+        expProbs = diff([0, cdfFH(interiorEdges), 1]);
+        expCounts = expProbs.*desiredSum;
+        %Test again
+        smallbins = expCounts < minCountNumber;
+        bigbins = expCounts > maxCountNumber;
+        binSizeTester = smallbins| bigbins;
+    end
+    if sum(smallbins) ~=0
+        %Remove all bin edges that create bins that are too small
+        interiorEdges = interiorEdges(~smallbins(2:end));
+        expProbs = diff([0, cdfFH(interiorEdges), 1]);
+        expCounts = expProbs.*desiredSum;
+        %Test again
+        smallbins = expCounts < minCountNumber;
+        bigbins = expCounts > maxCountNumber;
+        binSizeTester = smallbins | bigbins;
+    end
+    if sum(bigbins) ~=0
+        %split big bins into two
+        bigBinMinEdge = logical([bigbins(2:end-1), 0]);
+        bigBinMaxEdge = logical([0,bigbins(2:end-1)]);
+        bigBinsSplit = (interiorEdges(bigBinMinEdge)+interiorEdges(bigBinMaxEdge))./2;
+        %Add the remaining edges and halfway edges
+        interiorEdges = sort([interiorEdges,bigBinsSplit]);
+        %Calculate expected counts now
+        expProbs = diff([0, cdfFH(interiorEdges), 1]);
+        expCounts = expProbs.*desiredSum;
+        %Test again
+        smallbins = expCounts < minCountNumber;
+        bigbins = expCounts > maxCountNumber;
+        binSizeTester = smallbins| bigbins;
+    end
+end
+
+
