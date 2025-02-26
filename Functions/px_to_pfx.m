@@ -12,7 +12,7 @@ dxCounts = sum(dxU_big);                                                %Find ou
 
 if dxCounts ~= 1
     %Convert the x to equal spacing
-    xbinwidth = 0.001;
+    xbinwidth = 5e-4;
     x_equalspc = min(xPOS):xbinwidth:max(xPOS);
     px_equalspc = interp1(xPOS, pxPOS, x_equalspc);
     
@@ -26,15 +26,23 @@ end
 %%%% Apply correction for differing bin sizes after applying function
 
 %find bin width in fx space
-fx_binsizes = abs(f(xPOS - xbinwidth./2) - f(xPOS + xbinwidth./2));
+fx_halfstepdown = f(xPOS - xbinwidth./2);
+fx_halfstepup = f(xPOS + xbinwidth./2);
+fx_binsizes = abs(fx_halfstepdown - fx_halfstepup);
 %divide prob by binsize in fx space
 fxvalsprob = pxPOS./fx_binsizes;
 %Find the fx values that apply to the bins
-fxvals = (f(xPOS - xbinwidth./2) + f(xPOS + xbinwidth./2))./2;
+fxvals = (fx_halfstepdown + fx_halfstepup)./2;
 
-%Interpolate to equal x-spacing from minimum x value to maximum x value
-fxvals_interp = min(fxvals):0.001:max(fxvals); %create new spacing
+%Interpolate to x spacing equivalent to original x spacing but after
+%function applied (make sure no part of it is outside of fxvals, to avoid
+%NaNs)
+fxvals_interp = sort(f(x)); %create new spacing
+fx_toobig = fxvals_interp > max(fxvals);
+fx_toosmall = fxvals_interp < min(fxvals);
 fxvalsprob_interp = interp1(fxvals, fxvalsprob, fxvals_interp); %interpolate to it
+fxvalsprob_interp(fx_toobig) = fxvalsprob_interp(find(fx_toobig, 1, 'first') -1);
+fxvalsprob_interp(fx_toosmall) = fxvalsprob_interp(find(fx_toosmall, 1, 'last') +1);
 %normalise prob vector
 AUC = trapz(fxvals_interp, fxvalsprob_interp);
 fxvalsprob_norm = fxvalsprob_interp./AUC;
