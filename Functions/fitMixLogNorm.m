@@ -1,4 +1,4 @@
-function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numComponents, regularizationVal, replicates)
+function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numComponents, replicates)
 %%% Create a mixed log normal to fit some dataset (if weighted, this must
 %%% already be applied to data). This function applies a regularization
 %%% value. A regularization value of 0 is the same as not regularising.
@@ -7,17 +7,15 @@ function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numCo
 % data_linear   = data on linear scale (i.e. without logarithm applied)
 % x             = x values on linear scale for which you want to know the pdf
 % numComponents = number of components in mixture Log Normal desired
-% regularizationVal = value to regularise with, in case of poor set up
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Run gmfit
-options = statset('MaxIter', 1000);                                         %Set the number of iterations (default=500 often doesn't converge)
+options = statset('Display', 'off', 'MaxIter', 1000, 'TolFun', 1e-6);       %Set the number of iterations (default=500 often doesn't converge)
 if ~iscolumn(data_linear)                                                   %Ensure the data is in column vector form
     data_linear = data_linear';
 end
 data_log = log(data_linear);                                                %Take logarithm of data
 gmfit    = fitgmdist(data_log, numComponents, "Options", options, ...       %Fit mix normal to logarithm of data
-    'RegularizationValue',regularizationVal, 'Replicates', replicates);                               %Apply a regularisation value if needed
+     'Replicates', replicates, 'Start','randSample');                       
 
 %Initialise std deviation vector and prob density vector
 stddev_fit  = NaN(1,numComponents);
@@ -40,6 +38,9 @@ end
 %multiplying by their mixing component
 mix_fit         = gmfit.ComponentProportion;                                %Find the mixing component of each individual Gaussian
 z               = sum(y.*mix_fit, 2);
+if find(z == max(z)) == 1
+    disp('check why the max value is the first index... it is being inverted, or isnt')
+end
 lz              = sum(ly.*mix_fit, 2);
 mixLogNormPDF   = [x', z];
 mixNormPDF      = [lx', lz];
