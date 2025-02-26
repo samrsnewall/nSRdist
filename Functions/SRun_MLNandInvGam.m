@@ -1,12 +1,18 @@
 function[outS] = SRun_MLNandInvGam(nSRcounts, coreLog, numruns, x, MLNcomponents, fitS)
 
 %Initialise vectors
+MLNfits = cell(length(x), numruns);
 MLNs = NaN(length(x), numruns);
+IGfits = cell(length(x), numruns);
 invGams = NaN(length(x), numruns);
-phats  = NaN(2,numruns);
+%phats  = NaN(2,numruns);
 weightedC = cell(1,numruns);
 numCpairs = NaN(1,numruns);
-chi2stats = NaN(1,numruns);
+%chi2stats = NaN(1,numruns);
+h1 = NaN(1,numruns);
+p1 = NaN(1,numruns);
+h2 = NaN(1,numruns);
+p2 = NaN(1,numruns);
 skippedIterations = 0;
 
 %Clean out any cores that returned empty nSR vectors
@@ -42,18 +48,32 @@ for i = 1:numruns
 
             % use the NaN indeces to choose the data of that run for each core
             % and concatenate it into OneRunData
-            try
+
             nSRcount_1core1run = nSRcount_opencell(1:4,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)));
-            catch
-                disp("b")
+            
+            if sum(nSRcount_1core1run(1,:) <=0) ~=0
+                disp("check this core")
             end
+
             OneRunData         = cat(2, OneRunData, nSRcount_1core1run);
         end
 
+
+        %Get rid of negative sedimentation rates (ideally, shouldn't be
+        %there)
+        if sum(OneRunData(1,:)<0) ~= 0
+            warning("There are negative sed rates!... being removed")
+            OneRunData = OneRunData(:, OneRunData(1,:) > 0);
+        end
+        
+        %Get rid of SRs of 0 (ideally, shouldn't be there)
+        if sum(OneRunData(1,:) == 0) ~= 0
+            warning("There are SRs of 0!... being removed.")
+            OneRunData = OneRunData(:,OneRunData(1,:) ~= 0);
+        end
+
+        %Apply filtering done by Lin2014 if wanted
         if fitS.Lin2014AgeFiltering
-            if sum(OneRunData<0) ~= 0
-                warning("There are negative sed rates!")
-            end
             L2014Log = OneRunData(4,:) < 4500 & OneRunData(4,:) > 500;
             OneRunData = OneRunData(:,L2014Log);
         end
@@ -84,7 +104,7 @@ for i = 1:numruns
         if fitS.weighting ~= "none"
             numSRcalcs = numel(inputDataClean);
         else
-            numSRcalcs = numel(data);
+            numSRcalcs = numel(data)./weightRepInflator;
         end
 
         %% Fitting mix log normal
@@ -103,8 +123,8 @@ for i = 1:numruns
         while allow2 == 0 && skipIteration == 0
             try
                 
-                [SR_MixLogNorm1RunHOLDER, ~, ~] = fitMixLogNorm(data, x, MLNcomponents, fitS.OneRun.MLNReps); %If this is taking too long, try reducing the weightRepInflator value
-                [invGamPDFHOLDER, GamPDFHOLDER,~] = fitInvGamma(data, x);
+                [SR_MixLogNorm1RunHOLDER, ~, gmfitH] = fitMixLogNorm(data, x, MLNcomponents, fitS.OneRun.MLNReps); %If this is taking too long, try reducing the weightRepInflator value
+                [invGamPDFHOLDER, GamPDFHOLDER,IGfitH] = fitInvGamma(data, x);
 
                 %Remove any NaNs in HOLDERS (think this is a bug?)
                 SR_MixLogNorm1RunHOLDER(isnan(SR_MixLogNorm1RunHOLDER)) = 0;
@@ -120,9 +140,11 @@ for i = 1:numruns
                 allow2 = 0;
                 if errorNum >10
                     skipIteration = 1;
-                    SR_MixLogNorm1RunHOLDER = NaN(size(SR_MixLogNorm1RunHOLDER));
-                    invGamPDFHOLDER = NaN(size(invGamPDFHOLDER));
-                    GamPDFHOLDER = NaN(size(GamPDFHOLDER));
+                    gmfitH = NaN;
+                    SR_MixLogNorm1RunHOLDER = NaN(length(x), 2);
+                    IGfitH = NaN;
+                    invGamPDFHOLDER = NaN(length(x), 1);
+                    GamPDFHOLDER = NaN(length(x), 1);
                     chiStat1 = table2struct(table('Size', [1,5], 'VariableTypes', ["double", "double", "cell", "cell", "cell"], 'VariableNames',["chi2stat","df","edges","O","E"]));
                     chiStat1.chi2stat = NaN;
                     chiStat1.df = NaN;
@@ -144,39 +166,44 @@ for i = 1:numruns
     %Run chi2gof on the fit
     %chi2gof on MLN
     MLNVEC.x = x;
-    MLNVEC.fx = SR_MixLogNorm1RunHOLDER(:,2);
+    MLNVEC.px = SR_MixLogNorm1RunHOLDER(:,2);
     MLNVEC.numParams = 6;
 
-    [logMLNVEC.x, logMLNVEC.fx] = px_to_pfx(MLNVEC.x, MLNVEC.fx, @log);
+    [logMLNVEC.x, logMLNVEC.px] = px_to_pfx(MLNVEC.x, MLNVEC.px, @log);
     logMLNVEC.numParams = MLNVEC.numParams;
     %[~, ~, MLNchiStat] = chi2gof_vsMLN(gmfit, log(data), numSRcalcs, fitS);\
     %[~,~,MLNchiStat] = chi2_dataVSpdfVEC(log(data), numSRcalcs, 20, MLNVEC, fitS);
 
     %chi2gof on inverse gamma
     InvGamVEC.x = x;
-    InvGamVEC.fx = invGamPDFHOLDER;
+    InvGamVEC.px = invGamPDFHOLDER;
     InvGamVEC.numParams = 2;
 
-    [logInvGamVEC.x, logInvGamVEC.fx] = px_to_pfx(InvGamVEC.x, InvGamVEC.fx, @log);
+    [logInvGamVEC.x, logInvGamVEC.px] = px_to_pfx(InvGamVEC.x, InvGamVEC.px, @log);
     logInvGamVEC.numParams = 2;
 
-    [~, ~, chiStat1, ~, ~, chiStat2] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, logMLNVEC, logInvGamVEC, fitS);
+    [h1(i), p1(i), chiStat1, h2(i), p2(i), chiStat2] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, logMLNVEC, logInvGamVEC, fitS);
 
 
     end
     %Save this round's data
-    SR_MixLogNorm1Run(:, i) = SR_MixLogNorm1RunHOLDER(:,2);
-    invGamPDF(:,i) = invGamPDFHOLDER;
-    GamPDF(:,i) = GamPDFHOLDER;
+    MLNfits{i} = gmfitH;
+    MLNs(:, i) = SR_MixLogNorm1RunHOLDER(:,2);
+    IGfits{i} = IGfitH;
+    invGams(:,i) = invGamPDFHOLDER;
+    %GamPDF(:,i) = GamPDFHOLDER;
     weightedC{i} = data;
     numCpairs(i) = numSRcalcs;
     MLNchiStatT = [MLNchiStatT; struct2table(chiStat1, 'AsArray',true)];%#ok<AGROW>
-    InvGamChiStatT = [MLNchiStatT; struct2table(chiStat2, 'AsArray', true)];
+    InvGamChiStatT = [InvGamChiStatT; struct2table(chiStat2, 'AsArray', true)];%#ok<AGROW>
 end
 outS.weightedC = weightedC;
 outS.numCpairs = numCpairs;
-outS.MLNPDFs = SR_MixLogNorm1Run;
-outS.invGamPDFs = invGamPDF;
-outS.GamPDFs = GamPDF;
-outS.MLNchiStats = MLNchiStatT;
-outS.InvGamChiStats = InvGamChiStatT;
+outS.MLNPDFs = MLNs;
+outS.invGamPDFs = invGams;
+outS.MLNfits = MLNfits;
+%outS.GamPDFs = GamPDF;
+MLNchiStatT1 = addvars(MLNchiStatT, h1', p1', 'Before',"chi2stat", 'NewVariableNames', ["h", "p"]);
+outS.MLNchiStats = MLNchiStatT1;
+InvGamChiStatT1 = addvars(InvGamChiStatT, h2', p2', 'Before',"chi2stat", 'NewVariableNames', ["h", "p"]);
+outS.InvGamChiStats = InvGamChiStatT1;
