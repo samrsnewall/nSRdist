@@ -14,7 +14,8 @@ mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
 %desiredSum = length(dataLog);
 desiredSum = numSRcalcs;
 binN = fitS.chi2binN;
+numParams = 6;
 
 %Perform chi2gof
-[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN, fitS);
+[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, numParams, desiredSum, binN, fitS);
 end
