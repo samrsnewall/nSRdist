@@ -11,6 +11,12 @@ calCurve = S.BchronCalCurve;
 %If the BchronData Output folder doesn't exist, run Bchronology
 if ~isfolder(coreDir) || S.BchronReDo 
 
+    %If Bchron Data "/Outputs" folder doesn't exist, create it
+    outputsFolder = fullfile(S.sandboxPath, BchronFolder, "Outputs");
+    if ~isfolder(outputsFolder)
+        mkdir(outputsFolder)
+    end
+
     %If Bchron Data inputs folder doesn't exist, create it
     inputsFolder = fullfile(S.sandboxPath, BchronFolder, "Inputs");
     if ~isfolder(inputsFolder)
@@ -117,9 +123,9 @@ modeAgeUsed = modeAgeUsed(ia);
 medianAgeUsed = medianAgeUsed(ia);
 
 %Not sure how doubly dated depths will play through with the individual
-%runs
-thetaData = thetaData(:,ia);
-phiData = phiData(:,ia);
+%runs (as long as R is saving thetaPredict, not theta, then doubly dated depths will be given the same age)
+% thetaData = thetaData(:,ia);
+% phiData = phiData(:,ia);
 
 %Calculate nSR with mode
 
@@ -148,8 +154,13 @@ mediannSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; medianAgeUs
 for i = 1:size(thetaData,1)
     %Find out which ages were not rejected in this run
     keepAges = ~logical(phiData(1,:));
-    runages = thetaData(i,keepAges);
-    rundepths = depths(keepAges)';
+    runagespDD = thetaData(i,keepAges);
+    rundepthspDD = depths(keepAges)';
+
+    %deal with doubly dated depths (will create duplicate runage and
+    %rundepth values)
+    runages = unique(runagespDD);
+    rundepths = unique(rundepthspDD);
     
     %Calculate SRs, weights, agediffs
     runSRs = diff(rundepths)./diff(runages);
@@ -158,7 +169,7 @@ for i = 1:size(thetaData,1)
 
     %Calculate nSR
     if S.normWithRunMean
-        runmeanSR = (rundepths(end)-rundeptphs(1))./(runages(end)-runages(1));
+        runmeanSR = (rundepths(end)-rundepths(1))./(runages(end)-runages(1));
         runnSR = runSRs./runmeanSR;
     else
         runnSR = runSRs./meanSR;
@@ -169,6 +180,6 @@ for i = 1:size(thetaData,1)
     if i == 1
         nSRcounts = nSRinfo;
     else
-        nSRcounts = [nSRcounts, nSRinfo];
+        nSRcounts = [nSRcounts, nSRinfo]; %#ok<AGROW>
     end
 end
