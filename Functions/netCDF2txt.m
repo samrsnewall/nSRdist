@@ -1,21 +1,17 @@
-function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths, folderName, separateBySR)
+function[] = netCDF2txt(corename, LabIDs, incDepths, excLabIDs, excDepths, dataLoc, separateBySR, S)
 %% Read in Radiocarbon Data
-%Set up path to Mulitza et al 2022 World Atlas Dataset
-WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-fnm = fullfile(WA_path, "Age/", corename + ".age");
-%Read in radiocarbon data from the core
-depth_m = ncread(fnm, "Depth"); %(meters)
-depth_cm = depth_m.*100; %convert to cm
-age = ncread(fnm, "Age dated"); %(14C kyrs BP)
-error = ncread (fnm, "Age +Error"); %(14C kyrs BP)
-label = ncread(fnm, "Label"); %(Lab ID)
-label = string(label);
+%%Read in radiocarbon data from the core
+if dataLoc == "WA"
+    [age, depth_cm, error, label] = getDataWA(corename, S);
+elseif dataLoc == "Lin2014"
+    [age, depth_cm, error, label] = getDatatxt(corename, S);
+end
 
 %% Filtering
 %Filter for MSPF dates, remove manually determined outliers, only keep
 %dates between 1 and 42 14C ky BP, and only keep cores with 4 or more
 %accepted dates
-[age, depth_cm, error, ~, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths);
+[age, depth_cm, error, ~, emptybreak1, emptybreak2] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename,  S);
 
 if emptybreak1 ==1 || emptybreak2 == 1
     return
@@ -40,7 +36,7 @@ cc = ones(length(age), 1)*2;
 outputTable = table(depth, age, error, dR, dSTD, cc);
 %Output to txt file with tab delimiters
 
-outputFilename = fullfile(folderName, corename + ".txt");
+outputFilename = fullfile(S.folderName, corename + ".txt");
 writetable(outputTable, outputFilename, "Delimiter", '\t')
 
 end
