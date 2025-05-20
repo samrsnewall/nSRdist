@@ -13,12 +13,13 @@ removeIndex = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
 removeIndex2 = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
 nSRcountsArray = nSRcountsArraywNaN(:, ~(removeIndex | removeIndex2)); % remove nans and zeros
 
-%Remove information from age pairs not within 0.5-4.5 kyr
+%Remove information from age pairs not within range from
+%fitS.Lin2014AgeFilter
 if fitS.Lin2014AgeFiltering
     if sum(nSRcountsArray(4,:) < 0) ~= 0
         warning("There are negative sed rates being filtered out!")
     end
-    L2014Log = nSRcountsArray(4,:) < 4500 & nSRcountsArray(4,:) > 500;
+    L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 else
     if sum(nSRcountsArray(4,:) < 0) ~= 0
@@ -58,30 +59,8 @@ beta = phat(2);
 
 % Create gamma on invx values
 invxGamProb = gampdf(invx, alpha, beta);
-% invxGamcdf = @(t) gamcdf(t, alpha, beta);
-% 
-% %Set up certain important parameters
-% %desiredSum = length(dataLog);
-% desiredSum = numSRcalcs;
-% binN = fitS.chi2binN;
-
-% %Perform chi2gof
-% numParams = 2;
-% [h,p,chiStat] = chi2gof_vsfunction(invnSR_WR, invxGamcdf, numParams, desiredSum, binN, fitS);
-% gcf;
-% title("chi2gof of Data vs Best Fit Gamma")
-
-% % Plot inverse data
-% binEdges = [0:0.1:15];
-% 
-% figure;
-% hold on
-% histogram(invnSR_WR, "BinEdges", binEdges, 'Normalization', "pdf");
-% plot(invx, invxGamProb, 'LineWidth', 2)
-% xlim([0 5])
-% xlabel("Inverse normalised SR")
-% title("\alpha = " + num2str(phat(1)))
 
 % Convert back to nSR
-[nSR_invGamma, nSR_invGammaProb] = gammaAccRate2nSR(phat(1), phat(2));
+f_inv = @(x) 1./x;
+[nSR_invGamma, nSR_invGammaProb] = px_to_pfx(invx, invxGamProb, f_inv);
 end
