@@ -1,4 +1,4 @@
-function[invSR_Gamma1Run, phat95up, phat95down, phat, nSR_Gamma1Run] = SingleRunGammas(nSRcounts, coreLog, numruns, x, weightQ, weightRepDP, weightRepInflator, regularizationVal)
+function[invSR_Gamma1Run, phat95up, phat95down, phat, nSR_Gamma1Run] = SingleRunGammas(nSRcounts, coreLog, numruns, x, weightRepDP, weightRepInflator, regularizationVal, fitS)
 
 %Initialise vector
 invSR_Gamma1Run = NaN(length(x), numruns);
@@ -9,10 +9,10 @@ phat            = NaN(2,numruns);
 nSRcountsChosen = nSRcounts(coreLog);
 cores2remove    = cellfun(@isempty,nSRcountsChosen);
 nSRcountsClean  = nSRcountsChosen(~cores2remove);
+runN            = NaN(numruns*2, length(nSRcountsClean));
 
 %Set up inverse nSR grid
 invx = sort(1./x);
-
 
 % Take 1 run's worth of data from each core and calculate inverse gammas
 for i = 1:numruns
@@ -27,31 +27,51 @@ for i = 1:numruns
         split_index       = find(isnan(nSRcount_opencell(1,:)));
         split_indexStart  = split_index + 1;
         split_indexEnd    = split_index - 1;
+        split_indexEnd    = [split_indexEnd(2:end), size(nSRcount_opencell, 2)];
 
         if i ==1
-            runN(:,j) = randperm(length(split_index)-1, numruns);  %%%This allows me to make the scenarios chosen random
+                runN(:,j) = randperm(length(split_index), numruns*2);  %%%This allows me to make the scenarios chosen random. The length(split_index) finds out how many times each core was sampled (when sampled previously, the sampling randomly chose scenarios). This chooses random samples (and therefore random scenarios).
         end
 
         % use the NaN indeces to choose the data of that run for each core
         % and concatenate it into OneRunData
-        nSRcount_1core1run = nSRcount_opencell(1:4,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)+1));
+        nSRcount_1core1run = nSRcount_opencell(1:4,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)));
         OneRunData         = cat(2, OneRunData, nSRcount_1core1run);
     end
 
+    if fitS.Lin2014AgeFiltering
+        if sum(OneRunData<0) ~= 0
+            warning("There are negative sed rates!")
+        end
+        L2014Log = OneRunData(4,:) < 4500 & OneRunData(4,:) > 500;
+        OneRunData = OneRunData(:,L2014Log);
+    end
+
     %% MUST ADD THIS WEIGHTING COMPONENT!
-    if weightQ == 1 %This indicates whether to weight by depth or not
+    if fitS.weighting == "depth" %This indicates whether to weight by depth or not
         inputData       = OneRunData(1,:);
         weights         = OneRunData(3,:);
         inputDataClean  = inputData(~isnan(inputData));
         weightsClean    = weights(~isnan(weights));
         data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
-    else
+    elseif fitS.weighting == "age"
+        inputData       = OneRunData(1,:);
+        weights         = OneRunData(4,:);
+        inputDataClean  = inputData(~isnan(inputData));
+        weightsClean    = weights(~isnan(weights));
+        data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
+    elseif fitS.weighting == "none"
         %Set up data as unweighted input data
         data = OneRunData(1,:);
     end
 
+    %Check that the data is a row vector
+    [a,b] = size(data);
+    if a>b
+        data = data';
+    end
 
-
+    %% Fit inverse gammas
     %convert nSR to inverse nSR
     dataInv = 1./data;
 
@@ -75,7 +95,7 @@ for i = 1:numruns
     % end
 
     % Convert back to nSR
-    [nSR_Gamma, nSR_GammaProb] = gammaAccRate2nSR(phat(1,i), phat(2,i), invx);
+    [nSR_Gamma, nSR_GammaProb] = gammaAccRate2nSR(phat(1,i), phat(2,i));
     % [nSRtest, nSRtestProb] = invSRtoSR(invx, invxGamProb); %Gives the same result as the line above
     
     %interpolate onto x
@@ -93,7 +113,7 @@ end
 
 %Find 95% confidence values of phat
 sortedPhat_alpha = sort(phat(1,:), 'ascend');
-phat95up        = sortedPhat_alpha(numruns.*0.975);
-phat95down      = sortedPhat_alpha(numruns.*0.025);
+phat95up        = sortedPhat_alpha(ceil(numruns.*0.975));
+phat95down      = sortedPhat_alpha(ceil(numruns.*0.025));
 
 end
