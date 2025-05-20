@@ -20,6 +20,7 @@ while(sum(binSizeTester) ~=0)
         minEdgeInd = find(expCountsMin > minCountNumber & expCountsMin <maxCountNumber, 1 );
         minimumBinEdge = minVals2Try(minEdgeInd);
         interiorEdges = sort([minimumBinEdge, interiorEdges]); %#ok<AGROW>
+        interiorEdges = interiorEdges(interiorEdges >= minimumBinEdge);
         expProbs = diff([0, cdfFH(interiorEdges), 1]);
         expCounts = expProbs.*desiredSum;
         %Test again
@@ -50,6 +51,11 @@ while(sum(binSizeTester) ~=0)
     end
     if sum(smallbins) ~=0
         %Remove all bin edges that create bins that are too small
+        if sum(smallbins) == numel(smallbins)
+            %If all bin edges would be removed, then remove every other bin
+            %edge
+            interiorEdges = interiorEdges(logical(accumarray([1:2:numel(smallbins)]',1)')); %#ok<NBRAK1>
+        end
         interiorEdges = interiorEdges(~smallbins(2:end));
         expProbs = diff([0, cdfFH(interiorEdges), 1]);
         expCounts = expProbs.*desiredSum;
