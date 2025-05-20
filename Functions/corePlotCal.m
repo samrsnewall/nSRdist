@@ -1,20 +1,14 @@
-function[] = corePlotCal(corename, LabIDs, incDepths, excLabIDs, excDepths, S)
+function[] = corePlotCal(corename, LabIDs, incDepths, excLabIDs, excDepths, dataLoc, S)
 %% Read in Radiocarbon Data
-%Read in some radiocarbon data from a net cdf file
-WA_path = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-fnm = fullfile(WA_path, "Age/", corename + ".age");
-
-%Read in radiocarbon data from the core
-depth_m = ncread(fnm, "Depth"); %(meters)
-depth = depth_m.*100; %convert to cm
-age = ncread(fnm, "Age dated"); %(14C kyrs BP)
-error = ncread (fnm, "Age +Error"); %(14C kyrs BP)
-label = ncread(fnm, "Label"); %(Lab ID)
-label = string(label);
-[age, depth, label];
+%%Read in radiocarbon data from the core
+if dataLoc == "WA"
+    [age, depth_cm, error, label] = getDataWA(corename, S);
+elseif dataLoc == "Lin2014"
+    [age, depth_cm, error, label] = getDatatxt(corename, S);
+end
 
 %% Filter for plotting
-[age, depth, error, ~, ~,~, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S);
+[age, depth, error, ~, ~,~, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S);
 
 %% Plot all radiocarbon data
 % figure
@@ -48,6 +42,8 @@ gap5kyrLog = [gap5kyrfinder, 0] | [0, gap5kyrfinder];
 gap5kyrAges = medCal(gap5kyrLog);
 gap5kyrDepths = depth(gap5kyrLog);
 
+
+
 EM.medCal = [];
 EM.errCal = [];
 for i = 1:length(EM.age)
@@ -75,22 +71,25 @@ for i = 1:length(NotCCR.age)
     NotCCR.errCal(i) = NotCCR.p95(1,i) - NotCCR.p95(2,i);
 end
 
+if ~isempty(gap5kyrDepths)
+    %There is an age pair that has a large gap here
 
-figure;
-hold on
-errorbar(depth, medCal, errCal, "vertical", "Marker","none" , "color", 'k', 'DisplayName', "95% CI", "LineStyle","none")
-plot(depth, medCal, "Marker", "o", "Color","k", "DisplayName", "Median Cal Age", "LineStyle","none")
-errorbar(EM.depth, EM.medCal, EM.errCal, "vertical", '.', "color", 'r', 'DisplayName', "Material Not Chosen")
-errorbar(ManE.depth, ManE.medCal, ManE.errCal, "vertical", 'o', "color", 'r', 'DisplayName', "Manually Excluded")
-errorbar(NotCCR.depth, NotCCR.medCal, NotCCR.errCal, "vertical", 'x', "color", 'r', 'DisplayName', "Outside CC Range")
-%upperlim = max([medCal(end), EM.medCal(end), ManE.medCal(end), NotCCR.medCal(end)])
-plot(gap5kyrDepths, ones(length(gap5kyrDepths)), 'r-')
-ylim([0 50000])
-%set(gca, 'YTickLabel',get(gca,'YTick'))
-ytickformat('%,6.4g')
-xlabel("Depth (cm)")
-ylabel(["Calibrated Age","(cal yr BP)"])
-legend("location", "southeast")
-title(corename)
+    figure;
+    hold on
+    errorbar(depth, medCal, errCal, "vertical", "Marker","none" , "color", 'k', 'DisplayName', "95% CI", "LineStyle","none")
+    plot(depth, medCal, "Marker", "o", "Color","k", "DisplayName", "Median Cal Age", "LineStyle","none")
+    errorbar(EM.depth, EM.medCal, EM.errCal, "vertical", '.', "color", 'r', 'DisplayName', "Material Not Chosen")
+    errorbar(ManE.depth, ManE.medCal, ManE.errCal, "vertical", 'o', "color", 'r', 'DisplayName', "Manually Excluded")
+    errorbar(NotCCR.depth, NotCCR.medCal, NotCCR.errCal, "vertical", 'x', "color", 'r', 'DisplayName', "Outside CC Range")
+    %upperlim = max([medCal(end), EM.medCal(end), ManE.medCal(end), NotCCR.medCal(end)])
+    plot(gap5kyrDepths, ones(length(gap5kyrDepths)), 'r-')
+    ylim([0 50000])
+    %set(gca, 'YTickLabel',get(gca,'YTick'))
+    ytickformat('%,6.4g')
+    xlabel("Depth (cm)")
+    ylabel(["Calibrated Age","(cal yr BP)"])
+    legend("location", "southeast")
+    title(corename)
+end
 
 end
