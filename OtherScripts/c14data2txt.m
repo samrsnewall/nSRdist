@@ -6,12 +6,28 @@
 % BEFORE RUNNING, DOUBLE CHECK WHERE THE DATA WILL BE STORED!
 
 %% Add Functions Folder to Path
-addpath('Functions')
+addpath('../Functions')
+
+S.c14AgeLim         = [0 50]; 
+S.useLin            = true;
+S.usePF             = true;
+S.minNumberOfAges   = 4;
+S.sheet             = "../DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";
+S.folderName = "c14TrainingData_ReversalsRemoved_Feb28";
+S.removeLargeGaps = false;
+S.WApath       = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
+S.sandboxPath  = "/Volumes/ExtDrive850X/MATLAB/nSRdist_code";
 
 %% Load Metadata of MSPF cores
 %Check which cores have MSPF (monospecific planktonic foram) dates
-data = readtable("COPYcorechoices_MSPF_highRes.xlsx"); %read all metadata
-dataMSPF = data(data.MSPF == 1,:);
+data = readtable(S.sheet); %read all metadata
+
+if S.useLin == 1 && S.usePF == 1
+dataMSPF = data(data.WAuse == 1 | data.Lin2014Keep == 1,:);
+end
+
+d = load("../Results/dataT_RLGfalse_R200M20_Feb26.mat");
+dataMSPF1 = d.dataT;
 
 %% Index Good Cores
 %Create index for all cores
@@ -19,9 +35,10 @@ numAllCores = length(dataMSPF.CoreName);
 allcores = 1:numAllCores;
 %Create index of cores that have many reversals (determined by manual
 %inspection)
-reversalDenseCores = ["GeoB1711-4", "GIK17940-2", "H214", "SO75_3_26KL", "MD95-2042", "RC11-83"];
+reversalDenseCores = ["PlaceholderString"];%["GeoB1711-4", "GIK17940-2", "H214", "SO75_3_26KL", "MD95-2042", "RC11-83"];
 badLog = contains(string(dataMSPF.CoreName),reversalDenseCores);
-goodLog = badLog == 0;
+restrictionLog =  dataMSPF1.meanSR > 8 & dataMSPF1.depths > 1000 & abs(dataMSPF1.lats) < 40;
+goodLog = badLog == 0 & restrictionLog == 1;
 badIndexes = allcores(badLog);
 %Hence create index to use only cores that passed manual inspection
 goodIndexes = allcores(~badLog);
@@ -32,33 +49,22 @@ subsetchooser = zeros(size(goodLog));
 subsetchooser(1:5) = 1;
 subsetchooserLog = logical(subsetchooser);
 chosenCoresLog = goodLog;
-cores = table2array(dataMSPF(chosenCoresLog, "CoreName")); %take list of MSPF corenames
-lats = table2array(dataMSPF(chosenCoresLog, "LatitudeDec"));
-longs = table2array(dataMSPF(chosenCoresLog,"LongitudeDec"));
-depths = table2array(dataMSPF(chosenCoresLog, "WaterDepthM"));
-LabIDs = table2array(dataMSPF(chosenCoresLog, "LabIDs")); %take list of LabIDs relating to MSPF dates of each core
-incDepths = table2array(dataMSPF(chosenCoresLog, "IncludeDepths")); % take list of depths (useful if no labels)
-excLabIDs = table2array(dataMSPF(chosenCoresLog, "excludeLabIDs")); %take list of manually removed dates for each core
-excDepths = table2array(dataMSPF(chosenCoresLog, "excludeDepth")); %take list of manually removed dates for each core (useful if no labels)
+cores = table2array(dataMSPF1(chosenCoresLog, "cores")); %take list of MSPF corenames
+lats = table2array(dataMSPF1(chosenCoresLog, "lats"));
+longs = table2array(dataMSPF1(chosenCoresLog,"longs"));
+depths = table2array(dataMSPF1(chosenCoresLog, "depths"));
+[LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(dataMSPF, chosenCoresLog, S);
 numCores = sum(chosenCoresLog);
 
-% plotIndexes = find(chosenCoresLog);
-% for i = 20:sum(chosenCoresLog);% find(namedLog)'
-%     iPlot = plotIndexes(i);
-%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot})
+% %%
+% for i = 1:numCores% find(namedLog)'
+%   corePlotCal(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, dataLoc(i), S)
 % end
 
 %% Output all cores filtered data to txt files
 %Decide if I want all cores or only cores with SR > 8 (0 or 1 respectively)
 sepBySRg8 = 0;
-%Set Folder Name
-folderName = "c14TrainingData_Oct17_planktonicF_highSR";
 %Run through all cores to output data to txt file
 for i = 1:numCores
-    if ismember(i, find(highSRCoresLog))
-    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, folderName, sepBySRg8);
-    end
+    netCDF2txt(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, dataLoc(i),  sepBySRg8, S);
 end
-
-
-
