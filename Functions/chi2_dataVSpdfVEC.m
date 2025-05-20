@@ -12,7 +12,7 @@ obsCountsDown = round(obsCounts./divisor);
 %Get the expected counts, given the hypothesised distribution
 %Set up some preliminary bin edges
 interiorEdges = binEdges(2:end-1);
-cumsumpdf = cumsum(pdfVEC.fx);
+cumsumpdf = cumsum(pdfVEC.px);
 pdfVEC.cdf_x = cumsumpdf./max(cumsumpdf);
 cdf_at_edges = interp1(pdfVEC.x, pdfVEC.cdf_x, interiorEdges);
 expProbs = diff([0, cdf_at_edges, 1]);
@@ -93,7 +93,7 @@ if fitS.dispChi2 == true
     if fitS.enforceBinSizeLimits == false
         %Plot function
         yyaxis("right")
-        lTested = plot(pdfVEC.x, pdfVEC.fx, 'k', 'LineWidth', 2, "DisplayName", "Tested PDF"); %#ok<*NASGU>
+        lTested = plot(pdfVEC.x, pdfVEC.px, 'k', 'LineWidth', 2, "DisplayName", "Tested PDF"); %#ok<*NASGU>
         ylabel("PDF")
     end
 
