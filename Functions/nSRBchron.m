@@ -1,4 +1,4 @@
-function[modenSRinfo, mediannSRinfo, nSRcounts] = nSRBchron(corename, dataLoc, S)
+function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,LabIDs, incDepths, excLabIDs, excDepths, dataLoc, S)
 %Find Bchron output data
 BchronFolder = S.BchronFolderName;
 
@@ -36,6 +36,18 @@ if ~isfolder(coreDir) || S.BchronReDo
             [age, depth_cm, error, label] = getDatatxt(corename, S);
         end
 
+        % If desired to filter, similar to RSR methods, apply filter
+        if S.BchronFilter
+            [age, depth_cm, error, label, emptybreak1, emptybreak2,~,~,~] = filtering(age, depth_cm, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S);
+            if emptybreak1 == 1 || emptybreak2 == 1
+                modenSRinfo = [];
+                mediannSRinfo = [];
+                nSRcounts = [];
+                meanSR = NaN;
+                return
+            end
+        end
+
         %Write a new tab delimited file in the correct format for Bchron to
         %read, using the radiocarbon data we have
         numages = length(age);
@@ -55,7 +67,7 @@ if ~isfolder(coreDir) || S.BchronReDo
     cmnd = S.RscriptPath + " " +...
         fullfile(S.sandboxPath, "Functions", "runBchron.R")...
         + " " + S.sandboxPath + " " + BchronFolder + " "...
-        + corename + " " + calCurve + " " + S.DeltaRError;
+        + corename + " " + calCurve + " " + S.DeltaRError + " " + S.BchronDepthSpacing;
     [status, output] = system(cmnd);
     
     %Double check whether the command was run smoothly or not
@@ -75,8 +87,15 @@ rData = readtable(fullfile(coreDir, "inputData.txt"));
 thetaData = readmatrix(fullfile(coreDir, "theta.csv"), "NumHeaderLines",1);
 phiData = readmatrix(fullfile(coreDir, "phi.csv"), "NumHeaderLines", 1);
 
+%Get the thetaData for the depths where radiocarbon ages were taken
+predictPositions = rData.Depth(1):S.BchronDepthSpacing:rData.Depth(end);    %This is all the depths Bchron estimated ages
+depthR_r2BDS = round(rData.Depth./S.BchronDepthSpacing).*S.BchronDepthSpacing; %This is the depth of each radiocarbon date, rounded to the BchronDepthSpacing used for predictPosition
+predictPositionsRLOG = ismember(predictPositions,depthR_r2BDS);             %this is the logical to get ages estimated by Bchron at radiocarbon date depths
+predictPositionsR = predictPositions(predictPositionsRLOG);                 %This is depths on predictPositions that are radiocarbon dated
+thetaDataR = thetaData(:, predictPositionsRLOG);                            %This is ages at those depths
+
 %Get mode and median from thetaData (which holds the 1000 ages used in the
-%1000 Bchron iterations for each radiocarbon date - it's different than the radiocarbon calibration).
+%1000 Bchron iterations for each radiocarbon dated depth - it's different than the radiocarbon calibration).
 
 %%% NOTE THAT THE MODE calculated using MATLAB is often different to the
 %%% MODE using Bchron. This is possible when the dataset is multimodal
@@ -87,18 +106,17 @@ phiData = readmatrix(fullfile(coreDir, "phi.csv"), "NumHeaderLines", 1);
 %%% a numerical dataset because it depends on the resolution of the data
 %%% (Bchron output is likelihood per year) and there may be multiple modes.
 %%% 
-modeMAT = mode(thetaData);
-medianMAT = median(thetaData);
+modeMAT = mode(thetaDataR);
+medianMAT = median(thetaDataR);
 pctRejMAT = sum(phiData)./10;
 
 %Test if there are any multi-modal Bchron estimates
-[~,~,test] = mode(thetaData);
-if any(cellfun(@length, test) > 1)
-    disp("Core " + corename + " has a multimodal Bchronology estimate")
-end
+%[~,~,test] = mode(thetaData);
+% if any(cellfun(@length, test) > 1)
+%     disp("Core " + corename + " has a multimodal Bchronology estimate")
+% end
 
 %Get relevant information for calculating nSR with mode of Ages
-depths = rData.Depth;
 modeAge = modeMAT';
 medianAge = medianMAT';
 pctReject = pctRejMAT';
@@ -109,10 +127,12 @@ pctReject = pctRejMAT';
 %good ages are rejected up to 5% of the time
 removeRejectedAges = true;
 if removeRejectedAges
-    rejectLog = pctReject > 50;
-    depthsUsed = depths(~rejectLog);
-    modeAgeUsed = modeAge(~rejectLog);
-    medianAgeUsed = medianAge(~rejectLog);
+    rejectLog = pctReject > S.BchronReversalCriteria*100;  %Find which ages were rejected more than the criterium set
+    acceptedDepths = depthR_r2BDS(~rejectLog);                  %Find out what ages were accepted (using their depth info to index them) 
+    depthsUsed = unique(acceptedDepths);         %Find out what depths had estimated ages we want to keep (unique and accepted depths)   
+    rejectAgeLog = ~ismember(depthsUsed, predictPositionsR); %Find out what estimated ages we want to reject (ages are estimated at unique depths, keep the unique depths we accepted)
+    modeAgeUsed = modeAge(~rejectAgeLog);       %keep ages not rejected
+    medianAgeUsed = medianAge(~rejectAgeLog);   %keep ages not rejected
 end
 
 %Handle doubly-dated depths (not sure how Lin2014 handled this)
@@ -122,13 +142,9 @@ end
 modeAgeUsed = modeAgeUsed(ia);
 medianAgeUsed = medianAgeUsed(ia);
 
-%Not sure how doubly dated depths will play through with the individual
-%runs (as long as R is saving thetaPredict, not theta, then doubly dated depths will be given the same age)
-% thetaData = thetaData(:,ia);
-% phiData = phiData(:,ia);
+%For the individual runs, as long as R is saving thetaPredict, not theta, then doubly dated depths will be given the same age)
 
-%Calculate nSR with mode
-
+%Calculate nSR with mode ***************************
 %calculate meanSR
 meanSR = (depthsUsed(end)-depthsUsed(1))./(modeAgeUsed(end) - modeAgeUsed(1));
 SRs = diff(depthsUsed)./diff(modeAgeUsed);
@@ -139,7 +155,7 @@ agediffs = diff(modeAgeUsed);
 %Store all nSR info in one matrix, the standard set up I use
 modenSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; modeAgeUsed(1), agediffs'];
 
-%Calculate nSR with median ages
+%Calculate nSR with median ages **************************
 meanSR = (depthsUsed(end)-depthsUsed(1))./(medianAgeUsed(end) - medianAgeUsed(1));
 SRs = diff(depthsUsed)./diff(medianAgeUsed);
 nSRs = SRs./meanSR;
@@ -149,21 +165,21 @@ agediffs = diff(medianAgeUsed);
 %Store all nSR info in one matrix, the standard set up I use
 mediannSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; medianAgeUsed(1), agediffs'];
 
-%%% Including probability of ages method
+%%% Calculate nSR with probability of ages method *********************
 %Go through each run, calculate the nSR info, and store it
-for i = 1:size(thetaData,1)
-    %Find out which ages were not rejected in this run
+for i = 1:size(thetaDataR,1)
+    %Find out which ages were not rejected in this run (this also deals
+    %with doubly dated depths, by finding unique depths and using thetaRs,
+    %which only estimate one age per depth)
     keepAges = ~logical(phiData(1,:));
-    runagespDD = thetaData(i,keepAges);
-    rundepthspDD = depths(keepAges)';
-
-    %deal with doubly dated depths (will create duplicate runage and
-    %rundepth values)
-    runages = unique(runagespDD);
+    rundepthspDD = depthR_r2BDS(keepAges)';
     rundepths = unique(rundepthspDD);
+    keepThetaRs = ismember(rundepths, predictPositionsR);
+    runages = thetaDataR(i,keepThetaRs);
     
     %Calculate SRs, weights, agediffs
     runSRs = diff(rundepths)./diff(runages);
+    rundepthdiffs = diff(rundepths);
     runweights = diff(rundepths);
     runagediffs = diff(runages);
 
@@ -176,7 +192,7 @@ for i = 1:size(thetaData,1)
     end
 
     %Store info in one vector, with my standardised format
-    nSRinfo = [NaN, runnSR; NaN, runweights; rundepths(1), runweights; runages(1), runagediffs];
+    nSRinfo = [NaN, runnSR; NaN, runweights; rundepths(1), rundepthdiffs; runages(1), runagediffs];
     if i == 1
         nSRcounts = nSRinfo;
     else
