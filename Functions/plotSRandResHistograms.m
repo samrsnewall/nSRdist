@@ -1,4 +1,4 @@
-function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit, numSRcalcs, h, p, chiStat] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
+function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit, numSRcalcs, totalSedLength, totalSedAge, h, p, chiStat] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
 %%% This function takes some normalised sedimentation rate data in cell
 %%% format, combines the counts into a single array, applies the weighting
 %%% and then fits a mixture log normal to the result. It will also plot the
@@ -16,34 +16,42 @@ NaNLog = isnan(nSRcountsArray(1,:));
 nSRcountsArray = nSRcountsArray(:,~NaNLog);
 
 %% Remove information from age pairs not within 0.5-4.5kyr
-
 if fitS.Lin2014AgeFiltering
-    L2014Log = nSRcountsArray(4,:) < 4500 & nSRcountsArray(4,:) > 500;
+    if sum(nSRcountsArray(4,:) < 0) ~= 0
+        warning("There are negative sed rates!")
+    end
+    L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
     nSRcountsArray = nSRcountsArray(:,L2014Log);
+else
+    if sum(nSRcountsArray(4,:) < 0) ~= 0
+        error("There are negative sed rates")
+    end
 end
 
 %% Fit Mix Log Norm
 %Convert the weighted nSR counts to a single dimension array of counts
 %where the number of counts is representative of their weighting
 nSR = nSRcountsArray(1,:)'; %nSR data
-depthWeights = nSRcountsArray(2,:);  %weightings
-agedifferences = nSRcountsArray(4,:);
+depthDiffs = nSRcountsArray(2,:);  %weightings
+ageDiffs = nSRcountsArray(4,:);
 if fitS.weighting == "none"
-    data = nSR; 
+    data = nSR;
 elseif fitS.weighting == "depth"
-    data = makeWeightedReplicates(nSR, depthWeights, weightRepDP, weightRepInflator);
+    data = makeWeightedReplicates(nSR, depthDiffs, weightRepDP, weightRepInflator);
 elseif fitS.weighting == "age"
-    data = makeWeightedReplicates(nSR, agedifferences, weightRepDP, weightRepInflator);
+    data = makeWeightedReplicates(nSR, ageDiffs, weightRepDP, weightRepInflator);
 end
 dataLog = log(data);
 numSRcalcs = size(nSRcountsArray, 2);
+totalSedLength = sum(depthDiffs, "omitnan");
+totalSedAge = sum(ageDiffs, "omitnan");
 
 %Calculate the MixLogNorm from these counts
 [a,b] = size(data);
 if a>b
     data = data';
 end
-[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, regularizationValue, fitS.mlnReps);
+[SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, fitS.mlnReps);
 
 %% Perform chi2gof on gmfit
 %Create cdf of distribution
@@ -53,6 +61,7 @@ mu2 = gmfit.mu(2); sigma2 = sqrt(gmfit.Sigma(2));
 w1  = gmfit.ComponentProportion(1);
 w2  = gmfit.ComponentProportion(2);
 
+numParams = 6;
 %Create the cdf function handle
 mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
 
@@ -62,9 +71,13 @@ desiredSum = numSRcalcs;
 binN = fitS.chi2binN;
 
 %Perform chi2gof
-[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, desiredSum, binN, fitS);
-gcf;
-title("chi2gof of Data vs Best Fit MLN")
+%[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, numParams, desiredSum, binN, fitS);
+% gcf;
+% title("chi2gof of Data vs Best Fit MLN")
+
+h = [];
+p = [];
+chiStat = [];
 
 %% count how many estimates of nSR
 numbernSRcounts = length(nSR);
@@ -81,13 +94,13 @@ dataVarLog = var(dataLog);
 %Define bins edges for histogram
 SRbinEdges = 0:0.1:10;
 logSRbinEdges = -4:0.05:4;
-agediffsBinEdges = 0:500:10000;
+agediffsBinEdges = 0:100:10000;
 
 %Calculate bin counts (using weighting for SR)
-SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
+%SRbinCounts = makeWeightedBinCounts(nSRcountsArray(1,:), nSRcountsArray(2,:), SRbinEdges);
 histData = data;
-logSRbinCounts = makeWeightedBinCounts(log(nSR), depthWeights, logSRbinEdges);
-agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffsBinEdges);
+logSRbinCounts = makeWeightedBinCounts(log(nSR), depthDiffs, logSRbinEdges);
+agediffsBinCounts = makeWeightedBinCounts(ageDiffs, depthDiffs, agediffsBinEdges);
 
 %% Compare histogram of "weighted data" to weighted histogram of data
 % figure;
@@ -99,7 +112,7 @@ agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffs
 % histogram(data, "BinEdges", SRbinEdges)
 % xlim([0 6])
 % title("Weighted by replicating data")
-% 
+%
 % %% compare histogram of weighted log data to weighted histogram of log data
 % figure;
 % subplot(1,2,1)
@@ -110,7 +123,7 @@ agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffs
 % histogram(dataLog, "BinEdges", logSRbinEdges)
 % xlim([-4 4])
 % title("Weighted by replicating data")
-% 
+%
 % %% Get true weighted histograms of nSR and lognSR
 % figure;
 % subplot(2,2,1)
@@ -134,31 +147,31 @@ agediffsBinCounts = makeWeightedBinCounts(agedifferences, depthWeights, agediffs
 
 %% Plot to see how data compare to estimated distributions
 if plotQ == 1
-figure
-subplot(2,2,1)
-hold on
-histogram(dataLog, "Normalization", "pdf")
-plot(logSR_MixNorm(:,1), logSR_MixNorm(:,2))
-xlabel("Log nSR")
-title("Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog))
-subplot(2,2,2)
-qqplot(dataLog)
-xlabel("Log nSR Data")
-subplot(2,2,3)
-hold on
-histogram(data, "BinEdges", SRbinEdges, "Normalization", "pdf")
-plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
-xlabel("nSR")
-xlim([0 6])
-title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
-subplot(2,2,4)
-histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
-xlabel("Age Diff (yrs)")
-ylabel("Counts")
-title(num2str(numbernSRcounts) + " nSR estimates")
-sgtitle(subsetName)
+    figure
+    subplot(2,2,1)
+    hold on
+    histogram(dataLog, "Normalization", "pdf")
+    plot(logSR_MixNorm(:,1), logSR_MixNorm(:,2))
+    xlabel("Log nSR")
+    title("Data Mean = " + num2str(dataMeanLog) + "; Data Var = " + num2str(dataVarLog))
+    subplot(2,2,2)
+    qqplot(dataLog)
+    xlabel("Log nSR Data")
+    subplot(2,2,3)
+    hold on
+    histogram(data, "BinEdges", SRbinEdges, "Normalization", "pdf")
+    plot(SR_MixLogNorm(:,1), SR_MixLogNorm(:,2))
+    xlabel("nSR")
+    xlim([0 6])
+    title("Data Mean = " + num2str(dataMeanLinear) + "; Data Var = " + num2str(dataVarLinear))
+    subplot(2,2,4)
+    histogram("BinCounts", agediffsBinCounts, "BinEdges", agediffsBinEdges)
+    xlabel("Age Diff (yrs)")
+    ylabel("Counts")
+    title(num2str(numbernSRcounts) + " nSR estimates")
+    sgtitle(subsetName)
 end
-% 
+%
 % figure
 % subplot(1,2,1)
 % hold on
