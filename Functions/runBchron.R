@@ -9,7 +9,7 @@
 ## - args[5] = the desired Delta R (Marine Reservoir Offset)
 
 #The following line is useful for when you want to run this code manually in R, for a given core
-#args <- c('/Volumes/ExtDrive850X/MATLAB/nSRdist_code', 'Bchron_PFandLin_R200M20_Feb4', 'KNR140-51GGC', 'Marine20', '200')
+#args <- c('/Volumes/ExtDrive850X/MATLAB/nSRdist_code', 'Bchron_PFandLin_R200M20_Feb4', 'KNR140-51GGC', 'Marine20', '200', '0.1')
 
 ## Input corename from command line
 args = commandArgs(trailingOnly = TRUE)
@@ -45,6 +45,7 @@ dir.create(file.path(genPath, subDir))
 ## Set up Bchronology Choices
 ccurveChosen <- args[4L]
 deltaR <- as.numeric(args[5L])
+depthSpacing <- as.numeric(args[6L])
 
 ##Run Bchronology
 chron <- Bchronology(
@@ -55,11 +56,14 @@ chron <- Bchronology(
   calCurves = rep(ccurveChosen, length(rdata$Age)),
   outlierProbs = rdata$Outlier1, 
   allowOutside = TRUE, 
-  predictPositions = rdata$Depth,
+  predictPositions = seq(rdata$Depth[1], rdata$Depth[length(rdata$Depth)], by = depthSpacing),
                     )
 
 ##Write useful information out as txt files
 write.csv(chron[["thetaPredict"]], file.path(genPath, subDir, "theta.csv"),
+          row.names = FALSE)
+
+write.csv(chron[["predictPositions"]], file.path(genPath, subDir, "predictPositions.csv"),
           row.names = FALSE)
 
 write.csv(chron[["phi"]], file.path(genPath, subDir, "phi.csv"),
