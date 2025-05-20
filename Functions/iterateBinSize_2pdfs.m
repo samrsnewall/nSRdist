@@ -30,11 +30,11 @@ while(sum(binSizeTester) ~=0)
         minVals2Try = linspace(intEdgeMinEst, max(interiorEdges), 100);
         expCountsMin1 = desiredSum.*(interp1(pdfVEC1.x, pdfVEC1.cdf_x, minVals2Try));
         expCountsMin2 = desiredSum.*(interp1(pdfVEC2.x, pdfVEC2.cdf_x, minVals2Try));
-            minEdgeInd = find(...
-                expCountsMin1 > minCountNumber &...
-                expCountsMin1 < maxCountNumber &...
-                expCountsMin2 > minCountNumber &...
-                expCountsMin2 < maxCountNumber, 1 );
+        minEdgeInd = find(...
+            expCountsMin1 > minCountNumber &...
+            expCountsMin1 < maxCountNumber &...
+            expCountsMin2 > minCountNumber &...
+            expCountsMin2 < maxCountNumber, 1 );
         if sum(minEdgeInd) <1
             figure()
             yyaxis left
@@ -80,7 +80,7 @@ while(sum(binSizeTester) ~=0)
                 expCountsmax1 < desiredSum - minCountNumber &...
                 expCountsmax1 > desiredSum - maxCountNumber &...
                 expCountsmax2 < desiredSum - minCountNumber &...
-                expCountsmax2 > desiredSum - maxCountNumber, 1 );
+                expCountsmax2 > desiredSum - maxCountNumber, 1 , "last");
         catch
             error("No bin edges found that work for both distributions")
         end
@@ -158,3 +158,11 @@ while(sum(binSizeTester) ~=0)
         error("Bin Iteration taking too many iterations")
     end
 end
+
+binWidths = diff(interiorEdges);
+minBinWidths = sort(binWidths, 'ascend');
+if min(binWidths) < minBinWidths(2)/3
+    [~,ind] = min(binWidths);
+    interiorEdges = [interiorEdges(1:ind-1), interiorEdges(ind+1:end)];
+end
+
