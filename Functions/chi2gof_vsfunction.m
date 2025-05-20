@@ -18,7 +18,7 @@ expProbs = diff([0, cdfFH(interiorEdges), 1]);
 expCounts = expProbs.*desiredSum;
 
 if fitS.enforceBinSizeLimits
-    minCountNumber = 5;
+    minCountNumber = fitS.chi2MinCountNum;
     maxCountNumber = 50;
     [interiorEdges] = iterateBinSize(expCounts, cdfFH, interiorEdges, desiredSum, minCountNumber, maxCountNumber);
     binEdges = sort([min(data), interiorEdges, max(data)]);
