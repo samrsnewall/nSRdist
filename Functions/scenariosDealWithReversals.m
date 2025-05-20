@@ -34,12 +34,12 @@ for j = 1:numScenarios
         end
 
         [scenario_invSRvals2{j}, scenario_invSRprobs2{j}, scenario_meanSR2(j),...
-            reversalpairs, numdatepairs2(j), ageModes{j}, lengthSed2(j),...
+            reversalpairs, numdatepairs2(j), ageModes2{j}, lengthSed2(j),...
             lengthAge2(j), MSI_byage2(j), MSI_bydepth2(j), IDpairs, agediffV] =...
             scenariopdfNorm(depth_cm, date_is, label, ...
             ageprob, calAge, IDpairs, agediffV, S, plotfigs);
 
-        if sum(size(ageModes{j})) == 0
+        if sum(size(ageModes2{j})) == 0
             a = 1;
         end
 
@@ -145,23 +145,25 @@ for j = 1:numScenarios
     %list and label that it has been Checked For Reversals.
     scenariosNew(j)     = scenarios(j);
     scenariosNewCFR(j)  = 1;
-    ageModes2(j)        = ageModes(j);
     chosenLabels2(j)    = chosenLabels(j);
     
     %Transfer over all other information
+
     else
-    scenariosNew(j)     = scenarios(j);
-    scenariosNewCFR(j)  = 1;
-    ageModes2(j)        = ageModes(j);
-    chosenLabels2(j)    = chosenLabels(j);
-    scenario_invSRvals2{j} = scenario_invSRvals{j};
-    scenario_invSRprobs2{j} = scenario_invSRprobs{j};
-    scenario_meanSR2(j) = scenario_meanSR(j);
-    numdatepairs2(j) = numdatepairs(j);
-    lengthSed2(j) = lengthSed(j);
-    MSI_bydepth2(j) = MSI_bydepth(j);
-    MSI_byage2(j) = MSI_byage(j);
+        %If it has already been checked and found to have no reversals, copy
+        %over all information
+        scenariosNew(j)     = scenarios(j);
+        scenariosNewCFR(j)  = 1;
+        ageModes2(j)        = ageModes(j);
+        chosenLabels2(j)    = chosenLabels(j);
+        scenario_invSRvals2{j} = scenario_invSRvals{j};
+        scenario_invSRprobs2{j} = scenario_invSRprobs{j};
+        scenario_meanSR2(j) = scenario_meanSR(j);
+        numdatepairs2(j) = numdatepairs(j);
+        lengthSed2(j) = lengthSed(j);
+        MSI_bydepth2(j) = MSI_bydepth(j);
+        MSI_byage2(j) = MSI_byage(j);
     end
-    
+
     newScenIndicator    = 0;
 end
