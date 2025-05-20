@@ -20,7 +20,7 @@ beta = phat(2);
 
 % Create gamma on invx values
 invx = 1./x;
-GamPDF = gampdf(invx, alpha, beta);
+GamPDF = gampdf(invx, alpha, beta)';
 
 %Find pdf vector in x space
 f = @(x) 1./x;
