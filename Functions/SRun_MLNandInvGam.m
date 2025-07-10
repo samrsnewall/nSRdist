@@ -15,7 +15,7 @@ Gfits = cell(1, numruns);
 Gams = NaN(length(x), numruns);
 logGams =  NaN(length(x), numruns);
 %phats  = NaN(2,numruns);
-weightedC = cell(1,numruns);
+weightedC = cell(1,numruns);    
 numCpairs = NaN(1,numruns);
 sedLength = NaN(1, numruns);
 sedTimeSpan = NaN(1,numruns);
@@ -99,7 +99,7 @@ else
 end
 
 %% Run loop to fit distributions to nSR data
-parfor i = 1:numruns
+for i = 1:numruns
     %To quiet some warnings, initialize temporaries within parfor loop;
     totalSedLength = [];
     totalSedAge = [];
@@ -159,7 +159,7 @@ parfor i = 1:numruns
             data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
         elseif fitS.weighting == "age"
             inputData       = OneRunData(1,:);
-            weights         = OneRunData(4,:); %Weights by depth, not the mixed weighting of depth and scenarios
+            weights         = OneRunData(4,:); %Weights by age, not the mixed weighting of age and scenarios
             inputDataClean  = inputData(~isnan(inputData));
             weightsClean    = weights(~isnan(weights));
             data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
@@ -183,11 +183,7 @@ parfor i = 1:numruns
         %figure; histogram("BinEdges", agediffsBinEdges, "BinCounts", agediffsWC1R)
 
         %Find number desired number of datapoints for chi2gof later
-        if fitS.weighting ~= "none"
-            numSRcalcs = numel(inputDataClean);
-        else
-            numSRcalcs = numel(data)./weightRepInflator;
-        end
+        numSRcalcs = numel(inputDataClean);
 
         %% Fitting mix log normal
         %Check that the data is a row vector
@@ -255,54 +251,67 @@ parfor i = 1:numruns
     %Run chi2gof on the fit
     %chi2gof on MLN
     MLNVEC = [];
-    MLNVEC.x = x;
+    MLNVEC.x = x';
     MLNVEC.px = SR_MixLogNorm1RunHOLDER(:,2);
-    MLNVEC.numParams = 6;
+    MLNVEC.numParams = 5;
     MLNVEC.pdfName = "2 Component Mixed Log Normal";
+    [MLNVEC.mu, MLNVEC.var] = muVarPDFVec(MLNVEC);
 
     logMLNVEC = [];
     [logMLNVEC.x, logMLNVEC.px] = px_to_pfx(MLNVEC.x, MLNVEC.px, @log);
     logMLNVEC.numParams = MLNVEC.numParams;
     logMLNVEC.pdfName = MLNVEC.pdfName;
+    [logMLNVEC.mu, logMLNVEC.var] = muVarPDFVec(logMLNVEC);
 
     %chi2gof on inverse gamma
     InvGamVEC = [];
-    InvGamVEC.x = x;
+    InvGamVEC.x = x';
     InvGamVEC.px = invGamPDFHOLDER;
     InvGamVEC.numParams = 2;
     InvGamVEC.pdfName = "Inverse Gamma";
+    [InvGamVEC.mu, InvGamVEC.var] = muVarPDFVec(InvGamVEC);
 
     logInvGamVEC = [];
     [logInvGamVEC.x, logInvGamVEC.px] = px_to_pfx(InvGamVEC.x, InvGamVEC.px, @log);
     logInvGamVEC.numParams = InvGamVEC.numParams;
     logInvGamVEC.pdfName = InvGamVEC.pdfName;
+    [logInvGamVEC.mu, logInvGamVEC.var] = muVarPDFVec(logInvGamVEC);
 
     %chi2gof on gamma
     GamVEC = [];
-    GamVEC.x = x;
+    GamVEC.x = x';
     GamVEC.px = GamPDFHOLDER;
     GamVEC.numParams = 2;
     GamVEC.pdfName = "Gamma";
+    [GamVEC.mu, GamVEC.var] = muVarPDFVec(GamVEC);
 
     logGamVEC = [];
     [logGamVEC.x, logGamVEC.px] = px_to_pfx(GamVEC.x, GamVEC.px, @log);
     logGamVEC.numParams = GamVEC.numParams;
     logGamVEC.pdfName = GamVEC.pdfName;
+    [logGamVEC.mu, logGamVEC.var] = muVarPDFVec(logGamVEC);
 
     %chi2gof on log normal
     LNVEC = [];
-    LNVEC.x = LNPDFHOLDER(:,1);
+    LNVEC.x = x';
     LNVEC.px = LNPDFHOLDER(:,2);
     LNVEC.numParams = 2;
     LNVEC.pdfName = "Log Normal";
+    [LNVEC.mu, LNVEC.var] = muVarPDFVec(LNVEC);
 
     logLNVEC = [];
     [logLNVEC.x, logLNVEC.px] = px_to_pfx(LNVEC.x, LNVEC.px, @log);
     logLNVEC.numParams = LNVEC.numParams;
     logLNVEC.pdfName = LNVEC.pdfName;
+    [logLNVEC.mu, logLNVEC.var] = muVarPDFVec(logLNVEC);
 
     pdfs = {logMLNVEC; logInvGamVEC; logGamVEC; logLNVEC};
-
+    
+    if i <4
+        fitS.dispChi2 = true;
+    else
+        fitS.dispChi2 = false;
+    end
     [hi, pri, chiStati] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, pdfs, fitS);
 
     end
@@ -313,16 +322,32 @@ parfor i = 1:numruns
     agediffsWbC(:,i) = agediffsWC1R';
     MLNfits{i} = gmfitH;
     MLNs(:, i) = SR_MixLogNorm1RunHOLDER(:,2);
+    MLNmu(i) = MLNVEC.mu;
+    MLNvar(i) = MLNVEC.var;
     logMLNs(:,i) = logMLNVEC.px;
+    logMLNmu(i) = logMLNVEC.mu;
+    logMLNvar(i) = logMLNVEC.var;
     LNfits{i} = LNfitH;
     LNs(:, i) = LNPDFHOLDER(:,2);
+    LNmu(i) = LNVEC.mu;
+    LNvar(i) = LNVEC.var;
     logLNs(:,i) = logLNVEC.px;
+    logLNmu(i) = logLNVEC.mu;
+    logLNvar(i) = logLNVEC.var;
     IGfits{i} = IGfitH;
     invGams(:,i) = invGamPDFHOLDER;
+    invGammu(i) = InvGamVEC.mu;
+    invGamvar(i) = InvGamVEC.var;
     logInvGams(:,i) = logInvGamVEC.px;
+    loginvGammu(i) = logInvGamVEC.mu;
+    loginvGamvar(i) = logInvGamVEC.var;
     Gfits{i} = GfitH;
     Gams(:,i) = GamPDFHOLDER;
+    Gammu(i) = GamVEC.mu;
+    Gamvar(i) = GamVEC.var;
     logGams(:,i) = logGamVEC.px;
+    logGammu(i) = logGamVEC.mu;
+    logGamvar(i) = logGamVEC.var;
     weightedC{i} = data;
     numCpairs(i) = numSRcalcs;
     sedLength(i) = totalSedLength;
@@ -363,23 +388,39 @@ outS.sedLength = sedLength;
 outS.sedTimeSpan = sedTimeSpan;
 outS.MLN.nSR.px = MLNs;
 outS.MLN.nSR.x = x;
+outS.MLN.nSR.mu = MLNmu;
+outS.MLN.nSR.var = MLNvar;
 outS.MLN.lnSR.px = logMLNs;
 outS.MLN.lnSR.x = logx;
+outS.MLN.lnSR.mu = logMLNmu;
+outS.MLN.lnSR.var = logMLNvar;
 outS.MLN.fits = MLNfits;
 outS.invGam.nSR.px = invGams;
 outS.invGam.nSR.x = x;
+outS.invGam.nSR.mu = invGammu;
+outS.invGam.nSR.var = invGamvar;
 outS.invGam.lnSR.px = logInvGams;
 outS.invGam.lnSR.x = logx;
+outS.invGam.lnSR.mu = loginvGammu;
+outS.invGam.lnSR.var = loginvGamvar;
 outS.invGam.fits = IGfits;
 outS.Gam.nSR.px = Gams;
 outS.Gam.nSR.x = x;
+outS.Gam.nSR.mu = Gammu;
+outS.Gam.nSR.var = Gamvar;
 outS.Gam.lnSR.px = logGams;
 outS.Gam.lnSR.x = logx;
+outS.Gam.lnSR.mu = logGammu;
+outS.Gam.lnSR.var = logGamvar;
 outS.Gam.fits = Gfits;
 outS.LN.nSR.px = LNs;
 outS.LN.nSR.x = x;
+outS.LN.nSR.mu = LNmu;
+outS.LN.nSR.var = LNvar;
 outS.LN.lnSR.px = logLNs;
 outS.LN.lnSR.x = logx;
+outS.LN.lnSR.mu = logLNmu;
+outS.LN.lnSR.var = logLNvar;
 outS.LN.fits = LNfits;
 
 MLNchiStatT1 = table(MLNchi2stat, h(1,:)', p(1,:)', MLNchiStatTdf, MLNchiStatTedges, MLNchiStatTO, MLNchiStatTE,'VariableNames', ["chi2stat","h","p","df","edges","O", "E"]);

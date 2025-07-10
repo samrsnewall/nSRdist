@@ -1,4 +1,4 @@
-function[nSR_invGamma, nSR_invGammaProb, invxGamProb, alpha, invSRbincounts_weighted] = fitGamma2invSR(nSRcounts, coreSubsetLogical, fitS)
+function[nSR_invGamma, nSR_invGammaProb, invxGamProb, alpha, invSRbincounts_weighted] = fitGamma2invSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data, inverts it so that it is accumulation
 % rate data (as discussed in Blaauw et al., 2011) and fits a gamma
 % distribution to the data. It then inverts that gamma distribution so that
@@ -31,7 +31,7 @@ end
 if fitS.weighting == "none"
     weightingsArray = ones(1,length(nSRcountsArray(2,:)));
 elseif fitS.weighting == "depth"
-    weightingsArray = nSRcountsArray(2,:);
+    weightingsArray = nSRcountsArray(3,:);
 elseif fitS.weighting == "age"
     weightingsArray = nSRcountsArray(4,:);
 end
@@ -41,15 +41,13 @@ numSRcalcs = size(nSRcountsArray, 2);
 invnSRcounts = 1./nSRcountsArray(1,:);
 
 %Get weighted replicates
-invnSR_WR = makeWeightedReplicates(invnSRcounts, weightingsArray, 3, 10);
+invnSR_WR = makeWeightedReplicates(invnSRcounts, weightingsArray, weightDP, weightInflator);
 
 %Create weighted bin counts
 invSRbincounts_weighted = makeWeightedBinCounts(invnSRcounts, weightingsArray, fitS.invXbinEdges);
 
 % Set the range of x values of interest 
 % (use x values currently used in BIGMACS)
-lognorm_BIGMACS = readtable("../lognormal_BIGMACS.txt");
-x = lognorm_BIGMACS.Var1';
 invx = sort(1./x);
 
 % Estimate the gamma fit parameters

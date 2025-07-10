@@ -1,4 +1,4 @@
-function[nSR_LogNorm, nSR_LogNormProb, gmfit, nSRbincounts_weighted] = fitLogNorm2nSR(nSRcounts, coreSubsetLogical, fitS)
+function[nSR_LogNorm, nSR_LogNormProb, gmfit, nSRbincounts_weighted] = fitLogNorm2nSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data and fits a gamma
 % distribution to the data
 
@@ -28,7 +28,7 @@ end
 if fitS.weighting == "none"
     weightingsArray = ones(1,length(nSRcountsArray(2,:)));
 elseif fitS.weighting == "depth"
-    weightingsArray = nSRcountsArray(2,:);
+    weightingsArray = nSRcountsArray(3,:);
 elseif fitS.weighting == "age"
     weightingsArray = nSRcountsArray(4,:);
 end
@@ -36,15 +36,10 @@ numSRcalcs = size(nSRcountsArray, 2);
 nSRcounts = nSRcountsArray(1,:);
 
 %Get weighted replicates
-nSR_WR = makeWeightedReplicates(nSRcounts, weightingsArray, 3, 10);
+nSR_WR = makeWeightedReplicates(nSRcounts, weightingsArray, weightDP, weightInflator);
 
 %Create weighted bin counts
 nSRbincounts_weighted = makeWeightedBinCounts(nSRcounts, weightingsArray, fitS.invXbinEdges);
-
-% Set the range of x values of interest 
-% (use x values currently used in BIGMACS)
-lognorm_BIGMACS = readtable("../lognormal_BIGMACS.txt");
-x = lognorm_BIGMACS.Var1';
 
 %Fit mix log norm with 1 component
 [nSR_LogNormVec, logSR_NormVec, gmfit] = fitMixLogNorm(nSR_WR, x, 1, fitS.mlnReps);

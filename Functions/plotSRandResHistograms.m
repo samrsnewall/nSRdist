@@ -32,7 +32,7 @@ end
 %Convert the weighted nSR counts to a single dimension array of counts
 %where the number of counts is representative of their weighting
 nSR = nSRcountsArray(1,:)'; %nSR data
-depthDiffs = nSRcountsArray(2,:);  %weightings
+depthDiffs = nSRcountsArray(3,:);  %weightings
 ageDiffs = nSRcountsArray(4,:);
 if fitS.weighting == "none"
     data = nSR;
