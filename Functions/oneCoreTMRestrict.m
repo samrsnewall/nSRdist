@@ -56,7 +56,7 @@ end
 [ageprobAll, calAge] = multiMatcalQ(age, error, 1:length(age), S);
 
 % Randomly choose 1000 scenarios
-numruns = 1000;
+numruns = S.numruns;
 rndScen = randsample(1:length(scenarios), numruns, 'true');
 
 %Create numruns many possible sedimentation histories, by random sampling
