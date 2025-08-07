@@ -3,7 +3,7 @@ function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,Lab
 BchronFolder = S.BchronFolderName;
 
 %Set up directory to where the Bchron Data is
-coreDir = fullfile(S.sandboxPath, BchronFolder, "Outputs",corename);
+coreDir = fullfile(S.sandboxPath, "BchronFolders", BchronFolder, "Outputs",corename);
 
 %Bring in which calibration curve will be used
 calCurve = S.BchronCalCurve;
@@ -12,19 +12,19 @@ calCurve = S.BchronCalCurve;
 if ~isfolder(coreDir) || S.BchronReDo 
 
     %If Bchron Data "/Outputs" folder doesn't exist, create it
-    outputsFolder = fullfile(S.sandboxPath, BchronFolder, "Outputs");
+    outputsFolder = fullfile(S.sandboxPath, "BchronFolders", BchronFolder, "Outputs");
     if ~isfolder(outputsFolder)
         mkdir(outputsFolder)
     end
 
     %If Bchron Data inputs folder doesn't exist, create it
-    inputsFolder = fullfile(S.sandboxPath, BchronFolder, "Inputs");
+    inputsFolder = fullfile(S.sandboxPath, "BchronFolders", BchronFolder, "Inputs");
     if ~isfolder(inputsFolder)
         mkdir(inputsFolder)
     end
 
     %Set up name of Bchron input file
-    c14input = fullfile(S.sandboxPath, BchronFolder, "Inputs",corename + "_radiocarbon.txt");
+    c14input = fullfile(S.sandboxPath, "BchronFolders", BchronFolder, "Inputs",corename + "_radiocarbon.txt");
     
     %If the input file doesn't exist, create it
     if ~isfile(c14input) || S.BchronReDo
@@ -66,7 +66,7 @@ if ~isfolder(coreDir) || S.BchronReDo
     disp("Running Bchronology for core " + corename)
     cmnd = S.RscriptPath + " " +...
         fullfile(S.sandboxPath, "Functions", "runBchron.R")...
-        + " " + S.sandboxPath + " " + BchronFolder + " "...
+        + " " + S.sandboxPath + " " + fullfile("BchronFolders", BchronFolder) + " "...
         + corename + " " + calCurve + " " + S.DeltaRError + " " + S.BchronDepthSpacing;
     [status, output] = system(cmnd);
     
@@ -88,9 +88,9 @@ thetaData = readmatrix(fullfile(coreDir, "theta.csv"), "NumHeaderLines",1);
 phiData = readmatrix(fullfile(coreDir, "phi.csv"), "NumHeaderLines", 1);
 
 %Get the thetaData for the depths where radiocarbon ages were taken
-predictPositions = rData.Depth(1):S.BchronDepthSpacing:rData.Depth(end);    %This is all the depths Bchron estimated ages
 depthR_r2BDS = round(rData.Depth./S.BchronDepthSpacing).*S.BchronDepthSpacing; %This is the depth of each radiocarbon date, rounded to the BchronDepthSpacing used for predictPosition
-predictPositionsRLOG = ismember(predictPositions,depthR_r2BDS);             %this is the logical to get ages estimated by Bchron at radiocarbon date depths
+predictPositions = depthR_r2BDS(1):S.BchronDepthSpacing:depthR_r2BDS(end);    %This is all the depths Bchron estimated ages
+predictPositionsRLOG = ismembertol(predictPositions,depthR_r2BDS);             %this is the logical to get ages estimated by Bchron at radiocarbon date depths
 predictPositionsR = predictPositions(predictPositionsRLOG);                 %This is depths on predictPositions that are radiocarbon dated
 thetaDataR = thetaData(:, predictPositionsRLOG);                            %This is ages at those depths
 
@@ -130,7 +130,7 @@ if removeRejectedAges
     rejectLog = pctReject > S.BchronReversalCriteria*100;  %Find which ages were rejected more than the criterium set
     acceptedDepths = depthR_r2BDS(~rejectLog);                  %Find out what ages were accepted (using their depth info to index them) 
     depthsUsed = unique(acceptedDepths);         %Find out what depths had estimated ages we want to keep (unique and accepted depths)   
-    rejectAgeLog = ~ismember(depthsUsed, predictPositionsR); %Find out what estimated ages we want to reject (ages are estimated at unique depths, keep the unique depths we accepted)
+    rejectAgeLog = ~ismembertol(depthsUsed, predictPositionsR); %Find out what estimated ages we want to reject (ages are estimated at unique depths, keep the unique depths we accepted)
     modeAgeUsed = modeAge(~rejectAgeLog);       %keep ages not rejected
     medianAgeUsed = medianAge(~rejectAgeLog);   %keep ages not rejected
 end
@@ -174,7 +174,7 @@ for i = 1:size(thetaDataR,1)
     keepAges = ~logical(phiData(1,:));
     rundepthspDD = depthR_r2BDS(keepAges)';
     rundepths = unique(rundepthspDD);
-    keepThetaRs = ismember(rundepths, predictPositionsR);
+    keepThetaRs = ismembertol(rundepths, predictPositionsR);
     runages = thetaDataR(i,keepThetaRs);
     
     %Calculate SRs, weights, agediffs
