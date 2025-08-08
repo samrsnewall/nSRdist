@@ -4,9 +4,22 @@ addpath('../Functions')
 
 %Load results file
 load("../Results/dataT_LinOnly_LinMethod_Dec10.mat")
+
+outputMetadataAndSummaryFigures(true(37,1),dataT)
+
 %Store variables in structure
 LinCoreLinMeth.dataT = dataT;
 LinCoreLinMeth.S = S;
+
+%Set up fitting settings structure
+fitS.Lin2014AgeFiltering = 1;
+fitS.weighting = "depth"; 
+fitS.chi2binN = 10;
+fitS.dispChi2 = true;
+fitS.mln1RunReps = 1;
+fitS.mlnReps = 5;
+fitS.invXbinEdges = 0:0.1:15;
+fitS.enforceBinSizeLimits = false;
 
 %Load BIGMACS files
 lognorm_BIGMACS = readtable("../BIGMACSdata/lognormal.txt");                  % (use x values currently used in BIGMACS)
@@ -15,6 +28,8 @@ BIGMACShist = readmatrix("../BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 BIGMACShist = BIGMACShist(:,4);
 TM_BIGMACS = readmatrix("../BIGMACSdata/transition_parameter.txt");
 
+%Fit Mix Log Norm to data
+[MLN_BIGMACS, ~, gmfitBM] = fitMixLogNorm(BIGMACShist, x, 2, 0, fitS.mlnReps);
 
 
 %Find number of cores
