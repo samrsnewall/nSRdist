@@ -71,7 +71,7 @@ for i = 1:length(NotCCR.age)
     NotCCR.errCal(i) = NotCCR.p95(1,i) - NotCCR.p95(2,i);
 end
 
-if ~isempty(gap5kyrDepths)
+ if ~isempty(gap5kyrDepths)
     %There is an age pair that has a large gap here
 
     figure;
@@ -90,6 +90,6 @@ if ~isempty(gap5kyrDepths)
     ylabel(["Calibrated Age","(cal yr BP)"])
     legend("location", "southeast")
     title(corename)
-end
+ end
 
 end
