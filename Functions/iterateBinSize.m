@@ -1,5 +1,17 @@
-function[interiorEdges] = iterateBinSize(expCounts, cdfFH, interiorEdges, desiredSum, minCountNumber, maxCountNumber)
-%If the bins have less than 5 counts or more than 12, recalculate bin
+function[interiorEdges] = iterateBinSize(data, cdfFH, binN, desiredSum, fitS)
+% Approach 1
+%Define some bins
+startN = binN+1;
+binEdges    = linspace(min(data), max(data), startN);
+
+%Get expected counts for those bins
+[~, expCounts] = calcBinCountsFH(data, binEdges, desiredSum, cdfFH);
+
+%Set up bin min and max
+minCountNumber = fitS.chi2MinCountNum;
+maxCountNumber = desiredSum/4;
+
+%If the bins have less than minCountNumber counts or more than maxCountNumber, recalculate bin
 %counts until all bins fit this criteria
 smallbins = expCounts < minCountNumber;
 bigbins = expCounts > maxCountNumber;
@@ -40,6 +52,9 @@ while(sum(binSizeTester) ~=0)
         maxVals2Try = linspace(min(interiorEdges),intEdgeMaxEst, 100);
         expCountsmax = desiredSum.*cdfFH(maxVals2Try);
         maxEdgeInd = find(expCountsmax < desiredSum-minCountNumber & expCountsmax > desiredSum - maxCountNumber, 1 );
+        if isempty(maxEdgeInd)
+            disp('a')
+        end
         maximumBinEdge = maxVals2Try(maxEdgeInd);
         interiorEdges = sort([interiorEdges, maximumBinEdge]); %#ok<AGROW>
         expProbs = diff([0, cdfFH(interiorEdges), 1]);
