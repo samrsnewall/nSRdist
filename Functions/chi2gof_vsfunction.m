@@ -19,9 +19,10 @@ expCounts = expProbs.*desiredSum;
 
 if fitS.enforceBinSizeLimits
     minCountNumber = fitS.chi2MinCountNum;
-    maxCountNumber = 50;
-    [interiorEdges] = iterateBinSize(expCounts, cdfFH, interiorEdges, desiredSum, minCountNumber, maxCountNumber);
-    binEdges = sort([min(data), interiorEdges, max(data)]);
+    maxCountNumber = desiredSum/3;
+    [interiorEdges] = iterateBinSizeFH(data, cdfFH, binN, desiredSum, fitS);
+    binEdges = sort([-inf, interiorEdges, inf]);
+    %binEdges = sort([min(data), interiorEdges, max(data)]);
     binCenters  = (binEdges(1:end-1)+binEdges(2:end))./2;
 
     %Find how many observations are in each bin
@@ -81,26 +82,32 @@ if fitS.dispChi2 == true
     hold on
 
     %Plot histograms
-    yyaxis("left")
-    hObs = histogram('BinCounts',obsCountsDown, 'BinEdges', binEdges, 'FaceColor', 'r', "DisplayName", "Observed Counts");
-    hExp = histogram('BinCounts', expCounts, 'BinEdges', binEdges, 'FaceColor', 'k', "DisplayName","Expected Counts");
+    % yyaxis("left")
+    % xlim([min(data) max(data)])
+    binEdgesDiff = (binEdges(3) - binEdges(2));
+    xlim([binEdges(2)-binEdgesDiff binEdges(end-1)+binEdgesDiff])
+    hObs = histogram('BinCounts',obsCountsDown(2:end-1), 'BinEdges', binEdges(2:end-1), 'FaceColor', 'k', "DisplayName", "Observed Counts");
+    plot([-100 binEdges(2)], [obsCountsDown(1) obsCountsDown(1)], 'Color', [0.3 0.3 0.3], 'LineStyle', '-', 'LineWidth', 2, "HandleVisibility", "off")
+    plot([100 binEdges(end-1)], [obsCountsDown(end) obsCountsDown(end)], 'Color', [0.3 0.3 0.3], 'LineStyle', '-', 'LineWidth', 2, "HandleVisibility", "off")
+    hExp = histogram('BinCounts', expCounts(2:end-1), 'BinEdges', binEdges(2:end-1), 'FaceColor', 'r', "DisplayName","Expected Counts");
+    plot([-100 binEdges(2)], [expCounts(1) expCounts(1)], 'Color', [0.9 0 0], 'LineStyle', '-', 'LineWidth', 2, "HandleVisibility", "off")
+    plot([100 binEdges(end-1)], [expCounts(end) expCounts(end)], 'Color', [0.9 0 0], 'LineStyle', '-', 'LineWidth', 2, "HandleVisibility", "off")
     if divisor == 1
         ylabel("Counts")
     else
         ylabel("Downweighted Counts")
     end
 
-    if fitS.enforceBinSizeLimits == false
-        %Plot function
-        yyaxis("right")
-        lTested = plot(x, pdfFH(x), 'k', 'LineWidth', 2, "DisplayName", "Tested PDF"); %#ok<*NASGU>
-        ylabel("PDF")
-    end
+    % %Plot function
+    % yyaxis("right")
+    % lTested = plot(x, pdfFH(x), 'k', 'LineWidth', 2, "DisplayName", "Tested PDF"); %#ok<*NASGU>
+    % ylabel("PDF")
 
     %Add pval and chi2stat to legend
-    lpval   = plot(nan, nan, 'LineStyle', 'none', 'DisplayName', "p = " + num2str(p, 3));
     lchi2stat = plot(nan, nan, 'LineStyle', 'none', 'DisplayName', "chi2stat = "  + num2str(chiStat.chi2stat, 3));
-    %xlabel("log nSR") Note, it's not always log nSR...
+    lpval   = plot(nan, nan, 'LineStyle', 'none', 'DisplayName', "p = " + num2str(p, 3) + "; h = " + num2str(h, 1));
+    %lhnought= plot(nan, nan, 'LineStyle', 'none', "Marker", "none", 'DisplayName', "h = " + num2str(h, 1));
+    xlabel("log(nSR)") % Note, it's not always log nSR...
     legend()
 end
 end
