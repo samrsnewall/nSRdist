@@ -1,8 +1,6 @@
 %% Load in desired results file
-%load("Results/dataT_highRes_Sep12th24.mat")
 load("Results/dataT_planktonicF50_Nov1.mat");
 addpath('Functions')
-
 
 %% ------ Define Subsets of interest
 % high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
@@ -13,14 +11,14 @@ allCoresLog     = ~isnan(dataT.meanSR) & depth1000Log;
 
 %% Metadata figures
 metadataLog = allCoresLog;
-% outputMetadataAndSummaryFigures(metadataLog,dataT)
+outputMetadataAndSummaryFigures(metadataLog,dataT)
 
 %% Plot comparison figures 
 metadataLog1 = highSRCoresLog;
 Log1Colour = "r";
 metadataLog2 = lowSRCoresLog;
 Log2Colour = "b";
-% outputMetadataAndSummaryFiguresComparison(metadataLog1, metadataLog2, dataT, dataT, Log1Colour, Log2Colour, "SR > 8cm/kyr", "SR < 8cm/kyr")
+outputMetadataAndSummaryFiguresComparison(metadataLog1, metadataLog2, dataT, dataT, Log1Colour, Log2Colour, "SR > 8cm/kyr", "SR < 8cm/kyr")
 
 %% Set up useful values
 % Get x values of interest
@@ -39,7 +37,7 @@ respectiveString = "HighSR1000";
 
 
  [mixLogAllruns] = plotSRandResHistograms(desiredRestriction, x, desiredLog, true, 3, 1, 2, 0, respectiveString,true);
-[mixLogNorm1Run, c95up, c95down] = SingleRunLogNorms(desiredRestriction, desiredLog, numruns2sample, x,2, true, 3, 4, 0.001);
+[mixLogNorm1Run, c95up, c95down] = SingleRunLogNorms(desiredRestriction, desiredLog, numruns2sample, x,2, 3, 4, 0.001, fitS);
 
 figure;
 hold on
