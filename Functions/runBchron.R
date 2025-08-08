@@ -9,7 +9,7 @@
 ## - args[5] = the desired Delta R (Marine Reservoir Offset)
 
 #The following line is useful for when you want to run this code manually in R, for a given core
-#args <- c('/Volumes/ExtDrive850X/MATLAB/nSRdist_code', 'Bchron_PFandLin_R200M20_Feb4', 'KNR140-51GGC', 'Marine20', '200', '0.1')
+#args <- c('/Volumes/ExtDrive850X/MATLAB/nSRdist_code', 'BchronFolders/Bchron_PFandLin_R200M20_Feb4', 'KNR140-51GGC', 'Marine20', '200', '0.1')
 
 ## Input corename from command line
 args = commandArgs(trailingOnly = TRUE)
