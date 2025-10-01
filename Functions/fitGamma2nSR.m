@@ -1,4 +1,4 @@
-function[nSR_Gamma, nSR_GammaProb, alpha, nSRbincounts_weighted] = fitGamma2nSR(nSRcounts, coreSubsetLogical, weightDP, weightInflator, x, fitS)
+function[nSR_Gamma, nSR_GammaProb, fitInfo, nSRbincounts_weighted] = fitGamma2nSR(nSRcounts, coreSubsetLogical, weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data and fits a gamma
 % distribution to the data
 
@@ -45,9 +45,10 @@ nSR_Gamma = x;
 
 % Estimate the gamma fit parameters
 phat = gamfit(nSR_WR);
-alpha = phat(1);
-beta = phat(2);
+fitInfo.alpha = phat(1);
+fitInfo.beta = phat(2);
+fitInfo.nll = gamlike([fitInfo.alpha, fitInfo.beta], nSR_WR);
 
 % Create gamma
-nSR_GammaProb = gampdf(x, alpha, beta);
+nSR_GammaProb = gampdf(x, fitInfo.alpha, fitInfo.beta);
 end

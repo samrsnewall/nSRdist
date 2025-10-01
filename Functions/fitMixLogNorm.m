@@ -15,7 +15,8 @@ if ~iscolumn(data_linear)                                                   %Ens
 end
 data_log = log(data_linear);                                                %Take logarithm of data
 gmfit    = fitgmdist(data_log, numComponents, "Options", options, ...       %Fit mix normal to logarithm of data
-     'Replicates', replicates, 'Start','randSample');                       
+     'Replicates', replicates, 'Start','randSample');
+
 
 %Initialise std deviation vector and prob density vector
 stddev_fit  = NaN(1,numComponents);
@@ -39,7 +40,7 @@ end
 mix_fit         = gmfit.ComponentProportion;                                %Find the mixing component of each individual Gaussian
 z               = sum(y.*mix_fit, 2);
 if find(z == max(z)) == 1
-    disp('check why the max value is the first index... it is being inverted, or isnt')
+    disp('the max value is the first index... This is suspicious, double check if this is meant to be the case')
 end
 lz              = sum(ly.*mix_fit, 2);
 mixLogNormPDF   = [x', z];

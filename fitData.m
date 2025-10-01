@@ -4,11 +4,11 @@
 %analysis using the chi-squared goodness of fit test.
 
 %Add important paths
-addpath('../Functions')
-addpath('../Results')
+addpath('Functions')
+addpath('Results')
 
 %% Load the results
-filepath = "../Results/dataT_All1_RLGtrue_DS0p05_Jun2.mat";
+filepath = "Results/dataT_All1_RLGtrue_DS0p05_Jun2.mat";
 load(filepath)
 d.dataT = dataT;
 d.S = S;
@@ -31,6 +31,7 @@ fitS.invXbinEdges = 0:0.1:15;
 fitS.enforceBinSizeLimits = true;
 fitS.BMode.weightDP = 3;
 fitS.BMode.weightInflator = 1;
+fitS.resampleData = 1;
 fitS.OneRun.numruns = 1000;
 if fitS.weighting == "depth"
     fitS.OneRun.weightRepDP = 3;       %For weighting with depth, best is 3
@@ -50,12 +51,12 @@ d.S1.fitS = fitS;
 fitS.useParallelComp = true;
 %% Fit Mix Log Norm to BIGMACS data for comparison reasons
 %Load BIGMACS files
-BMlognorm = readtable("../BIGMACSdata/lognormal.txt");                  % (use x values currently used in BIGMACS)
+BMlognorm = readtable("BIGMACSdata/lognormal.txt");                  % (use x values currently used in BIGMACS)
 BM.nSR.x = BMlognorm.Var1';
 BM.nSR.px = BMlognorm.Var2;
-BM.hist = readmatrix("../BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
+BM.hist = readmatrix("BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 BM.hist = BM.hist(:,4);
-BM.TM = readmatrix("../BIGMACSdata/transition_parameter.txt");
+BM.TM = readmatrix("BIGMACSdata/transition_parameter.txt");
 [MLN_BIGMACS, ~, BM.gmfit] = fitMixLogNorm(BM.hist, BM.nSR.x, 2, 3);
 [BM.lnSR.x, BM.lnSR.px] = px_to_pfx(BM.nSR.x, BM.nSR.px, @log);
 

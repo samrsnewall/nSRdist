@@ -1,4 +1,4 @@
-function[nSR_LogNorm, nSR_LogNormProb, gmfit, nSRbincounts_weighted] = fitLogNorm2nSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
+function[nSR_LogNorm, nSR_LogNormProb, fitInfo, nSRbincounts_weighted] = fitLogNorm2nSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data and fits a gamma
 % distribution to the data
 
@@ -32,7 +32,7 @@ elseif fitS.weighting == "depth"
 elseif fitS.weighting == "age"
     weightingsArray = nSRcountsArray(4,:);
 end
-numSRcalcs = size(nSRcountsArray, 2);
+%numSRcalcs = size(nSRcountsArray, 2);
 nSRcounts = nSRcountsArray(1,:);
 
 %Get weighted replicates
@@ -42,7 +42,9 @@ nSR_WR = makeWeightedReplicates(nSRcounts, weightingsArray, weightDP, weightInfl
 nSRbincounts_weighted = makeWeightedBinCounts(nSRcounts, weightingsArray, fitS.invXbinEdges);
 
 %Fit mix log norm with 1 component
-[nSR_LogNormVec, logSR_NormVec, gmfit] = fitMixLogNorm(nSR_WR, x, 1, fitS.mlnReps);
+[nSR_LogNormVec, ~, gmfit] = fitMixLogNorm(nSR_WR, x, 1, fitS.mlnReps);
+fitInfo.nll = gmfit.NegativeLogLikelihood;
+fitInfo.BIC = gmfit.BIC;
 
 nSR_LogNorm = nSR_LogNormVec(:,1);
 nSR_LogNormProb = nSR_LogNormVec(:,2);

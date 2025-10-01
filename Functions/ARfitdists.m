@@ -5,8 +5,8 @@ function[dStru] = ARfitdists(dataTCol, x, chooseLog, weightDP, weightInflator, c
 
 %Fit Mix Log Normal
 [dStru.mixLog, dStru.weightedC,dStru.agediffs,~,~,...
-    dStru.gmfit, dStru.numCpairs, dStru.sedLength, ...
-    dStru.sedTimeSpan, ~, ~, ~]...
+    dStru.MLN.nSR.gmfit, dStru.numCpairs, dStru.sedLength, ...
+    dStru.sedTimeSpan]...
     = plotSRandResHistograms(dataTCol,...
     x, chooseLog, weightDP, weightInflator, 2, 0, "", 0, fitS);
 
@@ -14,17 +14,19 @@ dStru.numCpairs = dStru.numCpairs./countDivisor;
 dStru.MLN.nSR.x = dStru.mixLog(:,1);
 dStru.MLN.nSR.px = dStru.mixLog(:,2);
 [dStru.MLN.nSR.mu, dStru.MLN.nSR.var] = muVarPDFVec(dStru.MLN.nSR);
+dStru.MLN.nSR.fitInfo.nll = dStru.MLN.nSR.gmfit.NegativeLogLikelihood;
+dStru.MLN.nSR.fitInfo.BIC = dStru.MLN.nSR.gmfit.BIC;
 
 %Fit Inverse gamma distribution to data
-[dStru.invGam.nSR.x, dStru.invGam.nSR.px] = fitGamma2invSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
+[dStru.invGam.nSR.x, dStru.invGam.nSR.px, ~,~,~,dStru.invGam.nSR.fitInfo] = fitGamma2invSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
 [dStru.invGam.nSR.mu, dStru.invGam.nSR.var] = muVarPDFVec(dStru.invGam.nSR);
 
 %Fit gamma distribution to data
-[dStru.Gam.nSR.x, dStru.Gam.nSR.px] = fitGamma2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
+[dStru.Gam.nSR.x, dStru.Gam.nSR.px, dStru.LN.nSR.fitInfo] = fitGamma2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
 [dStru.Gam.nSR.mu, dStru.Gam.nSR.var] = muVarPDFVec(dStru.Gam.nSR);
 
 %Fit LogNormal distribution to data
-[dStru.LN.nSR.x, dStru.LN.nSR.px] = fitLogNorm2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
+[dStru.LN.nSR.x, dStru.LN.nSR.px, dStru.LN.nSR.fitInfo] = fitLogNorm2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
 [dStru.LN.nSR.mu, dStru.LN.nSR.var] = muVarPDFVec(dStru.LN.nSR);
 
 %% Transform pdf Vecs to log space

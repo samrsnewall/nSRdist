@@ -1,17 +1,18 @@
-function[nSR_invGamma, nSR_invGammaProb, invxGamProb, alpha, invSRbincounts_weighted] = fitGamma2invSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
+function[nSR_invGamma, nSR_invGammaProb, invxGamProb, alpha, invSRbincounts_weighted, fitInfo] = fitGamma2invSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data, inverts it so that it is accumulation
 % rate data (as discussed in Blaauw et al., 2011) and fits a gamma
 % distribution to the data. It then inverts that gamma distribution so that
 % it is over nSR again.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Combine all counts into one array
+%% Combine all counts into one array
+%set up arrays to be concatenated into
 nSRcountsArraywNaN = countsCell2Array(nSRcounts, coreSubsetLogical);
 
 % Clean up data
-removeIndex = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
-removeIndex2 = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
-nSRcountsArray = nSRcountsArraywNaN(:, ~(removeIndex | removeIndex2)); % remove nans and zeros
+NaNLog = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
+ZerosLog = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
+nSRcountsArray = nSRcountsArraywNaN(:, ~(NaNLog | ZerosLog)); % remove nans and zeros
 
 %Remove information from age pairs not within range from
 %fitS.Lin2014AgeFilter
@@ -27,13 +28,19 @@ else
     end
 end
 
-%Apply weighting
+%% Fit Mix Log Norm
+%Convert the weighted nSR counts to a single dimension array of counts
+%where the number of counts is representative of their weighting
+nSR = nSRcountsArray(1,:)'; %nSR data
+depthDiffs = nSRcountsArray(3,:);  %weightings
+ageDiffs = nSRcountsArray(4,:);
 if fitS.weighting == "none"
+    data = nSR;
     weightingsArray = ones(1,length(nSRcountsArray(2,:)));
 elseif fitS.weighting == "depth"
-    weightingsArray = nSRcountsArray(3,:);
+        weightingsArray = depthDiffs;
 elseif fitS.weighting == "age"
-    weightingsArray = nSRcountsArray(4,:);
+        weightingsArray = ageDiffs;
 end
 numSRcalcs = size(nSRcountsArray, 2);
 
@@ -54,6 +61,7 @@ invx = sort(1./x);
 phat = gamfit(invnSR_WR);
 alpha = phat(1);
 beta = phat(2);
+fitInfo.nll = gamlike([alpha, beta], invnSR_WR);
 
 % Create gamma on invx values
 invxGamProb = gampdf(invx, alpha, beta);

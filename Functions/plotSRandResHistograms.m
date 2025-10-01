@@ -1,4 +1,4 @@
-function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit, numSRcalcs, totalSedLength, totalSedAge, h, p, chiStat] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
+function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCounts, gmfit, numSRcalcs, totalSedLength, totalSedAge] = plotSRandResHistograms(nSRcounts, x, coreSubsetLogical, weightRepDP, weightRepInflator, components, regularizationValue, subsetName, plotQ, fitS)
 %%% This function takes some normalised sedimentation rate data in cell
 %%% format, combines the counts into a single array, applies the weighting
 %%% and then fits a mixture log normal to the result. It will also plot the
@@ -9,16 +9,18 @@ function[SR_MixLogNorm, histData, agediffsBinCounts, logSR_MixNorm, logSRbinCoun
 
 %% Combine all counts into one array
 %set up arrays to be concatenated into
-nSRcountsArray = countsCell2Array(nSRcounts, coreSubsetLogical);
+nSRcountsArraywNaN = countsCell2Array(nSRcounts, coreSubsetLogical);
 
 %Remove NaNs that are used to separate cores and runs
-NaNLog = isnan(nSRcountsArray(1,:));
-nSRcountsArray = nSRcountsArray(:,~NaNLog);
+NaNLog = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
+ZerosLog = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
+nSRcountsArray = nSRcountsArraywNaN(:, ~(NaNLog | ZerosLog)); % remove nans and zeros
 
-%% Remove information from age pairs not within 0.5-4.5kyr
+%Remove information from age pairs not within range from
+%fitS.Lin2014AgeFilter
 if fitS.Lin2014AgeFiltering
     if sum(nSRcountsArray(4,:) < 0) ~= 0
-        warning("There are negative sed rates!")
+        warning("There are negative sed rates being filtered out!")
     end
     L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
     nSRcountsArray = nSRcountsArray(:,L2014Log);
@@ -36,12 +38,15 @@ depthDiffs = nSRcountsArray(3,:);  %weightings
 ageDiffs = nSRcountsArray(4,:);
 if fitS.weighting == "none"
     data = nSR;
+    weightingsArray = ones(1,length(nSRcountsArray(2,:)));
 elseif fitS.weighting == "depth"
-    data = makeWeightedReplicates(nSR, depthDiffs, weightRepDP, weightRepInflator);
+        weightingsArray = depthDiffs;
 elseif fitS.weighting == "age"
-    data = makeWeightedReplicates(nSR, ageDiffs, weightRepDP, weightRepInflator);
+        weightingsArray = ageDiffs;
 end
-dataLog = log(data);
+
+data = makeWeightedReplicates(nSR, weightingsArray, weightRepDP, weightRepInflator);
+
 numSRcalcs = size(nSRcountsArray, 2);
 totalSedLength = sum(depthDiffs, "omitnan");
 totalSedAge = sum(ageDiffs, "omitnan");
@@ -53,31 +58,21 @@ if a>b
 end
 [SR_MixLogNorm, logSR_MixNorm, gmfit] = fitMixLogNorm(data, x, components, fitS.mlnReps);
 
-%% Perform chi2gof on gmfit
-%Create cdf of distribution
-%Get the parameters of the mixed gaussian in log space
-mu1 = gmfit.mu(1); sigma1 = sqrt(gmfit.Sigma(1));
-mu2 = gmfit.mu(2); sigma2 = sqrt(gmfit.Sigma(2));
-w1  = gmfit.ComponentProportion(1);
-w2  = gmfit.ComponentProportion(2);
+fitInfo.nll = gmfit.NegativeLogLikelihood;
+fitInfo.BIC = gmfit.BIC;
 
-numParams = 6;
-%Create the cdf function handle
-mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
+dataLog = log(data);
 
-%Set up certain important parameters
-%desiredSum = length(dataLog);
-desiredSum = numSRcalcs;
-binN = fitS.chi2binN;
-
-%Perform chi2gof
-%[h,p,chiStat] = chi2gof_vsfunction(dataLog, mlncdf, numParams, desiredSum, binN, fitS);
-% gcf;
-% title("chi2gof of Data vs Best Fit MLN")
-
-h = [];
-p = [];
-chiStat = [];
+% %% Perform chi2gof on gmfit
+% %Create cdf of distribution
+% %Get the parameters of the mixed gaussian in log space
+% mu1 = gmfit.mu(1); sigma1 = sqrt(gmfit.Sigma(1));
+% mu2 = gmfit.mu(2); sigma2 = sqrt(gmfit.Sigma(2));
+% w1  = gmfit.ComponentProportion(1);
+% w2  = gmfit.ComponentProportion(2);
+% 
+% %Create the cdf function handle
+% mlncdf = @(t) w1 * normcdf(t, mu1, sigma1) + w2 * normcdf(t, mu2, sigma2);
 
 %% count how many estimates of nSR
 numbernSRcounts = length(nSR);

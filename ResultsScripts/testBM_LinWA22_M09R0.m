@@ -16,6 +16,18 @@ NewCoreLinMeth.S = S;
 sizeCores = numel(dataT.lats);
 numCores = sizeCores;
 
+%Set up fitS structure
+fitS.dispChi2 = true;
+fitS.Lin2014AgeFiltering = true;
+fitS.mlnReps = 5;
+fitS.weighting = "depth";
+fitS.chi2binN = 10;
+fitS.mln1RunReps = 1;
+fitS.mlnReps = 5;
+
+%Fit Mix Log Norm to data
+[MLN_BIGMACS, ~, gmfitBM] = fitMixLogNorm(BIGMACShist, x, 2, 0, fitS.mlnReps);
+
 %Fit MLN distribution to my Bchron Mode data
 disp("LinMethod (mode) data vs best fit mln")
 [NewCoreLinMeth.mixLogBMode, NewCoreLinMeth.BModeHist,~,~,~,NewCoreLinMeth.gmfitBmode, NewCoreLinMeth.ncBmode, NewCoreLinMeth.h, NewCoreLinMeth.p, NewCoreLinMeth.chiStat] = plotSRandResHistograms(dataT.bchronMode, x, true(sizeCores), 3, 1, 2, 0, "", 1, fitS);
@@ -80,3 +92,17 @@ end
 chiStat1RunT_BM = addvars(chiStat1RunT_BM, h1R, p1R, 'Before', "chi2stat");
 
 NewCoreLinMeth.MLN1R.chiStat1RunT_BM = chiStat1RunT_BM;
+
+figure;
+hold on
+plot(x, NewCoreLinMeth.MLN1R.pdfs, 'Color', [0,0,0,0.1], 'HandleVisibility', 'off')
+plot(x, NewCoreLinMeth.mixLogBMode(:,2), '-r', 'DisplayName', "BchronMode: NewCores,Marine20", 'LineWidth', 1)
+plot(NaN, NaN,'LineStyle', "none", 'DisplayName', "Random Runs that reject H0 = " + num2str(mean(NewCoreLinMeth.MLN1R.chiStat1RunT.h1R).*100, 3) + "%")
+plot(x, MLN_BIGMACS(:,2), '-k', 'DisplayName', "BchronMode: BIGMACS", 'LineWidth', 1)
+plot(NaN, NaN, 'LineStyle', "none", 'DisplayName', "Random Runs that reject H0 = " + num2str(mean(NewCoreLinMeth.MLN1R.chiStat1RunT_BM.h1R).*100, 3) + "%")
+xlim([0 6])
+%ylim(commonYLim)
+legend()
+xlabel("nSR")
+ylabel("PDF")
+title("New Cores; Marine09; R = 0±0")

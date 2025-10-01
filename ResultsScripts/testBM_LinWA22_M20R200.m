@@ -1,4 +1,4 @@
-%% Bring in data with new dataset but with Marine 20 and 200 year R uncertainty
+%% Bring in data with new dataset with Marine 20 and 200 year R uncertainty
 %Add important paths
 addpath('../Functions')
 
@@ -16,25 +16,28 @@ NewCoreNewMeth.S = S;
 sizeCores = numel(dataT.lats);
 numCores = sizeCores;
 
+%Set up fitS structure
 fitS.dispChi2 = true;
+fitS.Lin2014AgeFiltering = true;
+fitS.mlnReps = 5;
+fitS.weighting = "depth";
+fitS.chi2binN = 10;
 
 %Fit MLN distribution to my Bchron Mode data
 disp("LinMethod (mode) data vs best fit mln")
-fitS.mlnReps = 5;
 [NewCoreNewMeth.mixLogBMode, NewCoreNewMeth.BModeHist,~,~,~,NewCoreNewMeth.gmfitBmode, NewCoreNewMeth.ncBmode, NewCoreNewMeth.h, NewCoreNewMeth.p, NewCoreNewMeth.chiStat] = plotSRandResHistograms(dataT.bchronMode, x, true(sizeCores), 3, 1, 2, 0, "", 1, fitS);
 if fitS.dispChi2
-gcf; title("chi2gof: NewCoreBmode Data vs Best Fit MLN")
+    gcf; title("chi2gof: NewCoreBmode Data vs Best Fit MLN")
 end
+
 %See how my distributions perform with chi2gof on BIGMACS gmfit
 disp("LinMethod data (mode) vs BIGMACS MLN")
 [NewCoreNewMeth.hBM, NewCoreNewMeth.pBM, NewCoreNewMeth.chiStatBM] = chi2gof_vsMLN(gmfitBM, log(NewCoreNewMeth.BModeHist), NewCoreNewMeth.ncBmode, fitS);
 if fitS.dispChi2
-gcf; title("chi2gof: NewCoreBmode Data vs BIGMACS fit")
+    gcf; title("chi2gof: NewCoreBmode Data vs BIGMACS fit")
 end
-%Calculate TM of my Bchron Mode data
-S.weighting = "age";
-[~,~,NewCoreNewMeth.TMnewBchNoWeight, NewCoreNewMeth.TMnewBchWeightD] = TMcalculation(dataT.bchronMode, true(sizeCores), S);
 
+%Plot a stair plot of the nSR values for each core
 orderInd = 1:numCores;
 figure;
 for i = 1:numCores
@@ -49,7 +52,7 @@ for i = 1:numCores
 end
 fontsize(gcf, "scale", 0.6)
 
-%% Try with individual runs
+%% Run chi2 on each individual Bchron run
 numruns = 400;
 fitS.dispChi2 = false;
 [NewCoreNewMeth.MLN1R.pdfs, NewCoreNewMeth.MLN1R.c95up,...
@@ -58,34 +61,51 @@ fitS.dispChi2 = false;
     = SingleRunLogNorms(NewCoreNewMeth.dataT.bchronProb,...
     true(sizeCores, 1), numruns, x, 2, 3, 4, 0, fitS);
 
-%%
-% Test the chi2gof of each fit to it's own Bchron Mode fit
-    h1R = NaN(numruns,1);
-    p1R = NaN(numruns,1);
-    fitS.dispChi2 = false;
-    chiStat1RunT = table('Size', [0,5], 'VariableTypes', ["double", "double", "cell", "cell", "cell"], 'VariableNames',["chi2stat","df","edges","O","E"]);
+%%%% Test the chi2gof of each fit to it's own Bchron Mode fit
+%Set up storage
+h1R = NaN(numruns,1);
+p1R = NaN(numruns,1);
+fitS.dispChi2 = false;
+chiStat1RunT = table('Size', [0,5], 'VariableTypes', ["double", "double", "cell", "cell", "cell"], 'VariableNames',["chi2stat","df","edges","O","E"]);
 
+%Run through each chi2 test
 for i = 1:numruns
     [h1R(i), p1R(i), chiStat1Run] = chi2gof_vsMLN(NewCoreNewMeth.gmfitBmode, log(NewCoreNewMeth.MLN1R.outputS.weightedC{i}), NewCoreNewMeth.MLN1R.outputS.numCpairs(i), fitS);
     chiStat1RunT = [chiStat1RunT; struct2table(chiStat1Run)]; %#ok<AGROW>
 end
 
+%Add information to structure
 chiStat1RunT = addvars(chiStat1RunT, h1R, p1R, 'Before', "chi2stat");
-
 NewCoreNewMeth.MLN1R.chiStat1RunT = chiStat1RunT;
 
-%%
-% Test the chi2gof of each fit to BIGMACS
-    h1R = NaN(numruns,1);
-    p1R = NaN(numruns,1);
-    fitS.dispChi2 = false;
-    chiStat1RunT_BM = table('Size', [0,5], 'VariableTypes', ["double", "double", "cell", "cell", "cell"], 'VariableNames',["chi2stat","df","edges","O","E"]);
+%%%% Test the chi2gof of each fit to BIGMACS
+%Set up storage
+h1R = NaN(numruns,1);
+p1R = NaN(numruns,1);
+fitS.dispChi2 = false;
+chiStat1RunT_BM = table('Size', [0,5], 'VariableTypes', ["double", "double", "cell", "cell", "cell"], 'VariableNames',["chi2stat","df","edges","O","E"]);
 
+%Run through each chi2 test
 for i = 1:numruns
     [h1R(i), p1R(i), chiStat1Run] = chi2gof_vsMLN(gmfitBM, log(NewCoreNewMeth.MLN1R.outputS.weightedC{i}), NewCoreNewMeth.MLN1R.outputS.numCpairs(i), fitS);
     chiStat1RunT_BM = [chiStat1RunT_BM; struct2table(chiStat1Run)]; %#ok<AGROW>
 end
 
+%Add information to structure
 chiStat1RunT_BM = addvars(chiStat1RunT_BM, h1R, p1R, 'Before', "chi2stat");
-
 NewCoreNewMeth.MLN1R.chiStat1RunT_BM = chiStat1RunT_BM;
+
+%Plot comparison of Bchron Mode results to Bchron Individual Runs
+figure;
+hold on
+plot(x, NewCoreNewMeth.MLN1R.pdfs, 'Color', [0,0,0,0.1], 'HandleVisibility', 'off')
+plot(x, NewCoreNewMeth.mixLogBMode(:,2), '-r', 'DisplayName', "BchronMode: NewCores,Marine20", 'LineWidth', 1)
+plot(NaN, NaN,'LineStyle', "none", 'DisplayName', "Random Runs that reject H0 = " + num2str(mean(NewCoreNewMeth.MLN1R.chiStat1RunT.h1R).*100, 3) + "%")
+plot(x, MLN_BIGMACS(:,2), '-k', 'DisplayName', "BchronMode: BIGMACS", 'LineWidth', 1)
+plot(NaN, NaN, 'LineStyle', "none", 'DisplayName', "Random Runs that reject H0 = " + num2str(mean(NewCoreNewMeth.MLN1R.chiStat1RunT_BM.h1R).*100, 3) + "%")
+xlim([0 6])
+%ylim(commonYLim)
+legend()
+xlabel("nSR")
+ylabel("PDF")
+title("New Cores; Marine20; R = 0±200")

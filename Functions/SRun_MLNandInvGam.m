@@ -22,7 +22,6 @@ sedTimeSpan = NaN(1,numruns);
 %chi2stats = NaN(1,numruns);
 h = NaN(4, numruns);
 p = NaN(4, numruns);
-chiStat = cell(4, numruns);
 %skippedIterations = 0;
 agediffsBinEdges = 0:100:10000;
 agediffsWbC = NaN(length(agediffsBinEdges)-1,numruns);
@@ -60,7 +59,7 @@ runN            = NaN(numruns, length(nSRcountsClean));
 %Create log(x) vector
 logx = sort(log(x));
 
-% Take 1 run's worth of data from each core and fits distributions
+%% Take 1 run's worth of data from each core
 for i = 1:numruns
     OneRunData1 = [];
     for j = 1:length(nSRcountsClean)
@@ -87,7 +86,7 @@ for i = 1:numruns
     OneRunDatas{i} = OneRunData1;
 end
 
-%% Set up parallel process, if wanted (useful not to have if wanting to debug)
+%% Set up parallel process, if wanted (useful to turn off for debugging)
 if fitS.useParallelComp
     if sum(size(gcp("nocreate"))) == 0
         parpool('Processes', 4)
@@ -103,8 +102,8 @@ for i = 1:numruns
     %To quiet some warnings, initialize temporaries within parfor loop;
     totalSedLength = [];
     totalSedAge = [];
-    inputDataClean = [];
-    weightsClean = [];
+    % inputDataClean = [];
+    % weightsClean = [];
     data = [];
     numSRcalcs = [];
     agediffsWC1R = [];
@@ -123,10 +122,8 @@ for i = 1:numruns
     allow1 = 0; %If 
     skipIteration = 0;
     while skipIteration == 0 & allow1 == 0
-
-
         %Get rid of negative sedimentation rates (ideally, shouldn't be
-        %there)
+        %there, but BMode allows them to be there)
         if sum(OneRunData(1,:)<0) ~= 0
             warning("There are negative sed rates!... being removed")
             OneRunData = OneRunData(:, OneRunData(1,:) > 0);
@@ -151,39 +148,43 @@ for i = 1:numruns
         weightRepDP = fitS.OneRun.weightRepDP;
         weightRepInflator = fitS.OneRun.weightRepInflator;
 
-        if fitS.weighting == "depth" %This indicates whether to weight by depth or not
-            inputData       = OneRunData(1,:);
-            weights         = OneRunData(3,:); %Weights by depth, not the mixed weighting of depth and scenarios
-            inputDataClean  = inputData(~isnan(inputData));
-            weightsClean    = weights(~isnan(weights));
-            data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
-        elseif fitS.weighting == "age"
-            inputData       = OneRunData(1,:);
-            weights         = OneRunData(4,:); %Weights by age, not the mixed weighting of age and scenarios
-            inputDataClean  = inputData(~isnan(inputData));
-            weightsClean    = weights(~isnan(weights));
-            data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
-        elseif fitS.weighting == "none"
-            %Set up data as unweighted input data
-            inputData = OneRunData(1,:);
-            inputDataClean = inputData(~isnan(inputData));
-            weightsClean = ones(size(inputDataClean));
+        %Set up data to use
+        inputData       = OneRunData(1,:);
+        inputDataClean  = inputData(~isnan(inputData));
+
+        %Prepare data according to weighting choice
+        if fitS.weighting == "none"
+            weights = ones(size(inputData));
+            weightsClean = weights(~isnan(inputData));
             data = inputDataClean;
+        else
+            if fitS.weighting == "depth" %This indicates whether to weight by depth or not
+                weights         = OneRunData(3,:); %Weights by depth, not the mixed weighting of depth and scenarios
+            elseif fitS.weighting == "age"
+                weights         = OneRunData(4,:); %Weights by age, not the mixed weighting of age and scenarios
+            else
+                error("Weighting type not recognized, must be 'none', 'depth', or 'age'")
+            end
+            weightsClean    = weights(~isnan(inputData));
+            data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
         end
 
-        if fitS.weighting == "age"
-            agediffs = weightsClean;
-        else
-            agediffsRAW = OneRunData(4,:);
-            agediffs = agediffsRAW(~isnan(agediffsRAW));
-        end
+        %Get age diffs data
+        agediffsRAW = OneRunData(4,:);
+        agediffs = agediffsRAW(~isnan(agediffsRAW));
 
         %Get weighted bin counts of agediffs
         agediffsWC1R = makeWeightedBinCounts(agediffs, weightsClean, agediffsBinEdges);
         %figure; histogram("BinEdges", agediffsBinEdges, "BinCounts", agediffsWC1R)
 
-        %Find number desired number of datapoints for chi2gof later
+        %Find number of SR calcs actually involved
         numSRcalcs = numel(inputDataClean);
+        
+        %% Resample dataset to include impact of weighting avoid inflation of dataset size
+        if fitS.resampleData
+            rng(1);
+            data = randsample(data, numSRcalcs, false);
+        end
 
         %% Fitting mix log normal
         %Check that the data is a row vector
@@ -227,6 +228,7 @@ for i = 1:numruns
                     %GamPDFHOLDER = NaN(length(x), 1);
                     hi(:) = NaN;
                     pri(:) = NaN;
+                    chiStati = cell(1,size(pdfs,1));
                     for ji = 1:size(pdfs, 1)
                         chiStati{ji}.chi2stat = NaN;
                         chiStati{ji}.E = NaN;
@@ -318,7 +320,6 @@ for i = 1:numruns
     %Save this round's data
     h(:,i) = hi';
     p(:,i) = pri';
-    %chiStat(:,i) = chiStati';
     agediffsWbC(:,i) = agediffsWC1R';
     MLNfits{i} = gmfitH;
     MLNs(:, i) = SR_MixLogNorm1RunHOLDER(:,2);
