@@ -1,4 +1,4 @@
-function[GamPDF, phat] = fitGamma(data_linear, x)
+function[GamPDF, fitStruct] = fitGamma(data_linear, x)
 %%% Create a Gamma to fit some dataset (if weighted, this must
 %%% already be applied to data). 
 
@@ -18,5 +18,16 @@ beta = phat(2);
 
 %Create gamma pdf
 GamPDF = gampdf(x, alpha, beta)';
+
+%Find likelihood of fit distribution
+nll = gamlike([alpha, beta], data_linear);
+
+%Set up output structure with important values
+fitStruct.alpha = alpha;
+fitStruct.beta = beta;
+fitStruct.NumParams = 2;
+fitStruct.NegativeLogLikelihood = nll;
+fitStruct.AIC = 2*fitStruct.NumParams + 2*nll;                             % AIC = 2k - 2ln(L) therefore = 2k +2*nll
+fitStruct.BIC = log(length(data_linear))*fitStruct.NumParams + 2*nll;
 
 
