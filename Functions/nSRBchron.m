@@ -133,6 +133,10 @@ if removeRejectedAges
     rejectAgeLog = ~ismembertol(depthsUsed, predictPositionsR); %Find out what estimated ages we want to reject (ages are estimated at unique depths, keep the unique depths we accepted)
     modeAgeUsed = modeAge(~rejectAgeLog);       %keep ages not rejected
     medianAgeUsed = medianAge(~rejectAgeLog);   %keep ages not rejected
+else
+    depthsUsed   = depthR_r2BDS;
+    modeAgeUsed  = modeAge;
+    medianAgeUsed = medianAge;
 end
 
 %Handle doubly-dated depths (not sure how Lin2014 handled this)
@@ -141,6 +145,11 @@ end
 [depthsUsed, ia, ~]  = unique(depthsUsed);
 modeAgeUsed = modeAgeUsed(ia);
 medianAgeUsed = medianAgeUsed(ia);
+
+%highlight problem if less than 4 ages are used in bchron median
+if length(depthsUsed) < S.minNumberOfAges
+    warning(corename + " has less than " + num2str(S.minNumberOfAges) + " accepted ages after Bchron")
+end
 
 %For the individual runs, as long as R is saving thetaPredict, not theta, then doubly dated depths will be given the same age)
 
@@ -166,12 +175,21 @@ agediffs = diff(medianAgeUsed);
 mediannSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; medianAgeUsed(1), agediffs'];
 
 %%% Calculate nSR with probability of ages method *********************
+% Find out which runs have less than 4 ages accepted
+
+runs_with_less_than_x_ages = sum((size(phiData, 2)-sum(phiData,2))<S.minNumberOfAges);
+if runs_with_less_than_x_ages > size(thetaDataR,1)/5
+warning("Core " + corename + " has " + num2str(runs_with_less_than_x_ages) + "runs with less than " + num2str(S.minNumberOfAges) + " ages" )
+end
 %Go through each run, calculate the nSR info, and store it
 for i = 1:size(thetaDataR,1)
     %Find out which ages were not rejected in this run (this also deals
     %with doubly dated depths, by finding unique depths and using thetaRs,
     %which only estimate one age per depth)
-    keepAges = ~logical(phiData(1,:));
+    keepAges = ~logical(phiData(i,:));
+    if sum(keepAges)<S.minNumberOfAges
+        continue
+    end
     rundepthspDD = depthR_r2BDS(keepAges)';
     rundepths = unique(rundepthspDD);
     keepThetaRs = ismembertol(rundepths, predictPositionsR);
@@ -184,7 +202,7 @@ for i = 1:size(thetaDataR,1)
     runagediffs = diff(runages);
 
     %Calculate nSR
-    if S.normWithRunMean
+    if S.normWithRunAve
         runmeanSR = (rundepths(end)-rundepths(1))./(runages(end)-runages(1));
         runnSR = runSRs./runmeanSR;
     else
@@ -193,7 +211,7 @@ for i = 1:size(thetaDataR,1)
 
     %Store info in one vector, with my standardised format
     nSRinfo = [NaN, runnSR; NaN, runweights; rundepths(1), rundepthdiffs; runages(1), runagediffs];
-    if i == 1
+    if ~exist('nSRcounts','var')
         nSRcounts = nSRinfo;
     else
         nSRcounts = [nSRcounts, nSRinfo]; %#ok<AGROW>
