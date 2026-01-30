@@ -1,71 +1,152 @@
-function[dStru] = ARfitdists(dataTCol, x, chooseLog, weightDP, weightInflator, countDivisor, fitS)
+function[outS] = ARfitdists(dataTCol, x, chooseLog, weightRepDP, weightRepInflator, countDivisor, fitS)
 %This function fits the 4 distributions to all samples in a dataT column
 %(used for BMode and can be used to fit dists to all BSamp samples instead
 %of fitting to each of 1000 BSamp runs)
 
-%Fit Mix Log Normal
-[dStru.mixLog, dStru.weightedC,dStru.agediffs,~,~,...
-    dStru.MLN.nSR.gmfit, dStru.numCpairs, dStru.sedLength, ...
-    dStru.sedTimeSpan]...
-    = plotSRandResHistograms(dataTCol,...
-    x, chooseLog, weightDP, weightInflator, 2, 0, "", 0, fitS);
+%% Combine all counts into one array
+%set up arrays to be concatenated into
+nSRcountsArray = countsCell2Array(dataTCol, chooseLog);
 
-dStru.numCpairs = dStru.numCpairs./countDivisor;
-dStru.MLN.nSR.x = dStru.mixLog(:,1);
-dStru.MLN.nSR.px = dStru.mixLog(:,2);
-[dStru.MLN.nSR.mu, dStru.MLN.nSR.var] = muVarPDFVec(dStru.MLN.nSR);
-dStru.MLN.nSR.fitInfo.nll = dStru.MLN.nSR.gmfit.NegativeLogLikelihood;
-dStru.MLN.nSR.fitInfo.BIC = dStru.MLN.nSR.gmfit.BIC;
 
-%Fit Inverse gamma distribution to data
-[dStru.invGam.nSR.x, dStru.invGam.nSR.px, ~,~,~,dStru.invGam.nSR.fitInfo] = fitGamma2invSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
-[dStru.invGam.nSR.mu, dStru.invGam.nSR.var] = muVarPDFVec(dStru.invGam.nSR);
 
-%Fit gamma distribution to data
-[dStru.Gam.nSR.x, dStru.Gam.nSR.px, dStru.LN.nSR.fitInfo] = fitGamma2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
-[dStru.Gam.nSR.mu, dStru.Gam.nSR.var] = muVarPDFVec(dStru.Gam.nSR);
+%Get rid of negative sedimentation rates (ideally should not be there)
+if sum(nSRcountsArray(1,:) < 0) ~= 0
+    warning("There are negative sed rates!... being removed")
+    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) >= 0);
+end
 
-%Fit LogNormal distribution to data
-[dStru.LN.nSR.x, dStru.LN.nSR.px, dStru.LN.nSR.fitInfo] = fitLogNorm2nSR(dataTCol, chooseLog, weightDP, weightInflator, x, fitS);
-[dStru.LN.nSR.mu, dStru.LN.nSR.var] = muVarPDFVec(dStru.LN.nSR);
+%Get rid of SRs of 0 (ideally shouldn't be there)
+if sum(nSRcountsArray(1,:) == 0) ~= 0
+    warning("There are SRs of 0!... being removed")
+    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) > 0);
+end
 
-%% Transform pdf Vecs to log space
+%Apply filtering as done by Lin2014 if desired
+if fitS.Lin2014AgeFiltering
+    L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
+    nSRcountsArray = nSRcountsArray(:,L2014Log);
+end
+
+%% Apply weighting
+%Convert the weighted nSR counts to a single dimension array of counts
+%where the number of counts is representative of their weighting
+
+%Remove NaNs that are used to separate cores and runs
+
+inputData = nSRcountsArray(1,:); %nSR data
+inputData = inputData(~isnan(inputData)); %nSR data
+depthDiffs = nSRcountsArray(3,:);  %weightings
+ageDiffs = nSRcountsArray(4,:);
+if fitS.weighting == "none"
+    data = inputData;
+    %weightingsArray = ones(1,length(nSRcountsArray(2,:)));
+elseif fitS.weighting == "depth"
+        weightingsArray = depthDiffs;
+        data = makeWeightedReplicates(inputData, weightingsArray, weightRepDP, weightRepInflator);
+elseif fitS.weighting == "age"
+        weightingsArray = ageDiffs;
+        data = makeWeightedReplicates(inputData, weightingsArray, weightRepDP, weightRepInflator);
+end
+
+outS.numCpairs = size(nSRcountsArray, 2)./countDivisor;
+
+%% Resample data if desired
+if fitS.resampleData
+    rng(3)
+    alldata = data;
+    data = randsample(alldata, floor(outS.numCpairs), false);
+end
+
+%% Calculate the MixLogNorm from these counts
+% [a,b] = size(data);
+% if a>b
+%     data = data';
+% end
+[SR_MixLogNorm, ~, MLN.fitInfo] = fitMixLogNorm(data, x, 2, fitS.mlnReps);
+MLN.nSR.x = SR_MixLogNorm(:,1);
+MLN.nSR.px = SR_MixLogNorm(:,2);
+
+%% Fit Lognormal to these counts
+[SR_LogNorm, ~, LN.fitInfo] = fitMixLogNorm(data, x, 1, fitS.mlnReps);
+LN.nSR.x = SR_LogNorm(:,1);
+LN.nSR.px = SR_LogNorm(:,2);
+
+%% Fit gamma to these counts
+% Estimate the gamma fit parameters
+[Gam.nSR.px, Gam.fitInfo] = fitGamma(data, x);
+Gam.nSR.x = x';
+
+%% Fit inverse gamma to these counts (i.e. fit gamma to inverse of counts)
+[invGam.nSR.px, ~, invGam.fitInfo] = fitInvGamma(data, x);
+invGam.nSR.x = x';
+
+
+%% Save other useful information
+
+outS.numCpairs = size(nSRcountsArray, 2)./countDivisor;
+outS.weightedC = data;
+
+agediffsBinEdges = 0:100:10000;
+outS.agediffsWC= makeWeightedBinCounts(ageDiffs, depthDiffs, agediffsBinEdges);
+
+outS.sedLength = sum(depthDiffs, "omitnan");
+outS.sedTimeSpan = sum(ageDiffs, "omitnan");
+
+%Calculate mean and variance of each pdf
+[invGam.nSR.mu, invGam.nSR.var] = muVarPDFVec(invGam.nSR);
+[Gam.nSR.mu, Gam.nSR.var] = muVarPDFVec(Gam.nSR);
+[LN.nSR.mu, LN.nSR.var] = muVarPDFVec(LN.nSR);
+[MLN.nSR.mu, MLN.nSR.var] = muVarPDFVec(MLN.nSR);
+
+
+%%
+
+
+%% Transform pdf Vecs to log space and set up fo
 f_log = @(x) log(x);
-[dStru.MLN.lnSR.x, dStru.MLN.lnSR.px] = px_to_pfx(dStru.MLN.nSR.x, dStru.MLN.nSR.px, f_log);
-[dStru.MLN.lnSR.mu, dStru.MLN.lnSR.var] = muVarPDFVec(dStru.MLN.lnSR);
-dStru.MLN.lnSR.numParams = 5;
-dStru.MLN.lnSR.pdfName = "2 Component Mix Log Normal";
+[MLN.lnSR.x, MLN.lnSR.px] = px_to_pfx(MLN.nSR.x, MLN.nSR.px, f_log);
+[MLN.lnSR.mu, MLN.lnSR.var] = muVarPDFVec(MLN.lnSR);
+MLN.lnSR.numParams = 5;
+MLN.lnSR.pdfName = "2 Component Mix Log Normal";
 
-[dStru.invGam.lnSR.x, dStru.invGam.lnSR.px] = px_to_pfx(dStru.invGam.nSR.x, dStru.invGam.nSR.px, f_log);
-[dStru.invGam.lnSR.mu, dStru.invGam.lnSR.var] = muVarPDFVec(dStru.invGam.lnSR);
-dStru.invGam.lnSR.numParams = 2;
-dStru.invGam.lnSR.pdfName = "Inverse Gamma";
+[invGam.lnSR.x, invGam.lnSR.px] = px_to_pfx(invGam.nSR.x, invGam.nSR.px, f_log);
+[invGam.lnSR.mu, invGam.lnSR.var] = muVarPDFVec(invGam.lnSR);
+invGam.lnSR.numParams = 2;
+invGam.lnSR.pdfName = "Inverse Gamma";
 
-[dStru.Gam.lnSR.x, dStru.Gam.lnSR.px] = px_to_pfx(dStru.Gam.nSR.x, dStru.Gam.nSR.px, f_log);
-[dStru.Gam.lnSR.mu, dStru.Gam.lnSR.var] = muVarPDFVec(dStru.Gam.lnSR);
-dStru.Gam.lnSR.numParams = 2;
-dStru.Gam.lnSR.pdfName = "Gamma";
+[Gam.lnSR.x, Gam.lnSR.px] = px_to_pfx(Gam.nSR.x, Gam.nSR.px, f_log);
+[Gam.lnSR.mu, Gam.lnSR.var] = muVarPDFVec(Gam.lnSR);
+Gam.lnSR.numParams = 2;
+Gam.lnSR.pdfName = "Gamma";
 
-[dStru.LN.lnSR.x, dStru.LN.lnSR.px] = px_to_pfx(dStru.LN.nSR.x, dStru.LN.nSR.px, f_log);
-[dStru.LN.lnSR.mu, dStru.LN.lnSR.var] = muVarPDFVec(dStru.LN.lnSR);
-dStru.LN.lnSR.numParams = 2;
-dStru.LN.lnSR.pdfName = "LogNorm";
+[LN.lnSR.x, LN.lnSR.px] = px_to_pfx(LN.nSR.x, LN.nSR.px, f_log);
+[LN.lnSR.mu, LN.lnSR.var] = muVarPDFVec(LN.lnSR);
+LN.lnSR.numParams = 2;
+LN.lnSR.pdfName = "LogNorm";
 
 %Make a column cell-vector that holds all pdfs to test
-pdfs = {dStru.LN.lnSR; dStru.MLN.lnSR; dStru.Gam.lnSR; dStru.invGam.lnSR};
-%pdfs = {dStru.MLN.lnSR; dStru.invGam.lnSR};
-fitS.dispChi2 = true;
+pdfs = {LN.lnSR; MLN.lnSR; Gam.lnSR; invGam.lnSR};
+%pdfs = {MLN.lnSR; invGam.lnSR};
+fitS.dispChi2 = false;
 % h = NaN(1,1);
 % p = NaN(1,1);
-[h, p, chiStat] = chi2_dataVStwopdfVECs(log(dStru.weightedC), dStru.numCpairs, 20, pdfs, fitS);
+[h, p, chiStat] = chi2_dataVStwopdfVECs(log(data), outS.numCpairs, 20, pdfs, fitS);
 
 %store the chiStats in the data structures
 for i = 1:size(pdfs,1)
     chiStat{i}.h = h(i);
     chiStat{i}.p = p(i);
 end
-dStru.LN.chiStats = chiStat{1};
-dStru.MLN.chiStats = chiStat{2};
-dStru.Gam.chiStats = chiStat{3};
-dStru.invGam.chiStats = chiStat{4};
+LN.chiStats = chiStat{1};
+MLN.chiStats = chiStat{2};
+Gam.chiStats = chiStat{3};
+invGam.chiStats = chiStat{4};
+
+%% Put structures into output structure
+outS.LN = LN;
+outS.MLN = MLN;
+outS.Gam = Gam;
+outS.invGam = invGam;
+
+
 end
