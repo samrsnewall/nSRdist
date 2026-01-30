@@ -1,4 +1,4 @@
-function[outS] = SRun_MLNandInvGam(nSRcounts, coreLog, numruns, x, MLNcomponents, fitS)
+function[outS] = SRun_MLNandInvGam(nSRcounts, coreLog, numruns, x, fitS)
 
 %Initialise vectors
 OneRunDatas = cell(1, numruns);
@@ -15,7 +15,7 @@ Gfits = cell(1, numruns);
 Gams = NaN(length(x), numruns);
 logGams =  NaN(length(x), numruns);
 %phats  = NaN(2,numruns);
-weightedC = cell(1,numruns);    
+weightedC = cell(1,numruns);
 numCpairs = NaN(1,numruns);
 sedLength = NaN(1, numruns);
 sedTimeSpan = NaN(1,numruns);
@@ -107,28 +107,28 @@ for i = 1:numruns
     data = [];
     numSRcalcs = [];
     agediffsWC1R = [];
-    SR_MixLogNorm1RunHOLDER = [];
-    gmfitH = [];
+    MixLogNormPDFHOLDER = [];
+    MLNfitH = [];
     invGamPDFHOLDER = [];
     IGfitH = [];
     chiStati = [];
     logMLNVEC = [];
     logInvGamVEC = [];
-    
+
     %Get onerundata for this run
     OneRunData = OneRunDatas{i};
-    
+
     %set up while loop conditions
-    allow1 = 0; %If 
+    allow1 = 0; %If
     skipIteration = 0;
     while skipIteration == 0 & allow1 == 0
         %Get rid of negative sedimentation rates (ideally, shouldn't be
         %there, but BMode allows them to be there)
         if sum(OneRunData(1,:)<0) ~= 0
             warning("There are negative sed rates!... being removed")
-            OneRunData = OneRunData(:, OneRunData(1,:) > 0);
+            OneRunData = OneRunData(:, OneRunData(1,:) >= 0);
         end
-        
+
         %Get rid of SRs of 0 (ideally, shouldn't be there)
         if sum(OneRunData(1,:) == 0) ~= 0
             warning("There are SRs of 0!... being removed.")
@@ -141,9 +141,23 @@ for i = 1:numruns
             OneRunData = OneRunData(:,L2014Log);
         end
 
+        %% Calculate some other useful information
         %Find out how much length and time the data spans
         totalSedLength = sum(OneRunData(3,:), "all", "omitnan");
         totalSedAge = sum(OneRunData(4,:), "all", "omitnan");
+
+        %Find number of SR calcs actually involved
+        numSRcalcs = numel(inputDataClean);
+
+        %Get age diffs data
+        agediffsRAW = OneRunData(4,:);
+        agediffs = agediffsRAW(~isnan(agediffsRAW));
+
+        %Get weighted bin counts of agediffs
+        agediffsWC1R = makeWeightedBinCounts(agediffs, weightsClean, agediffsBinEdges);
+        %figure; histogram("BinEdges", agediffsBinEdges, "BinCounts", agediffsWC1R)
+
+
         %% Weighting Data
         weightRepDP = fitS.OneRun.weightRepDP;
         weightRepInflator = fitS.OneRun.weightRepInflator;
@@ -169,181 +183,223 @@ for i = 1:numruns
             data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
         end
 
-        %Get age diffs data
-        agediffsRAW = OneRunData(4,:);
-        agediffs = agediffsRAW(~isnan(agediffsRAW));
+ 
 
-        %Get weighted bin counts of agediffs
-        agediffsWC1R = makeWeightedBinCounts(agediffs, weightsClean, agediffsBinEdges);
-        %figure; histogram("BinEdges", agediffsBinEdges, "BinCounts", agediffsWC1R)
-
-        %Find number of SR calcs actually involved
-        numSRcalcs = numel(inputDataClean);
-        
         %% Resample dataset to include impact of weighting avoid inflation of dataset size
         if fitS.resampleData
             rng(1);
             data = randsample(data, numSRcalcs, false);
         end
 
-        %% Fitting mix log normal
-        %Check that the data is a row vector
-        [a,b] = size(data);
-        if a>b
-            data = data';
-        end
+        %% Fit distributions
 
-        %Fit a mix log normal to the data. If there is an ill conditioned
-        %covariance and an error is called, try again (initial conditions are
-        %random so new initial conditions may allow the code to avoid an ill
-        %conditioned covariance).
-        allow2 = 0;
-        errorNum = 0;
-        while allow2 == 0 && skipIteration == 0
-            try
-                [SR_MixLogNorm1RunHOLDER, ~, gmfitH] = fitMixLogNorm(data, x, MLNcomponents, fitS.OneRun.MLNReps); %If this is taking too long, try reducing the weightRepInflator value
-                [invGamPDFHOLDER, ~,IGfitH] = fitInvGamma(data, x);
-                [GamPDFHOLDER, GfitH] = fitGamma(data, x);
-                [LNPDFHOLDER, LNfitH] = fitMixLogNorm(data, x, 1, fitS.OneRun.MLNReps);
+        if fitS.fitDists == true
+            %Check that the data is a row vector
 
-                %Remove any NaNs in HOLDERS (think this is a bug?)
-                SR_MixLogNorm1RunHOLDER(isnan(SR_MixLogNorm1RunHOLDER)) = 0;
-                invGamPDFHOLDER(isnan(invGamPDFHOLDER)) = 0;
-                GamPDFHOLDER(isnan(GamPDFHOLDER)) = 0;
-                LNPDFHOLDER(isnan(LNPDFHOLDER)) = 0;
+            [a,b] = size(data);
+            if a>b
+                data = data';
+            end
 
-                allow1 = 1;
-                allow2 = 1;
-                skipIteration = 0;
-            catch %If there is an error in the fitMixLogNorm, which commonly happens because of an ill conditioned covariance, which may not occur if different initial conditions are used. If it continues to happen, skip this scenario and choose another scenario.
-                errorNum = errorNum+1;
-                disp("number of failed fittings = " + num2str(errorNum))
-                allow2 = 0;
-                if errorNum >10
-                    skipIteration = 1;
-                    gmfitH = NaN;
-                    SR_MixLogNorm1RunHOLDER = NaN(length(x), 2);
-                    IGfitH = NaN;
-                    invGamPDFHOLDER = NaN(length(x), 1);
-                    %GamPDFHOLDER = NaN(length(x), 1);
-                    hi(:) = NaN;
-                    pri(:) = NaN;
-                    chiStati = cell(1,size(pdfs,1));
-                    for ji = 1:size(pdfs, 1)
-                        chiStati{ji}.chi2stat = NaN;
-                        chiStati{ji}.E = NaN;
-                        chiStati{ji}.O = NaN;
-                        chiStati{ji}.edges = NaN;
-                        chiStati{ji}.df = NaN;
+            %Fit a mix log normal, inverse gamma, gamma and lognormal to the data. If there is an ill conditioned
+            %covariance and an error is called, try again (initial conditions are
+            %random so new initial conditions may allow the code to avoid an ill
+            %conditioned covariance).
+            allow2 = 0;
+            errorNum = 0;
+            while allow2 == 0 && skipIteration == 0
+                try
+                    [MixLogNormPDFHOLDER, ~, MLNfitH] = fitMixLogNorm(data, x, 2, fitS.OneRun.MLNReps); %If this is taking too long, try reducing the weightRepInflator value
+                    [invGamPDFHOLDER, ~,IGfitH] = fitInvGamma(data, x);
+                    [GamPDFHOLDER, GfitH] = fitGamma(data, x);
+                    [LNPDFHOLDER, ~, LNfitH] = fitMixLogNorm(data, x, 1, fitS.OneRun.MLNReps);
+
+                    %Remove any NaNs in HOLDERS (think this is a bug?)
+                    MixLogNormPDFHOLDER(isnan(MixLogNormPDFHOLDER)) = 0;
+                    invGamPDFHOLDER(isnan(invGamPDFHOLDER)) = 0;
+                    GamPDFHOLDER(isnan(GamPDFHOLDER)) = 0;
+                    LNPDFHOLDER(isnan(LNPDFHOLDER)) = 0;
+
+                    allow1 = 1;
+                    allow2 = 1;
+                    skipIteration = 0;
+                catch %If there is an error in the fitMixLogNorm, which commonly happens because of an ill conditioned covariance, which may not occur if different initial conditions are used. If it continues to happen, skip this scenario and choose another scenario.
+                    errorNum = errorNum+1;
+                    disp("number of failed fittings = " + num2str(errorNum))
+                    allow2 = 0;
+                    if errorNum >10
+                        skipIteration = 1;
+                        MLNfitH = NaN;
+                        MixLogNormPDFHOLDER = NaN(length(x), 2);
+                        IGfitH = NaN;
+                        invGamPDFHOLDER = NaN(length(x), 1);
+                        %GamPDFHOLDER = NaN(length(x), 1);
+                        hi(:) = NaN;
+                        pri(:) = NaN;
+                        chiStati = cell(1,size(pdfs,1));
+                        for ji = 1:size(pdfs, 1)
+                            chiStati{ji}.chi2stat = NaN;
+                            chiStati{ji}.E = NaN;
+                            chiStati{ji}.O = NaN;
+                            chiStati{ji}.edges = NaN;
+                            chiStati{ji}.df = NaN;
+                        end
+                        logMLNVEC.px = NaN;
+                        logInvGamVEC.px = NaN;
                     end
-                    logMLNVEC.px = NaN;
-                    logInvGamVEC.px = NaN;
                 end
+                if mod(i, 50) == 0
+                    disp("Fit " + num2str(i) + " samplings")
+                end
+
             end
-            if mod(i, 50) == 0
-            disp("Fit " + num2str(i) + " samplings")
-            end
+        else
+
+            % ===== Dummy outputs when skipping distribution fitting =====
+            nx = numel(x);
+
+            % PDF holders with correct shapes
+            MixLogNormPDFHOLDER = NaN(nx, 2);  % later uses (:,2)
+            invGamPDFHOLDER     = NaN(nx, 1);
+            GamPDFHOLDER        = NaN(nx, 1);
+            LNPDFHOLDER         = NaN(nx, 2);  % later uses (:,2)
+
+            % Fit “handles” / objects
+            MLNfitH = NaN;
+            IGfitH = NaN;
+            GfitH  = NaN;
+            LNfitH = NaN;
+
+
+            allow1 = 1;
+            allow2 = 1;
+            skipIteration = 0;
         end
     end
+
 
     if skipIteration == 1
         disp("Skipped an iteration in SRun_MLNandInvGam")
     else
 
-    %Run chi2gof on the fit
-    %chi2gof on MLN
-    MLNVEC = [];
-    MLNVEC.x = x';
-    MLNVEC.px = SR_MixLogNorm1RunHOLDER(:,2);
-    MLNVEC.numParams = 5;
-    MLNVEC.pdfName = "2 Component Mixed Log Normal";
-    [MLNVEC.mu, MLNVEC.var] = muVarPDFVec(MLNVEC);
 
-    logMLNVEC = [];
-    [logMLNVEC.x, logMLNVEC.px] = px_to_pfx(MLNVEC.x, MLNVEC.px, @log);
-    logMLNVEC.numParams = MLNVEC.numParams;
-    logMLNVEC.pdfName = MLNVEC.pdfName;
-    [logMLNVEC.mu, logMLNVEC.var] = muVarPDFVec(logMLNVEC);
+        %% Run chi2gof on the fits
+        %chi2gof on MLN
+        MLNVEC = [];
+        MLNVEC.x = x';
+        MLNVEC.px = MixLogNormPDFHOLDER(:,2);
+        MLNVEC.numParams = 5;
+        MLNVEC.pdfName = "2 Component Mixed Log Normal";
+        [MLNVEC.mu, MLNVEC.var] = muVarPDFVec(MLNVEC);
 
-    %chi2gof on inverse gamma
-    InvGamVEC = [];
-    InvGamVEC.x = x';
-    InvGamVEC.px = invGamPDFHOLDER;
-    InvGamVEC.numParams = 2;
-    InvGamVEC.pdfName = "Inverse Gamma";
-    [InvGamVEC.mu, InvGamVEC.var] = muVarPDFVec(InvGamVEC);
+        logMLNVEC = [];
+        [logMLNVEC.x, logMLNVEC.px] = px_to_pfx(MLNVEC.x, MLNVEC.px, @log);
+        logMLNVEC.numParams = MLNVEC.numParams;
+        logMLNVEC.pdfName = MLNVEC.pdfName;
+        [logMLNVEC.mu, logMLNVEC.var] = muVarPDFVec(logMLNVEC);
 
-    logInvGamVEC = [];
-    [logInvGamVEC.x, logInvGamVEC.px] = px_to_pfx(InvGamVEC.x, InvGamVEC.px, @log);
-    logInvGamVEC.numParams = InvGamVEC.numParams;
-    logInvGamVEC.pdfName = InvGamVEC.pdfName;
-    [logInvGamVEC.mu, logInvGamVEC.var] = muVarPDFVec(logInvGamVEC);
+        %chi2gof on inverse gamma
+        InvGamVEC = [];
+        InvGamVEC.x = x';
+        InvGamVEC.px = invGamPDFHOLDER;
+        InvGamVEC.numParams = 2;
+        InvGamVEC.pdfName = "Inverse Gamma";
+        [InvGamVEC.mu, InvGamVEC.var] = muVarPDFVec(InvGamVEC);
 
-    %chi2gof on gamma
-    GamVEC = [];
-    GamVEC.x = x';
-    GamVEC.px = GamPDFHOLDER;
-    GamVEC.numParams = 2;
-    GamVEC.pdfName = "Gamma";
-    [GamVEC.mu, GamVEC.var] = muVarPDFVec(GamVEC);
+        logInvGamVEC = [];
+        [logInvGamVEC.x, logInvGamVEC.px] = px_to_pfx(InvGamVEC.x, InvGamVEC.px, @log);
+        logInvGamVEC.numParams = InvGamVEC.numParams;
+        logInvGamVEC.pdfName = InvGamVEC.pdfName;
+        [logInvGamVEC.mu, logInvGamVEC.var] = muVarPDFVec(logInvGamVEC);
 
-    logGamVEC = [];
-    [logGamVEC.x, logGamVEC.px] = px_to_pfx(GamVEC.x, GamVEC.px, @log);
-    logGamVEC.numParams = GamVEC.numParams;
-    logGamVEC.pdfName = GamVEC.pdfName;
-    [logGamVEC.mu, logGamVEC.var] = muVarPDFVec(logGamVEC);
+        %chi2gof on gamma
+        GamVEC = [];
+        GamVEC.x = x';
+        GamVEC.px = GamPDFHOLDER;
+        GamVEC.numParams = 2;
+        GamVEC.pdfName = "Gamma";
+        [GamVEC.mu, GamVEC.var] = muVarPDFVec(GamVEC);
 
-    %chi2gof on log normal
-    LNVEC = [];
-    LNVEC.x = x';
-    LNVEC.px = LNPDFHOLDER(:,2);
-    LNVEC.numParams = 2;
-    LNVEC.pdfName = "Log Normal";
-    [LNVEC.mu, LNVEC.var] = muVarPDFVec(LNVEC);
+        logGamVEC = [];
+        [logGamVEC.x, logGamVEC.px] = px_to_pfx(GamVEC.x, GamVEC.px, @log);
+        logGamVEC.numParams = GamVEC.numParams;
+        logGamVEC.pdfName = GamVEC.pdfName;
+        [logGamVEC.mu, logGamVEC.var] = muVarPDFVec(logGamVEC);
 
-    logLNVEC = [];
-    [logLNVEC.x, logLNVEC.px] = px_to_pfx(LNVEC.x, LNVEC.px, @log);
-    logLNVEC.numParams = LNVEC.numParams;
-    logLNVEC.pdfName = LNVEC.pdfName;
-    [logLNVEC.mu, logLNVEC.var] = muVarPDFVec(logLNVEC);
+        %chi2gof on log normal
+        LNVEC = [];
+        LNVEC.x = x';
+        LNVEC.px = LNPDFHOLDER(:,2);
+        LNVEC.numParams = 2;
+        LNVEC.pdfName = "Log Normal";
+        [LNVEC.mu, LNVEC.var] = muVarPDFVec(LNVEC);
 
-    pdfs = {logMLNVEC; logInvGamVEC; logGamVEC; logLNVEC};
-    
-    if i <4
-        fitS.dispChi2 = true;
-    else
-        fitS.dispChi2 = false;
-    end
-    [hi, pri, chiStati] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, pdfs, fitS);
+        logLNVEC = [];
+        [logLNVEC.x, logLNVEC.px] = px_to_pfx(LNVEC.x, LNVEC.px, @log);
+        logLNVEC.numParams = LNVEC.numParams;
+        logLNVEC.pdfName = LNVEC.pdfName;
+        [logLNVEC.mu, logLNVEC.var] = muVarPDFVec(logLNVEC);
+
+        if fitS.run_chi2gof
+
+            pdfs = {logLNVEC; logMLNVEC; logGamVEC; logInvGamVEC};
+
+            if i <4
+                fitS.dispChi2 = true;
+            else
+                fitS.dispChi2 = false;
+            end
+            [hi, pri, chiStati] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, pdfs, fitS);
+
+        else %If fitS.run_chi2gof is false, set up dummy variables.
+            % Number of distributions
+            nPdf = 4;
+
+            % h(:,i) = hi'; p(:,i) = pri'; so hi, pri should be 1×nPdf
+            hi  = nan(1, nPdf);
+            pri = nan(1, nPdf);
+
+            % chiStati is a 1×nPdf cell array of structs with the same fields
+            % as returned by chi2_dataVStwopdfVECs, but all NaN.
+            chiStati = cell(1, nPdf);
+            for k = 1:nPdf
+                chiStati{k} = struct( ...
+                    'chi2stat', NaN, ...
+                    'df',       NaN, ...
+                    'edges',    NaN, ...
+                    'O',        NaN, ...
+                    'E',        NaN );
+            end
+        end
+
+
 
     end
     %Save this round's data
-    h(:,i) = hi';
-    p(:,i) = pri';
     agediffsWbC(:,i) = agediffsWC1R';
-    MLNfits{i} = gmfitH;
-    MLNs(:, i) = SR_MixLogNorm1RunHOLDER(:,2);
+    MLNfits{i} = MLNfitH;
+    MLNs(:, i) = MLNVEC.px;
     MLNmu(i) = MLNVEC.mu;
     MLNvar(i) = MLNVEC.var;
     logMLNs(:,i) = logMLNVEC.px;
     logMLNmu(i) = logMLNVEC.mu;
     logMLNvar(i) = logMLNVEC.var;
     LNfits{i} = LNfitH;
-    LNs(:, i) = LNPDFHOLDER(:,2);
+    LNs(:, i) = LNVEC.px;
     LNmu(i) = LNVEC.mu;
     LNvar(i) = LNVEC.var;
     logLNs(:,i) = logLNVEC.px;
     logLNmu(i) = logLNVEC.mu;
     logLNvar(i) = logLNVEC.var;
     IGfits{i} = IGfitH;
-    invGams(:,i) = invGamPDFHOLDER;
+    invGams(:,i) = InvGamVEC.px;
     invGammu(i) = InvGamVEC.mu;
     invGamvar(i) = InvGamVEC.var;
     logInvGams(:,i) = logInvGamVEC.px;
     loginvGammu(i) = logInvGamVEC.mu;
     loginvGamvar(i) = logInvGamVEC.var;
     Gfits{i} = GfitH;
-    Gams(:,i) = GamPDFHOLDER;
+    Gams(:,i) = GamVEC.px;
     Gammu(i) = GamVEC.mu;
     Gamvar(i) = GamVEC.var;
     logGams(:,i) = logGamVEC.px;
@@ -353,6 +409,8 @@ for i = 1:numruns
     numCpairs(i) = numSRcalcs;
     sedLength(i) = totalSedLength;
     sedTimeSpan(i) = totalSedAge;
+    h(:,i) = hi';
+    p(:,i) = pri';
     MLNchi2stat{i} = chiStati{1}.chi2stat;
     MLNchiStatTdf(i) = chiStati{1}.df;
     MLNchiStatTedges{i} = chiStati{1}.edges;
