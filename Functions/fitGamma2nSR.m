@@ -7,9 +7,9 @@ function[nSR_Gamma, nSR_GammaProb, fitInfo, nSRbincounts_weighted] = fitGamma2nS
 nSRcountsArraywNaN = countsCell2Array(nSRcounts, coreSubsetLogical);
 
 % Clean up data
-removeIndex = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
-removeIndex2 = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
-nSRcountsArray = nSRcountsArraywNaN(:, ~(removeIndex | removeIndex2)); % remove nans and zeros
+NaNLog = isnan(nSRcountsArraywNaN(1,:)); %Get rid of nans
+ZerosLog = nSRcountsArraywNaN(1,:) == 0; %Get rid of zeros
+nSRcountsArray = nSRcountsArraywNaN(:, ~(NaNLog | ZerosLog)); % remove nans and zeros
 
 %Remove information from age pairs not within 0.5-4 kyr
 if fitS.Lin2014AgeFiltering
@@ -24,13 +24,18 @@ else
     end
 end
 
-%Apply weighting
+%Convert the weighted nSR counts to a single dimension array of counts
+%where the number of counts is representative of their weighting
+nSR = nSRcountsArray(1,:)'; %nSR data
+depthDiffs = nSRcountsArray(3,:);  %weightings
+ageDiffs = nSRcountsArray(4,:);
 if fitS.weighting == "none"
+    data = nSR;
     weightingsArray = ones(1,length(nSRcountsArray(2,:)));
 elseif fitS.weighting == "depth"
-    weightingsArray = nSRcountsArray(3,:);
+        weightingsArray = depthDiffs;
 elseif fitS.weighting == "age"
-    weightingsArray = nSRcountsArray(4,:);
+        weightingsArray = ageDiffs;
 end
 numSRcalcs = size(nSRcountsArray, 2);
 nSRcounts = nSRcountsArray(1,:);
@@ -48,6 +53,8 @@ phat = gamfit(nSR_WR);
 fitInfo.alpha = phat(1);
 fitInfo.beta = phat(2);
 fitInfo.nll = gamlike([fitInfo.alpha, fitInfo.beta], nSR_WR);
+fitInfo.NumParams = 2;
+fitInfo.BIC = 2*fitInfo.nll + fitInfo.NumParams*log(length(nSR_WR));
 
 % Create gamma
 nSR_GammaProb = gampdf(x, fitInfo.alpha, fitInfo.beta);
