@@ -133,17 +133,17 @@ for ix = 1:numruns
     runAgesOfUsed = run_age(datesUsed);
     %datesUsedStore(runN,:) = datesUsed;
 
-    % Calculate mean SR for that potential run
-    meanSR_run = (depthOfUsed(end)-depthOfUsed(1))./(runAgesOfUsed(end)-runAgesOfUsed(1));
+    % Calculate average SR for that potential run
+    aveSR_run = (depthOfUsed(end)-depthOfUsed(1))./(runAgesOfUsed(end)-runAgesOfUsed(1));
 
     %------ Calculate the sedrates for each pair of ages
     age_diffs = diff(runAgesOfUsed);
     dep_diffs = diff(depthOfUsed)';
     SRs = dep_diffs./age_diffs;
-    if S.normWithRunMean
-        normSRs = SRs./meanSR_run;
+    if S.normWithRunAve
+        normSRs = SRs./aveSR_run;
     else
-        normSRs = SRs./(scenario_meanSR(i_sce)./1000);
+        normSRs = SRs./(scenario_meanSR(i_sce)./1000); %What is the ./1000 doing here (probably conversion from y to kyr in some way...)?
     end
     %Add normSRs to vector to count them (with their weighting)
     weightingNormaliser = numruns; %Find normalising value based on number of runs
