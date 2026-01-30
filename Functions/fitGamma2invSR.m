@@ -1,4 +1,4 @@
-function[nSR_invGamma, nSR_invGammaProb, invxGamProb, alpha, invSRbincounts_weighted, fitInfo] = fitGamma2invSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
+function[nSR_invGamma, nSR_invGammaProb, invxGamProb, invSRbincounts_weighted, fitInfo] = fitGamma2invSR(nSRcounts, coreSubsetLogical,weightDP, weightInflator, x, fitS)
 % This function takes nSRcounts data, inverts it so that it is accumulation
 % rate data (as discussed in Blaauw et al., 2011) and fits a gamma
 % distribution to the data. It then inverts that gamma distribution so that
@@ -59,12 +59,14 @@ invx = sort(1./x);
 
 % Estimate the gamma fit parameters
 phat = gamfit(invnSR_WR);
-alpha = phat(1);
-beta = phat(2);
-fitInfo.nll = gamlike([alpha, beta], invnSR_WR);
+fitInfo.alpha = phat(1);
+fitInfo.beta = phat(2);
+fitInfo.nll = gamlike([fitInfo.alpha, fitInfo.beta], invnSR_WR) +2*sum(log(data)); %Adds the jacobian correction
+fitInfo.NumParams = 2;
+fitInfo.BIC = 2*fitInfo.nll + fitInfo.NumParams*log(length(invnSR_WR));
 
 % Create gamma on invx values
-invxGamProb = gampdf(invx, alpha, beta);
+invxGamProb = gampdf(invx, fitInfo.alpha, fitInfo.beta);
 
 % Convert back to nSR
 f_inv = @(x) 1./x;
