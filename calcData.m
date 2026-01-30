@@ -36,7 +36,7 @@ S.WApath       = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
 S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";
 
 %Set up file to save outputs to
-stringID = "All1_RLGtrue_DS0p05_SHAK065K_Jul16";
+stringID = "All1_RLGtrue_DS0p05_Dec9";
 S.dataOutputFile = "dataT_" + stringID;
 
 %Set up core choice settings
@@ -54,8 +54,8 @@ S.usePF             = true;     %Use the ages I've added
 S.DeltaRError       = 200;      %Error put on the Delta R (reservoir age correction)
 S.c14AgeLim         = [0 50];   %Cutoffs for radiocarbon ages, in kyr
 S.weighting         = "depth";  %How to weight (options are "depth", "age", or "none")
-S.normWithRunMean   = true;     %Use the SR from each individual run (true) or use a common meanSR to use when calculating normalised SR (false).
-S.numruns           = 1000;     %How many sets of samples to take when using the probabilistic approaches.
+S.normWithRunAve   = true;     %Use the averageSR from each individual run (true) or use a common averageSR to use when calculating normalised SR (false).
+S.numruns           = 400;     %How many sets of samples to take when using the probabilistic approaches.
 
 %Set up parameters that influence Bchron running
 S.useBchron         = true;     % if false, skips BMode and BSamp set up
@@ -112,7 +112,7 @@ end
 numAllCores = length(rawdataManual.CoreName);
 
 %Name of any problem cores (useful if wanting to exclude a single core)
-problemCores = "PlacementString";
+problemCores = "KNR197-3-36GGC";
 badLog       = ismember(string(rawdataManual.CoreName),problemCores);
 
 %Restrict which cores to analyse based on metadata, such as depth or
@@ -128,7 +128,7 @@ goodLog            = badLog == 0 & restrictions == 1;
 
 %% Create some other useful logicals
 %Test a core based on it's name
- namedLog = ismember(string(rawdataManual.CoreName), "SHAK06-5K");   
+ namedLog = ismember(string(rawdataManual.CoreName), "MD03-2698");   
 
 %Test a subset of cores
 subsetChooser = false(numAllCores,1);
@@ -279,19 +279,9 @@ parfor i =  1:numCores
     [nSRcounts1500{i}, agediffs1500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
 end
 disp("e")
-% ------ Run through all chosen cores with random sampling approach,
-% RESTRICTION ON MINIMUM AGE DIFFERENCE = 2000
-
-%Initiate variables
-nSRcounts2000   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
-agediffs2000    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
-
-parfor i =  1:numCores
-    [nSRcounts2000{i}, agediffs2000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 2000);
-end
 
 %% Put all results into dataT table and save to an output folder
-dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, nSRcounts2000, bchronMode, bchronMedian, bchronProb); 
+dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, bchronMode, bchronMedian, bchronProb); 
  save(fullfile("Results", S.dataOutputFile), "dataT", "S", "rawdataManual")
 
 %% Plot a few figures for a quick glance if wanted
