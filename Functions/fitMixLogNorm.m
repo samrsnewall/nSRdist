@@ -1,4 +1,4 @@
-function[mixLogNormPDF, mixNormPDF, gmfit] = fitMixLogNorm(data_linear, x, numComponents, replicates)
+function[mixLogNormPDF, mixNormPDF, mlnfit] = fitMixLogNorm(data_linear, x, numComponents, replicates, numObs)
 %%% Create a mixed log normal to fit some dataset (if weighted, this must
 %%% already be applied to data). This function applies a regularization
 %%% value. A regularization value of 0 is the same as not regularising.
@@ -46,5 +46,24 @@ lz              = sum(ly.*mix_fit, 2);
 mixLogNormPDF   = [x', z];
 mixNormPDF      = [lx', lz];
 
+% Calculate the negative log likelihood in linear space
+nll_mixlogn = gmfit.NegativeLogLikelihood + sum(log(data_linear));          %addition of sum(log(data_linear)) is the Jacobian correction to convert back to linear space
+BIC_mixlogn = 2*nll_mixlogn + numComponents*log(length(data_linear));
 
+%Calculate NLL and correct for number of repetitions, as suggested by
+%Taehee (divide NLL by number of repetitions)
+
+    info_divisor = length(data_linear)./numObs;
+    nll_taeheeFix = nll_mixlogn./info_divisor;
+    BIC_taeheeFix = 2*nll_taeheeFix + numComponents*log(numObs);
+
+
+%Set up output structure
+mlnfit.NumVariables = gmfit.NumVariables;
+mlnfit.mu = gmfit.mu;
+mlnfit.Sigma = gmfit.Sigma;
+mlnfit.ComponentProportion = gmfit.ComponentProportion;
+mlnfit.NegativeLogLikelihood = nll_mixlogn;
+mlnfit.BIC = BIC_mixlogn;
+mlnfit.BICtaeheefix = BIC_taeheeFix;
 end

@@ -1,4 +1,4 @@
-function[GamPDF, fitStruct] = fitGamma(data_linear, x)
+function[GamPDF, fitStruct] = fitGamma(data_linear, x, numObs)
 %%% Create a Gamma to fit some dataset (if weighted, this must
 %%% already be applied to data). 
 
@@ -22,6 +22,13 @@ GamPDF = gampdf(x, alpha, beta)';
 %Find likelihood of fit distribution
 nll = gamlike([alpha, beta], data_linear);
 
+%Calculate NLL and correct for number of repetitions, as suggested by
+%Taehee (divide NLL by number of repetitions)
+
+info_divisor = length(data_linear)./numObs;
+nll_taeheeFix = nll./info_divisor;
+BIC_taeheeFix = 2*nll_taeheeFix + 2*log(numObs);
+
 %Set up output structure with important values
 fitStruct.alpha = alpha;
 fitStruct.beta = beta;
@@ -29,5 +36,7 @@ fitStruct.NumParams = 2;
 fitStruct.NegativeLogLikelihood = nll;
 fitStruct.AIC = 2*fitStruct.NumParams + 2*nll;                             % AIC = 2k - 2ln(L) therefore = 2k +2*nll
 fitStruct.BIC = log(length(data_linear))*fitStruct.NumParams + 2*nll;
+fitStruct.BICtaeheefix = BIC_taeheeFix;
+
 
 

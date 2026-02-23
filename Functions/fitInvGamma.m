@@ -1,4 +1,4 @@
-function[invGamPDF, GamPDF, fitStruct] = fitInvGamma(data_linear, x)
+function[invGamPDF, GamPDF, fitStruct] = fitInvGamma(data_linear, x, numObs)
 %%% Create a Inverse Gamma to fit some dataset (if weighted, this must
 %%% already be applied to data).
 
@@ -31,6 +31,14 @@ f = @(x) 1./x;
 %Interpolate back to desired x vector spacing
 invGamPDF = interp1(round(newx, 10), invGamPDF_toInterpolate, round(x, 10))';
 
+%Calculate NLL and correct for number of repetitions, as suggested by
+%Taehee (divide NLL by number of repetitions)
+
+info_divisor = length(data_linear)./numObs;
+nll_taeheeFix = nll./info_divisor;
+BIC_taeheeFix = 2*nll_taeheeFix + 2*log(numObs);
+
+
 %Set up output structure with important values
 fitStruct.alpha = alpha;
 fitStruct.beta = beta;
@@ -38,3 +46,10 @@ fitStruct.NumParams = 2;
 fitStruct.NegativeLogLikelihood = nll;
 fitStruct.AIC = 2*fitStruct.NumParams + 2*nll;                             % AIC = 2k - 2ln(L) therefore = 2k +2*nll
 fitStruct.BIC = log(length(data_linear))*fitStruct.NumParams + 2*nll;
+fitStruct.BICtaeheefix = BIC_taeheeFix;
+
+% Check on likelihood
+GamPDF1 = @(y) gampdf(y, alpha, beta);
+invGamPDF1 = @(x) gampdf(1./x, alpha, beta) .* (1./x.^2);
+x = data_linear;
+nll1 = -sum(log(invGamPDF1(x)));
