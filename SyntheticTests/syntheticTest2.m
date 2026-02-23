@@ -3,6 +3,8 @@
 %know if there is any bias is introduced or if there are consistency
 %problems...
 
+addpath("../Functions")
+
 %% Synthetic Set Up
 %Set up the "true" nSR distribution
 t_lognSR_mu = 0.16; %mean (in log space)
@@ -17,7 +19,7 @@ J = 1000;
 %Create a set of M cores with N nSR estimates each
 M = 100;
 N = 10;
-aveSR = 12;
+aveSR = 20;
 t_depthSpacing = 15;
 
 %Initialize vector to hold reconstructed values
@@ -75,6 +77,8 @@ end
 %% Perform Evaluation using our method
 %Now, evaluate using methodology in our paper
 allnSRs = [];
+weights_age = [];
+weights_depth = [];
 r_aveSR = NaN(M,1);
 r_SRs = cell(M,1);
 r_nSRs = cell(M,1);
@@ -83,13 +87,17 @@ for m = 1:M
     r_SRs{m} = diff(t_coreDepths{m})./diff(t_coreAgesF{m});
     r_nSRs{m} = r_SRs{m}./r_aveSR(m);
     allnSRs = [allnSRs; r_nSRs{m}];
+    weights_age = [weights_age; diff(t_coreAges{m})];
+    weights_depth = [weights_depth; diff(t_coreDepths{m})];
 end
 
 
+%Perform weighting
+weighted_nSRs = makeWeightedReplicates(allnSRs, weights_depth, 3, 1/15); %Weight by replicating data according to weighting
 
 %Fit distribution
-nSRdist = fitdist(allnSRs, 'Lognormal');
-lnSRdist = fitdist(log(allnSRs), "Normal");
+nSRdist = fitdist(weighted_nSRs, 'Lognormal');
+lnSRdist = fitdist(log(weighted_nSRs), "Normal");
 
 r_mu(j) = nSRdist.mu;
 r_sigma(j) = nSRdist.sigma;
@@ -98,7 +106,7 @@ if j == 1
 %% Compare true with fitted
 %Compare nSRs against true distribution
 figure;
-subplot(2,1,1)
+subplot(3,1,1)
 yyaxis left
 histogram(log(allnSRs), 'DisplayName', "Reconstructed nSR")
 
@@ -109,7 +117,16 @@ plot(xtoplot, y_trueDist, 'Color', 'blue', 'DisplayName', "True Distribution")
 xlabel("log nSR")
 legend()
 
-subplot(2,1,2)
+subplot(3,1,2)
+yyaxis left
+histogram(log(weighted_nSRs), 'DisplayName', 'Weighted nSRs')
+
+yyaxis right
+plot(xtoplot, y_trueDist, 'Color', 'blue', 'DisplayName', "True Distribution")
+xlabel("log nSR")
+legend()
+
+subplot(3,1,3)
 y_recDist = pdf(lnSRdist, xtoplot);
 plot(xtoplot, y_recDist, 'Color', 'r', "DisplayName", "Reconstructed Distribution")
 hold on

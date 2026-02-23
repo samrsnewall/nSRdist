@@ -3,6 +3,8 @@
 %know if there is any bias is introduced or if there are consistency
 %problems...
 
+addpath("Functions")
+
 %% Synthetic Set Up
 %Set up the "true" nSR distribution
 t_lognSR_mu = 0.16; %mean (in log space)
@@ -43,7 +45,7 @@ for m = 1:M
     %Sample some nSR values
     t_nSRsamps{m} = random(t_nSR_pd, N, 1);
 
-    %Get the average SR for the core
+    %Choose an average SR for the core
     t_aveSR(m) = aveSR;
     t_SRsamps{m} = t_nSRsamps{m}.*t_aveSR(m);
     
@@ -53,7 +55,7 @@ for m = 1:M
 end
 
 if j == 1
-%test construction of cores, plot to test
+%Test construction of cores, plot to test
 figure;
 for m = 1:9
     subplot(3,3,m)
@@ -71,6 +73,8 @@ end
 %% Perform Evaluation using our method
 %Now, evaluate using methodology in our paper
 allnSRs = [];
+weights_age = [];
+weights_depth = [];
 r_aveSR = NaN(M,1);
 r_SRs = cell(M,1);
 r_nSRs = cell(M,1);
@@ -79,11 +83,29 @@ for m = 1:M
     r_SRs{m} = diff(t_coreDepths{m})./diff(t_coreAges{m});
     r_nSRs{m} = r_SRs{m}./r_aveSR(m);
     allnSRs = [allnSRs; r_nSRs{m}];
+    weights_age = [weights_age; diff(t_coreAges{m})];
+    weights_depth = [weights_depth; diff(t_coreDepths{m})];
 end
 
+%Test whether the r_aveSR are properly representing the true aveSR
+if j ==1
+    figure;
+    histogram(r_aveSR, 50)
+    hold on
+    xline(aveSR, '--r', 'LineWidth', 1)
+    xlabel("Average SR (cm/kyr)")
+    ylims = ylim;
+    xlims = xlim;
+    text(0.8*max(xlims), 0.8*max(ylims),"median = " + num2str(median(r_aveSR)))
+end
+
+
+%Perform weighting
+weighted_nSRs = makeWeightedReplicates(allnSRs, weights_depth, 3, 1/15); %Weight by replicating data according to weighting
+
 %Fit distribution
-nSRdist = fitdist(allnSRs, 'Lognormal');
-lnSRdist = fitdist(log(allnSRs), "Normal");
+nSRdist = fitdist(weighted_nSRs, 'Lognormal');
+lnSRdist = fitdist(log(weighted_nSRs), "Normal");
 
 r_mu(j) = nSRdist.mu;
 r_sigma(j) = nSRdist.sigma;
@@ -92,7 +114,7 @@ if j == 1
 %% Compare true with fitted
 %Compare nSRs against true distribution
 figure;
-subplot(2,1,1)
+subplot(3,1,1)
 yyaxis left
 histogram(log(allnSRs), 'DisplayName', "Reconstructed nSR")
 
@@ -103,7 +125,16 @@ plot(xtoplot, y_trueDist, 'Color', 'blue', 'DisplayName', "True Distribution")
 xlabel("log nSR")
 legend()
 
-subplot(2,1,2)
+subplot(3,1,2)
+yyaxis left
+histogram(log(weighted_nSRs), 'DisplayName', 'Weighted nSRs')
+
+yyaxis right
+plot(xtoplot, y_trueDist, 'Color', 'blue', 'DisplayName', "True Distribution")
+xlabel("log nSR")
+legend()
+
+subplot(3,1,3)
 y_recDist = pdf(lnSRdist, xtoplot);
 plot(xtoplot, y_recDist, 'Color', 'r', "DisplayName", "Reconstructed Distribution")
 hold on
