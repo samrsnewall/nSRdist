@@ -6,6 +6,11 @@ function[repData] = makeWeightedReplicates(data, weight, dataRoundingDP, weighti
 %%% will be repeated 4 times in repData.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if length(data) ~= length(weight)
+    warning("Weights array not same size as data array - weights may not be properly aligned")
+end
+
  data           = round(data,dataRoundingDP);                   %The data are rounded so that there are less unique values to help count weightings
  data           = data(data ~=0);                               %Zeros are removed (choice for use in gamma fitting);
  weight         = weight(data ~=0);
