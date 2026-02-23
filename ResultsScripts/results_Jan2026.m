@@ -25,11 +25,11 @@ BMpdf.x = BM.lnSR.x;
 BMpdf.px = BM.lnSR.px;
 
 %% Load data and fits
-dA = load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit13Feb26_depthweight_400R");
+load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit13Feb26_depthweight_400R");
 
 %% Take data of interest
 %----- Find corenames, lats, longs, depths of cores included
-dataTbl = dA.d.dataT(dA.d.S1.chooseLog, :);
+dataTbl = d.dataT(d.S1.chooseLog, :);
 %----- Make map with locations denoted as red squares
 figure;
 subplot(2,2,[1 2])
@@ -59,12 +59,12 @@ title("Cores' Mean SR")
 
 %% Plot age modes 
 %Find out which cores passed filtering
-usedLog = ~isnan(dA.d.dataT.meanSR);
+usedLog = ~isnan(d.dataT.meanSR);
 
-plotAgeModes(dA.d.S1.chooseLog,dA.d.S1.chooseLog, dA.d.dataT.ageModes, dA.d.dataT.cores)
+plotAgeModes(d.S1.chooseLog,d.S1.chooseLog, d.dataT.ageModes, d.dataT.cores)
 
 %% %Create table of useful information
-dStrus = {dA.d.S1.BMedian, dA.d.S1.BChIR, dA.d.S1.New0IR, dA.d.S1.New500IR, dA.d.S1.New1000IR};
+dStrus = {d.S1.BMedian, d.S1.BChIR, d.S1.New0IR, d.S1.New500IR, d.S1.New1000IR};
 dStrusStrings = ["BMedian", "BSamp", "RSR0", "RSR500", "RSR1000"];
 
 MeanAgePairsT  = NaN(length(dStrus),1);
@@ -126,14 +126,14 @@ ylim([0 3500])
 ylabel("cm")
 title("BIGMACS: var = " + num2str(var(log(BM.hist)), 3))
 subplot(nsubs,1,3-1)
-histogram(log(dA.d.S1.BMedian.weightedC),'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
+histogram(log(d.S1.BMedian.weightedC),'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
 hold on
 plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 2, 'LineStyle', '--')
 box on
 xlim([-2.5 2.5])
 ylim([0 3500])
 ylabel("cm")
-title("BMedian: var = " + num2str(var(log(dA.d.S1.BMedian.weightedC)), 3))
+title("BMedian: var = " + num2str(var(log(d.S1.BMedian.weightedC)), 3))
 
 %% Plot of above with normalized histogram
 nsubs = 2;
@@ -150,7 +150,7 @@ ylim([0 3500])
 ylabel("cm")
 title("BIGMACS")
 subplot(nsubs,1,3-1)
-BMedian_logHC = histcounts(log(dA.d.S1.BMedian.weightedC), logBinEdges)./dA.d.S1.fitS.DeterministicRun.weightInflator;
+BMedian_logHC = histcounts(log(d.S1.BMedian.weightedC), logBinEdges)./d.S1.fitS.DeterministicRun.weightInflator;
 normF = 1./sum((BMedian_logHC.*uniquetol(diff(logBinEdges), 1e-5)));
 histogram('BinCounts', BMedian_logHC,'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1);
 hold on
@@ -191,7 +191,7 @@ xlabel("dt")
 xlim([0 5])
 ylim([0 2000])
 subplot(2,2,3)
-BMedian_logHC = histcounts(log(dA.d.S1.BMedian.weightedC), logBinEdges);
+BMedian_logHC = histcounts(log(d.S1.BMedian.weightedC), logBinEdges);
 normF = 1./sum((BMedian_logHC.*uniquetol(diff(logBinEdges), 1e-5)));
 histogram('BinCounts', BMedian_logHC,'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1);
 hold on
@@ -204,7 +204,7 @@ title("BMedian")
 xlabel("log(nSR)")
 subplot(2, 2, 4)
 
-histogram('BinCounts', dA.d.S1.BMedian.agediffsWC, 'BinEdges', 0:0.1:10, 'FaceColor', 'r', 'FaceAlpha', 0.1)
+histogram('BinCounts', d.S1.BMedian.agediffsWC, 'BinEdges', 0:0.1:10, 'FaceColor', 'r', 'FaceAlpha', 0.1)
 ylabel("cm")
 xlabel("dt")
 xlim([0 5])
@@ -212,8 +212,8 @@ ylim([0 2000])
 
 %% Plot of pooled samples + fits
 
-AR = dA.d.S1.New500AR;
-IR = dA.d.S1.New500IR;
+AR = d.S1.New500AR;
+IR = d.S1.New500IR;
 
 figure;
 subplot(2,1,1)
@@ -249,22 +249,22 @@ legend()
 
 %% Double check the pooled weighted histograms match the pooled weighted histograms of individual runs
 
-IR_WCpool = [];
-for i = 1:length(IR.weightedC)
-    IR_WCpool = [IR_WCpool, IR.weightedC{i}];
-end
-
-figure;
-subplot(2,1,1)
-histogram('BinCounts', AR_logHC, 'BinEdges', logBinEdges, 'HandleVisibility', 'off', 'FaceColor', '[0.8 0.8 0.8]')
-subplot(2,1,2)
-IR_logHC = histcounts(log(IR_WCpool), logBinEdges);
-histogram('BinCounts', IR_logHC, 'BinEdges', logBinEdges, 'HandleVisibility', 'off', 'FaceColor', '[0.8 0.8 0.8]')
-
+% IR_WCpool = [];
+% for i = 1:length(IR.weightedC)
+%     IR_WCpool = [IR_WCpool, IR.weightedC{i}];
+% end
+% 
+% figure;
+% subplot(2,1,1)
+% histogram('BinCounts', AR_logHC, 'BinEdges', logBinEdges, 'HandleVisibility', 'off', 'FaceColor', '[0.8 0.8 0.8]')
+% subplot(2,1,2)
+% IR_logHC = histcounts(log(IR_WCpool), logBinEdges);
+% histogram('BinCounts', IR_logHC, 'BinEdges', logBinEdges, 'HandleVisibility', 'off', 'FaceColor', '[0.8 0.8 0.8]')
+% 
 
 %% All Bchron and RSR500 samplings, histogram with 68th percentile bars
 nsubs = 3;
-numruns = length(dA.d.S1.BChIR.OneRunDatas);
+numruns = length(d.S1.BChIR.OneRunDatas);
  figure;
 % subplot(nsubs,1,1)
 % histogram(log(BM.hist),'BinEdges', logBinEdges, 'FaceColor', 'b', 'FaceAlpha', 0.1)
@@ -276,7 +276,7 @@ numruns = length(dA.d.S1.BChIR.OneRunDatas);
 % ylabel("cm")
 % title("BIGMACS - Lee et al., 2023")
 subplot(nsubs,1,2-1)
-histogram(log(dA.d.S1.BMedian.weightedC),'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
+histogram(log(d.S1.BMedian.weightedC),'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
 hold on
 plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 1, 'LineStyle', '--')
 box on
@@ -285,7 +285,7 @@ ylim([0 3500])
 ylabel("cm")
 title("BMedian [500-4000yr]")
 subplot(nsubs,1,3-1)
-BSamp_hists = sort(dA.d.S1.BChIR.lnSRHistCounts, 1);
+BSamp_hists = sort(d.S1.BChIR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', BSamp_hists(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -298,7 +298,7 @@ ylim([0 3500])
 ylabel("cm")
 title("BSamp [500-4000yr]")
 subplot(nsubs,1,4-1)
-MCSamp_hists = sort(dA.d.S1.New500IR.lnSRHistCounts, 1);
+MCSamp_hists = sort(d.S1.New500IR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', MCSamp_hists(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -315,10 +315,10 @@ title("MCSamp")
 
 %% All sampling approaches histogram of median with 68th percentile bars + dt histogram
 nsubs = 4;
-numruns = length(dA.d.S1.BChIR.OneRunDatas);
+numruns = length(d.S1.BChIR.OneRunDatas);
 figure;
 subplot(4,2,1)
-A = sort(dA.d.S1.BChIR.lnSRHistCounts, 1);
+A = sort(d.S1.BChIR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -332,7 +332,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("BSamp [500-4000yr]")
 subplot(4,2,2)
-B = sort(dA.d.S1.BChIR.agediffsWbC', 1);
+B = sort(d.S1.BChIR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -342,7 +342,7 @@ ylim([0 2000])
 xlabel("dt (kyr)")
 ylabel("cm")
 subplot(4,2,3)
-A = sort(dA.d.S1.New0IR.lnSRHistCounts, 1);
+A = sort(d.S1.New0IR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -357,7 +357,7 @@ ylabel("cm")
 %xlabel("log(nSR)")
 title("RSR0")
 subplot(4,2,4)
-B = sort(dA.d.S1.New0IR.agediffsWbC', 1);
+B = sort(d.S1.New0IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -369,7 +369,7 @@ ylabel("cm")
 
 
 subplot(4,2,5)
-A = sort(dA.d.S1.New500IR.lnSRHistCounts, 1);
+A = sort(d.S1.New500IR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -383,7 +383,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("RSR500")
 subplot(4,2,6)
-B = sort(dA.d.S1.New500IR.agediffsWbC', 1);
+B = sort(d.S1.New500IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -395,7 +395,7 @@ ylabel("cm")
 
 
 subplot(4,2,7)
-A = sort(dA.d.S1.New1000IR.lnSRHistCounts, 1);
+A = sort(d.S1.New1000IR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -409,7 +409,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("RSR1000")
 subplot(4,2,8)
-B = sort(dA.d.S1.New1000IR.agediffsWbC', 1);
+B = sort(d.S1.New1000IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -421,10 +421,10 @@ ylabel("cm")
 
 %% All sampling approaches histogram pooled
 nsubs = 4;
-numruns = length(dA.d.S1.BChIR.OneRunDatas);
+numruns = length(d.S1.BChIR.OneRunDatas);
 figure;
 subplot(4,2,1)
-A = sort(dA.d.S1.BChIR.lnSRHistCounts, 1);
+A = sort(d.S1.BChIR.lnSRHistCounts, 1);
 box on
 histogram('BinCounts', sum(A,1), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
 hold on
@@ -434,7 +434,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("BSamp [500-4000yr]")
 subplot(4,2,2)
-B = sort(dA.d.S1.BChIR.agediffsWbC', 1);
+B = sort(d.S1.BChIR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', sum(B,1), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -443,7 +443,7 @@ xlim([0 6])
 xlabel("dt (kyr)")
 ylabel("cm")
 subplot(4,2,3)
-A = sort(dA.d.S1.New0IR.lnSRHistCounts, 1);
+A = sort(d.S1.New0IR.lnSRHistCounts, 1);
 box on
 histogram('BinCounts', sum(A,1), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
 hold on
@@ -454,7 +454,7 @@ ylabel("cm")
 %xlabel("log(nSR)")
 title("RSR0")
 subplot(4,2,4)
-B = sort(dA.d.S1.New0IR.agediffsWbC', 1);
+B = sort(d.S1.New0IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', sum(B,1), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -465,7 +465,7 @@ ylabel("cm")
 
 
 subplot(4,2,5)
-A = sort(dA.d.S1.New500IR.lnSRHistCounts, 1);
+A = sort(d.S1.New500IR.lnSRHistCounts, 1);
 box on
 histogram('BinCounts', sum(A,1), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
 hold on
@@ -475,7 +475,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("RSR500")
 subplot(4,2,6)
-B = sort(dA.d.S1.New500IR.agediffsWbC', 1);
+B = sort(d.S1.New500IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', sum(B,1), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -485,7 +485,7 @@ xlabel("dt (kyr)")
 ylabel("cm")
 
 subplot(4,2,7)
-A = sort(dA.d.S1.New1000IR.lnSRHistCounts, 1);
+A = sort(d.S1.New1000IR.lnSRHistCounts, 1);
 box on
 histogram('BinCounts', sum(A,1), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
 hold on
@@ -495,7 +495,7 @@ xlabel("log(nSR)")
 ylabel("cm")
 title("RSR1000")
 subplot(4,2,8)
-B = sort(dA.d.S1.New1000IR.agediffsWbC', 1);
+B = sort(d.S1.New1000IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', sum(B,1), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -512,50 +512,50 @@ subplot(4,1,1)
 xline(var(BM.hist))
 xlim(commonxlim)
 subplot(4,1,2)
-xline(var(dA.d.S1.BMedian.weightedC))
+xline(var(d.S1.BMedian.weightedC))
 xlim(commonxlim)
 subplot(4,1,3)
-histogram(cellfun(@var, dA.d.S1.BChIR.weightedC), 0:0.2:5)
+histogram(cellfun(@var, d.S1.BChIR.weightedC), 0:0.2:5)
 xlim(commonxlim)
 subplot(4,1,4)
-histogram(cellfun(@var, dA.d.S1.New500IR.weightedC),  0:0.2:5)
+histogram(cellfun(@var, d.S1.New500IR.weightedC),  0:0.2:5)
 xlim(commonxlim)
 
 %% BIC (taeheefix) of each method
 %This is the BIC (with the correction to the likelihood) for each 
 
-BIC_BMedian = [dA.d.S1.BMedian.LN.fits{1}.BICtaeheefix, dA.d.S1.BMedian.MLN.fits{1}.BICtaeheefix, dA.d.S1.BMedian.Gam.fits{1}.BICtaeheefix, dA.d.S1.BMedian.invGam.fits{1}.BICtaeheefix]
-BIC_BChAR = [dA.d.S1.BChAR.LN.fitInfo.BICtaeheefix, dA.d.S1.BChAR.MLN.fitInfo.BICtaeheefix, dA.d.S1.BChAR.Gam.fitInfo.BICtaeheefix, dA.d.S1.BChAR.invGam.fitInfo.BICtaeheefix]
-BIC_New0AR = [dA.d.S1.New0AR.LN.fitInfo.BICtaeheefix, dA.d.S1.New0AR.MLN.fitInfo.BICtaeheefix, dA.d.S1.New0AR.Gam.fitInfo.BICtaeheefix, dA.d.S1.New0AR.invGam.fitInfo.BICtaeheefix]
-BIC_New500AR = [dA.d.S1.New500AR.LN.fitInfo.BICtaeheefix, dA.d.S1.New500AR.MLN.fitInfo.BICtaeheefix, dA.d.S1.New500AR.Gam.fitInfo.BICtaeheefix, dA.d.S1.New500AR.invGam.fitInfo.BICtaeheefix]
-BIC_New1000AR = [dA.d.S1.New1000AR.LN.fitInfo.BICtaeheefix, dA.d.S1.New1000AR.MLN.fitInfo.BICtaeheefix, dA.d.S1.New1000AR.Gam.fitInfo.BICtaeheefix, dA.d.S1.New1000AR.invGam.fitInfo.BICtaeheefix]
+BIC_BMedian = [d.S1.BMedian.LN.fits{1}.BICtaeheefix, d.S1.BMedian.MLN.fits{1}.BICtaeheefix, d.S1.BMedian.Gam.fits{1}.BICtaeheefix, d.S1.BMedian.invGam.fits{1}.BICtaeheefix]
+BIC_BChAR = [d.S1.BChAR.LN.fitInfo.BICtaeheefix, d.S1.BChAR.MLN.fitInfo.BICtaeheefix, d.S1.BChAR.Gam.fitInfo.BICtaeheefix, d.S1.BChAR.invGam.fitInfo.BICtaeheefix]
+BIC_New0AR = [d.S1.New0AR.LN.fitInfo.BICtaeheefix, d.S1.New0AR.MLN.fitInfo.BICtaeheefix, d.S1.New0AR.Gam.fitInfo.BICtaeheefix, d.S1.New0AR.invGam.fitInfo.BICtaeheefix]
+BIC_New500AR = [d.S1.New500AR.LN.fitInfo.BICtaeheefix, d.S1.New500AR.MLN.fitInfo.BICtaeheefix, d.S1.New500AR.Gam.fitInfo.BICtaeheefix, d.S1.New500AR.invGam.fitInfo.BICtaeheefix]
+BIC_New1000AR = [d.S1.New1000AR.LN.fitInfo.BICtaeheefix, d.S1.New1000AR.MLN.fitInfo.BICtaeheefix, d.S1.New1000AR.Gam.fitInfo.BICtaeheefix, d.S1.New1000AR.invGam.fitInfo.BICtaeheefix]
 
 %% Inverse Gamma Parameters for each method
 
-invGam_BMedian = [dA.d.S1.BMedian.invGam.fits{1}.alpha, dA.d.S1.BMedian.invGam.fits{1}.beta];
-invGam_BChAR = [dA.d.S1.BChAR.invGam.fitInfo.alpha, dA.d.S1.BChAR.invGam.fitInfo.beta];
-invGam_New0AR = [dA.d.S1.New0AR.invGam.fitInfo.alpha, dA.d.S1.New0AR.invGam.fitInfo.beta];
-invGam_New500AR = [dA.d.S1.New500AR.invGam.fitInfo.alpha, dA.d.S1.New500AR.invGam.fitInfo.beta];
-invGam_New1000AR =[dA.d.S1.New1000AR.invGam.fitInfo.alpha, dA.d.S1.New1000AR.invGam.fitInfo.beta];
+invGam_BMedian = [d.S1.BMedian.invGam.fits{1}.alpha, d.S1.BMedian.invGam.fits{1}.beta];
+invGam_BChAR = [d.S1.BChAR.invGam.fitInfo.alpha, d.S1.BChAR.invGam.fitInfo.beta];
+invGam_New0AR = [d.S1.New0AR.invGam.fitInfo.alpha, d.S1.New0AR.invGam.fitInfo.beta];
+invGam_New500AR = [d.S1.New500AR.invGam.fitInfo.alpha, d.S1.New500AR.invGam.fitInfo.beta];
+invGam_New1000AR =[d.S1.New1000AR.invGam.fitInfo.alpha, d.S1.New1000AR.invGam.fitInfo.beta];
 
 invGam_parameters = [invGam_BMedian; invGam_BChAR; invGam_New0AR; invGam_New500AR; invGam_New1000AR]
 
 %% Gamma parameters for each method
 
-Gam_BMedian = [dA.d.S1.BMedian.Gam.fits{1}.alpha, dA.d.S1.BMedian.Gam.fits{1}.beta];
-Gam_BChAR = [dA.d.S1.BChAR.Gam.fitInfo.alpha, dA.d.S1.BChAR.Gam.fitInfo.beta];
-Gam_New0AR = [dA.d.S1.New0AR.Gam.fitInfo.alpha, dA.d.S1.New0AR.Gam.fitInfo.beta];
-Gam_New500AR = [dA.d.S1.New500AR.Gam.fitInfo.alpha, dA.d.S1.New500AR.Gam.fitInfo.beta];
-Gam_New1000AR =[dA.d.S1.New1000AR.Gam.fitInfo.alpha, dA.d.S1.New1000AR.Gam.fitInfo.beta];
+Gam_BMedian = [d.S1.BMedian.Gam.fits{1}.alpha, d.S1.BMedian.Gam.fits{1}.beta];
+Gam_BChAR = [d.S1.BChAR.Gam.fitInfo.alpha, d.S1.BChAR.Gam.fitInfo.beta];
+Gam_New0AR = [d.S1.New0AR.Gam.fitInfo.alpha, d.S1.New0AR.Gam.fitInfo.beta];
+Gam_New500AR = [d.S1.New500AR.Gam.fitInfo.alpha, d.S1.New500AR.Gam.fitInfo.beta];
+Gam_New1000AR =[d.S1.New1000AR.Gam.fitInfo.alpha, d.S1.New1000AR.Gam.fitInfo.beta];
 
 Gam_parameters = [Gam_BMedian; Gam_BChAR; Gam_New0AR; Gam_New500AR; Gam_New1000AR]
 
 %% LN parameters for each method
 
-LN_BMedian = [dA.d.S1.BMedian.LN.fits{1}.mu, dA.d.S1.BMedian.LN.fits{1}.Sigma];
-LN_BChAR = [dA.d.S1.BChAR.LN.fitInfo.mu, dA.d.S1.BChAR.LN.fitInfo.Sigma];
-LN_New0AR = [dA.d.S1.New0AR.LN.fitInfo.mu, dA.d.S1.New0AR.LN.fitInfo.Sigma];
-LN_New500AR = [dA.d.S1.New500AR.LN.fitInfo.mu, dA.d.S1.New500AR.LN.fitInfo.Sigma];
-LN_New1000AR =[dA.d.S1.New1000AR.LN.fitInfo.mu, dA.d.S1.New1000AR.LN.fitInfo.Sigma];
+LN_BMedian = [d.S1.BMedian.LN.fits{1}.mu, d.S1.BMedian.LN.fits{1}.Sigma];
+LN_BChAR = [d.S1.BChAR.LN.fitInfo.mu, d.S1.BChAR.LN.fitInfo.Sigma];
+LN_New0AR = [d.S1.New0AR.LN.fitInfo.mu, d.S1.New0AR.LN.fitInfo.Sigma];
+LN_New500AR = [d.S1.New500AR.LN.fitInfo.mu, d.S1.New500AR.LN.fitInfo.Sigma];
+LN_New1000AR =[d.S1.New1000AR.LN.fitInfo.mu, d.S1.New1000AR.LN.fitInfo.Sigma];
 
 LN_parameters = [LN_BMedian; LN_BChAR; LN_New0AR; LN_New500AR; LN_New1000AR]
