@@ -158,11 +158,12 @@ end
 meanSR = (depthsUsed(end)-depthsUsed(1))./(modeAgeUsed(end) - modeAgeUsed(1));
 SRs = diff(depthsUsed)./diff(modeAgeUsed);
 nSRs = SRs./meanSR;
-weights = diff(depthsUsed);
+depthdiffs = diff(depthsUsed);
 agediffs = diff(modeAgeUsed);
+weights = diff(depthsUsed);
 
 %Store all nSR info in one matrix, the standard set up I use
-modenSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; modeAgeUsed(1), agediffs'];
+modenSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), depthdiffs'; modeAgeUsed(1), agediffs'];
 
 %Calculate nSR with median ages **************************
 meanSR = (depthsUsed(end)-depthsUsed(1))./(medianAgeUsed(end) - medianAgeUsed(1));
