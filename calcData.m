@@ -1,8 +1,8 @@
 %% Explanation
 %This script calculates nSR histories for a set of cores.
 %nSR histories are calculated in a few different ways:
-% - BMode (analogous, although not exact replica, of Lin2014 method)
-% - BSamp (like BMode, but sampling from Bchron ages, instead of using mode)
+% - BMedian (analogous, although not exact replica, of Lin2014 method)
+% - BSamp (like BMedian, but sampling from Bchron ages, instead of using median)
 % - RSRx  (using samples from calibrated ages, with a restriction on
 % minimum delta time)
 
@@ -30,10 +30,10 @@ addpath('Functions')
 
 %Set up paths to sandbox, full path to Rscript, World Atlas data on
 %computer, 
-S.sandboxPath  = "/Volumes/ExtDrive850X/MATLAB/nSRdist_code";
-S.RscriptPath  = "/usr/local/bin/Rscript";
-S.WApath       = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022";
-S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";
+S.sandboxPath  = "/Volumes/ExtDrive850X/MATLAB/nSRdist_code";              %This is the path to where this file (and all the other related folders) are kept
+S.RscriptPath  = "/usr/local/bin/Rscript";                                 % Path to the Rscript executable (used to run R scripts from MATLAB)
+S.WApath       = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022"; %Path to where the Mulitza Dataset is held
+S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";         
 
 %Set up file to save outputs to
 stringID = "All1_RLGtrue_DS0p05_Dec9";
