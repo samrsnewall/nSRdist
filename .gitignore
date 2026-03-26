@@ -15,5 +15,5 @@ Results/
 # World Atlas dataset (large source data, not code)
 WA_Foraminiferal_Isotopes_2022/
 
-# Bchron run outputs (large generated data - comment out if you want to track these)
-# BchronFolders/
+# Bchron run outputs (large generated data)
+BchronFolders/
