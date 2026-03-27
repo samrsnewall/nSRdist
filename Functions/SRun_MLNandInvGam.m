@@ -1,84 +1,76 @@
 function[outS] = SRun_MLNandInvGam(nSRcounts, coreLog, numruns, x, fitS)
+% SRun_MLNandInvGam  Fit probability distributions to nSR data across
+%                    multiple Monte Carlo runs.
+%
+% For each of numruns iterations, selects one run's worth of nSR data from
+% each core, applies optional filtering and weighting, then fits four
+% candidate distributions: Mixed Log-Normal (MLN), Log-Normal (LN),
+% Inverse Gamma, and Gamma. Optionally runs chi-squared goodness-of-fit
+% tests on each fitted distribution.
+%
+% INPUTS
+%   nSRcounts - (cell array) One cell per core, each containing a 4-row
+%               nSR matrix (see README "Internal Data Formats")
+%   coreLog   - (logical vector) Selects which cores from nSRcounts to use
+%   numruns   - (scalar) Number of Monte Carlo fitting iterations
+%   x         - (numeric vector) nSR evaluation points for PDF output
+%   fitS      - (struct) Fitting settings. Key fields:
+%                 .useParallelComp       (logical) Use parallel pool
+%                 .fitDists              (logical) Fit distributions;
+%                                        false = skip fitting, store NaNs
+%                 .weighting             "none", "depth", or "age"
+%                 .non_normalized_SR     (logical) Use raw SR instead of nSR
+%                 .merge_small_dt        (logical) Merge short age intervals
+%                 .Lin2014AgeFiltering   (logical) Apply Lin2014 age filter
+%                 .resampleData          (logical) Resample to original size
+%                 .run_chi2gof           (logical) Run chi-squared test
+%                 .OneRun.weightRepDP         Weighting decimal places
+%                 .OneRun.weightRepInflator   Weighting inflator
+%                 .OneRun.MLNReps             MLN fitting repetitions
+%
+% OUTPUT
+%   outS - Struct with per-run fitted distributions, PDF values, fit
+%          handles, chi-squared statistics, and summary info. Fields:
+%            .MLN, .invGam, .Gam, .LN  per-distribution results
+%            .OneRunDatas, .weightedC  per-run input data
+%            .numCpairs, .sedLength, .sedTimeSpan, .agediffsWbC
+%
+% See also: fitData, fitMixLogNorm, fitInvGamma, fitGamma, ARfitdists
 
-%Initialise vectors
-OneRunDatas = cell(1, numruns);
-MLNfits = cell(1, numruns);
-MLNs = NaN(length(x), numruns);
-logMLNs = NaN(length(x), numruns);
-LNfits = cell(1, numruns);
-LNs = NaN(length(x), numruns);
-logLNs = NaN(length(x), numruns);
-IGfits = cell(1, numruns);
-invGams = NaN(length(x), numruns);
-logInvGams =  NaN(length(x), numruns);
-Gfits = cell(1, numruns);
-Gams = NaN(length(x), numruns);
-logGams =  NaN(length(x), numruns);
-%phats  = NaN(2,numruns);
-weightedC = cell(1,numruns);
-numCpairs = NaN(1,numruns);
-sedLength = NaN(1, numruns);
-sedTimeSpan = NaN(1,numruns);
-%chi2stats = NaN(1,numruns);
-h = NaN(4, numruns);
-p = NaN(4, numruns);
-%skippedIterations = 0;
+%% --- Setup
+
+logx             = sort(log(x));
+nx               = numel(x);
+nPdf             = 4;
 agediffsBinEdges = 0:100:10000;
-agediffsWbC = NaN(length(agediffsBinEdges)-1,numruns);
 
-% Initialize cell arrays for chi-squared statistics
-MLNchi2stat = cell(numruns,1);
-MLNchiStatTedges = cell(numruns,1);
-MLNchiStatTO = cell(numruns,1);
-MLNchiStatTE = cell(numruns,1);
-InvGamChi2stat = cell(numruns,1);
-InvGamChiStatTedges = cell(numruns,1);
-InvGamChiStatTO = cell(numruns,1);
-InvGamChiStatTE = cell(numruns,1);
-GamChi2stat = cell(numruns,1);
-GamChiStatTedges = cell(numruns,1);
-GamChiStatTO = cell(numruns,1);
-GamChiStatTE = cell(numruns,1);
-LNChi2stat = cell(numruns,1);
-LNChiStatTedges = cell(numruns,1);
-LNChiStatTO = cell(numruns,1);
-LNChiStatTE = cell(numruns,1);
-
-% Initialize numeric arrays for degrees of freedom (df)
-MLNchiStatTdf = NaN(numruns,1);
-InvGamChiStatTdf = NaN(numruns,1);
-GamChiStatTdf = NaN(numruns,1);
-LNChiStatTdf = NaN(numruns,1);
-
-%Clean out any cores that returned empty nSR vectors
+% Clean out any cores that returned empty nSR vectors
 nSRcountsChosen = nSRcounts(coreLog);
-cores2remove    = cellfun(@isempty,nSRcountsChosen);
+cores2remove    = cellfun(@isempty, nSRcountsChosen);
 nSRcountsClean  = nSRcountsChosen(~cores2remove);
 runN            = NaN(numruns, length(nSRcountsClean));
 
-%Create log(x) vector
-logx = sort(log(x));
+%% --- Sample one run per core, for each of numruns iterations
 
-%% Take 1 run's worth of data from each core
+OneRunDatas = cell(1, numruns);
 for i = 1:numruns
     OneRunData1 = [];
     for j = 1:length(nSRcountsClean)
-        %Open the core's cell
         nSRcount_opencell = nSRcountsClean{j};
 
-        %Find the NaN's that split runs
-        split_index       = find(isnan(nSRcount_opencell(1,:)));
-        split_indexStart  = split_index + 1;
-        split_indexEnd    = split_index - 1;
-        split_indexEnd    = [split_indexEnd(2:end), size(nSRcount_opencell, 2)];
-        if i ==1
-            runN(:,j) = randperm(length(split_index), numruns);  %%%This allows me to make the scenarios chosen random. The length(split_index) finds out how many times each core was sampled (when sampled previously, the sampling randomly chose scenarios). This chooses random samples (and therefore random scenarios).
+        % Find the NaN delimiters that separate individual runs
+        split_index      = find(isnan(nSRcount_opencell(1,:)));
+        split_indexStart = split_index + 1;
+        split_indexEnd   = [split_index(2:end) - 1, size(nSRcount_opencell, 2)];
+
+        if i == 1
+            % Randomise which run is drawn from each core (done once,
+            % reused across all numruns iterations)
+            runN(:,j) = randperm(length(split_index), numruns);
         end
 
-        % use the NaN indeces to choose the data of that run for each core
-        % and concatenate it into OneRunData
-        nSRcount_1core1run = nSRcount_opencell(1:4,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)));
-        if sum(nSRcount_1core1run(1,:) <=0) ~=0
+        nSRcount_1core1run = nSRcount_opencell(1:4, split_indexStart(runN(i,j)):split_indexEnd(runN(i,j)));
+        if sum(nSRcount_1core1run(1,:) <= 0) ~= 0
             disp("check this core")
         end
         OneRunData1 = cat(2, OneRunData1, nSRcount_1core1run);
@@ -86,7 +78,8 @@ for i = 1:numruns
     OneRunDatas{i} = OneRunData1;
 end
 
-%% Set up parallel process, if wanted (useful to turn off for debugging)
+%% --- Parallel pool setup
+
 if fitS.useParallelComp
     if sum(size(gcp("nocreate"))) == 0
         parpool('Processes', 4)
@@ -97,418 +90,320 @@ else
     ps.Pool.AutoCreate = false;
 end
 
-%% Run loop to fit distributions to nSR data
-for i = 1:numruns
-    %To quiet some warnings, initialize temporaries within parfor loop;
-    totalSedLength = [];
-    totalSedAge = [];
-    data = [];
-    numSRcalcs = [];
-    agediffsWC1R = [];
-    MixLogNormPDFHOLDER = [];
-    MLNfitH = [];
-    invGamPDFHOLDER = [];
-    IGfitH = [];
-    chiStati = [];
-    logMLNVEC = [];
-    logInvGamVEC = [];
+%% --- Pre-allocate output struct
 
-    %Get onerundata for this run
+outS.OneRunDatas  = OneRunDatas;
+outS.agediffsWbC  = NaN(length(agediffsBinEdges)-1, numruns);
+outS.weightedC    = cell(1, numruns);
+outS.numCpairs    = NaN(1, numruns);
+outS.sedLength    = NaN(1, numruns);
+outS.sedTimeSpan  = NaN(1, numruns);
+
+outS.MLN.nSR.x    = x;    outS.MLN.nSR.px   = NaN(nx, numruns);
+outS.MLN.nSR.mu   = NaN(1, numruns);  outS.MLN.nSR.var  = NaN(1, numruns);
+outS.MLN.lnSR.x   = logx; outS.MLN.lnSR.px  = NaN(nx, numruns);
+outS.MLN.lnSR.mu  = NaN(1, numruns);  outS.MLN.lnSR.var = NaN(1, numruns);
+outS.MLN.fits     = cell(1, numruns);
+
+outS.invGam.nSR.x    = x;    outS.invGam.nSR.px   = NaN(nx, numruns);
+outS.invGam.nSR.mu   = NaN(1, numruns);  outS.invGam.nSR.var  = NaN(1, numruns);
+outS.invGam.lnSR.x   = logx; outS.invGam.lnSR.px  = NaN(nx, numruns);
+outS.invGam.lnSR.mu  = NaN(1, numruns);  outS.invGam.lnSR.var = NaN(1, numruns);
+outS.invGam.fits     = cell(1, numruns);
+
+outS.Gam.nSR.x    = x;    outS.Gam.nSR.px   = NaN(nx, numruns);
+outS.Gam.nSR.mu   = NaN(1, numruns);  outS.Gam.nSR.var  = NaN(1, numruns);
+outS.Gam.lnSR.x   = logx; outS.Gam.lnSR.px  = NaN(nx, numruns);
+outS.Gam.lnSR.mu  = NaN(1, numruns);  outS.Gam.lnSR.var = NaN(1, numruns);
+outS.Gam.fits     = cell(1, numruns);
+
+outS.LN.nSR.x    = x;    outS.LN.nSR.px   = NaN(nx, numruns);
+outS.LN.nSR.mu   = NaN(1, numruns);  outS.LN.nSR.var  = NaN(1, numruns);
+outS.LN.lnSR.x   = logx; outS.LN.lnSR.px  = NaN(nx, numruns);
+outS.LN.lnSR.mu  = NaN(1, numruns);  outS.LN.lnSR.var = NaN(1, numruns);
+outS.LN.fits     = cell(1, numruns);
+
+h           = NaN(4, numruns);
+p           = NaN(4, numruns);
+allChiStati = cell(numruns, 1);
+
+%% --- Main fitting loop
+
+for i = 1:numruns
+
+    %--- 1. Prepare data
+
     OneRunData = OneRunDatas{i};
 
-    %set up while loop conditions
-    allow1 = 0; %If
-    skipIteration = 0;
-    while skipIteration == 0 & allow1 == 0
-        %Modify OneRunData as desired
-        OneRunData_before = OneRunData;
-
-        %Get rid of negative sedimentation rates (ideally, shouldn't be
-        %there, but BMode allows them to be there)
-        if sum(OneRunData(1,:)<0) ~= 0
-            warning("There are negative sed rates!... being removed")
-            OneRunData = OneRunData(:, OneRunData(1,:) >= 0);
-        end
-
-        %Get rid of SRs of 0 (ideally, shouldn't be there)
-        if sum(OneRunData(1,:) == 0) ~= 0
-            warning("There are SRs of 0!... being removed.")
-            OneRunData = OneRunData(:,OneRunData(1,:) ~= 0);
-        end
-
-        % If wanted - calculate SR to use instead of NSR
-        if fitS.non_normalized_SR;
-            SRs = OneRunData(3,:)./OneRunData(4,:); %Calculate SR from depthdiff and agediff
-            SRs(isnan(OneRunData(1,:))) = NaN;
-            OneRunData(1,:) = SRs;
-        end
-
-        %Instead of removing data by deltat, merge data
-        if fitS.merge_small_dt
-            [OneRunData, mergeLog] = merge_small_dt_nSR(OneRunData, 500);
-        end
-
-        %Apply filtering done by Lin2014 if wanted
-        if fitS.Lin2014AgeFiltering
-            L2014Log = (OneRunData(4,:) < max(fitS.Lin2014AgeFilter) & OneRunData(4,:) > min(fitS.Lin2014AgeFilter)) | isnan(OneRunData(1,:));
-            OneRunData = OneRunData(:,L2014Log);
-        end
-
-
-        %% Weighting Data
-        weightRepDP = fitS.OneRun.weightRepDP;
-        weightRepInflator = fitS.OneRun.weightRepInflator;
-
-        %Set up nSR counts and weighting vectors without NaNs
-        NaN_logi        = ~isnan(OneRunData(1,:));
-        inputData       = OneRunData(1,NaN_logi);
-        depthDiffs      = OneRunData(3,NaN_logi);
-        ageDiffs        = OneRunData(4,NaN_logi);
-
-        %Prepare data according to weighting choice
-        if fitS.weighting == "none"
-            weights = ones(size(inputData));
-            data = inputData;
-        else
-            if fitS.weighting == "depth" %This indicates whether to weight by depth or not
-                weights         = depthDiffs; %Weights by depth, not the mixed weighting of depth and scenarios
-            elseif fitS.weighting == "age"
-                weights         = ageDiffs; %Weights by age, not the mixed weighting of age and scenarios
-            else
-                error("Weighting type not recognized, must be 'none', 'depth', or 'age'")
-            end
-            data            = makeWeightedReplicates(inputData, weights, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
-        end
-
-        %% Calculate some other useful information
-        %Find out how much length and time the data spans
-        totalSedLength = sum(OneRunData(3,:), "all", "omitnan");
-        totalSedAge = sum(OneRunData(4,:), "all", "omitnan");
-
-        %Find number of SR calcs actually involved
-        numSRcalcs = numel(inputData);
-
-        %Get weighted bin counts of agediffs
-        agediffsWC1R = makeWeightedBinCounts(ageDiffs, weights, agediffsBinEdges);
-        %figure; histogram("BinEdges", agediffsBinEdges, "BinCounts", agediffsWC1R)
-
-        %% Resample dataset to include impact of weighting avoid inflation of dataset size
-        if fitS.resampleData
-            rng(1);
-            data = randsample(data, numSRcalcs, false);
-        end
-
-        %% Fit distributions
-
-        if fitS.fitDists == true
-            %Check that the data is a row vector
-
-            [a,b] = size(data);
-            if a>b
-                data = data';
-            end
-
-            %Fit a mix log normal, inverse gamma, gamma and lognormal to the data. If there is an ill conditioned
-            %covariance and an error is called, try again (initial conditions are
-            %random so new initial conditions may allow the code to avoid an ill
-            %conditioned covariance).
-            allow2 = 0;
-            errorNum = 0;
-            while allow2 == 0 && skipIteration == 0
-                try
-                    [MixLogNormPDFHOLDER, ~, MLNfitH] = fitMixLogNorm(data, x, 2, fitS.OneRun.MLNReps, numSRcalcs); %If this is taking too long, try reducing the weightRepInflator value
-                    [invGamPDFHOLDER, ~,IGfitH] = fitInvGamma(data, x, numSRcalcs);
-                    [GamPDFHOLDER, GfitH] = fitGamma(data, x, numSRcalcs);
-                    [LNPDFHOLDER, ~, LNfitH] = fitMixLogNorm(data, x, 1, fitS.OneRun.MLNReps, numSRcalcs);
-
-                    %Remove any NaNs in HOLDERS (think this is a bug?)
-                    MixLogNormPDFHOLDER(isnan(MixLogNormPDFHOLDER)) = 0;
-                    invGamPDFHOLDER(isnan(invGamPDFHOLDER)) = 0;
-                    GamPDFHOLDER(isnan(GamPDFHOLDER)) = 0;
-                    LNPDFHOLDER(isnan(LNPDFHOLDER)) = 0;
-
-                    allow1 = 1;
-                    allow2 = 1;
-                    skipIteration = 0;
-                catch %If there is an error in the fitMixLogNorm, which commonly happens because of an ill conditioned covariance, which may not occur if different initial conditions are used. If it continues to happen, skip this scenario and choose another scenario.
-                    errorNum = errorNum+1;
-                    disp("number of failed fittings = " + num2str(errorNum))
-                    allow2 = 0;
-                    if errorNum > 10
-                        skipIteration = 1;
-
-                        nx = numel(x);
-
-                        % --- Fit handles / objects ---
-                        MLNfitH = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, 'ComponentProportion', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
-                        IGfitH  = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
-                        GfitH   = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
-                        LNfitH  = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
-
-                        % --- PDF holders (match shapes used later) ---
-                        MixLogNormPDFHOLDER = NaN(nx, 2);   % later uses (:,2)
-                        invGamPDFHOLDER     = NaN(nx, 1);
-                        GamPDFHOLDER        = NaN(nx, 1);
-                        LNPDFHOLDER         = NaN(nx, 2);   % later uses (:,2)
-
-                        % --- VEC structs used later in "Save this round's data" ---
-                        MLNVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        LNVEC  = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        InvGamVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        GamVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-
-                        logMLNVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        logLNVEC     = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        logInvGamVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-                        logGamVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
-
-                        % --- chi2 outputs (h/p and chiStati) ---
-                        nPdf = 4;
-                        hi  = NaN(1, nPdf);
-                        pri = NaN(1, nPdf);
-
-                        chiStati = cell(1, nPdf);
-                        for k = 1:nPdf
-                            chiStati{k} = struct('chi2stat', NaN, 'E', NaN, 'O', NaN, 'edges', NaN, 'df', NaN);
-                        end
-                    end
-                end
-                if mod(i, 50) == 0
-                    disp("Fit " + num2str(i) + " samplings")
-                end
-
-            end
-        else
-
-            % ===== Dummy outputs when skipping distribution fitting =====
-            nx = numel(x);
-
-            % PDF holders with correct shapes
-            MixLogNormPDFHOLDER = NaN(nx, 2);  % later uses (:,2)
-            invGamPDFHOLDER     = NaN(nx, 1);
-            GamPDFHOLDER        = NaN(nx, 1);
-            LNPDFHOLDER         = NaN(nx, 2);  % later uses (:,2)
-
-            % Fit “handles” / objects
-            MLNfitH = NaN;
-            IGfitH = NaN;
-            GfitH  = NaN;
-            LNfitH = NaN;
-
-
-            allow1 = 1;
-            allow2 = 1;
-            skipIteration = 0;
-        end
+    % Remove negative SRs (ideally shouldn't exist, but BMode can produce them)
+    if sum(OneRunData(1,:) < 0) ~= 0
+        warning("There are negative sed rates!... being removed")
+        OneRunData = OneRunData(:, OneRunData(1,:) >= 0);
     end
 
-    if skipIteration == 1
-        disp("Skipped an iteration in SRun_MLNandInvGam")
+    % Remove zero SRs
+    if sum(OneRunData(1,:) == 0) ~= 0
+        warning("There are SRs of 0!... being removed.")
+        OneRunData = OneRunData(:, OneRunData(1,:) ~= 0);
+    end
+
+    % Optionally use absolute SR instead of normalised SR
+    if fitS.non_normalized_SR
+        SRs = OneRunData(3,:) ./ OneRunData(4,:);
+        SRs(isnan(OneRunData(1,:))) = NaN;
+        OneRunData(1,:) = SRs;
+    end
+
+    % Merge short age intervals if wanted
+    if fitS.merge_small_dt
+        [OneRunData, ~] = merge_small_dt_nSR(OneRunData, 500);
+    end
+
+    % Apply Lin2014 age filter if wanted
+    if fitS.Lin2014AgeFiltering
+        L2014Log = (OneRunData(4,:) < max(fitS.Lin2014AgeFilter) & ...
+                    OneRunData(4,:) > min(fitS.Lin2014AgeFilter)) | ...
+                    isnan(OneRunData(1,:));
+        OneRunData = OneRunData(:, L2014Log);
+    end
+
+    % Extract non-NaN data and set up weights
+    NaN_logi   = ~isnan(OneRunData(1,:));
+    inputData  = OneRunData(1, NaN_logi);
+    depthDiffs = OneRunData(3, NaN_logi);
+    ageDiffs   = OneRunData(4, NaN_logi);
+
+    weightRepDP       = fitS.OneRun.weightRepDP;
+    weightRepInflator = fitS.OneRun.weightRepInflator;
+
+    if fitS.weighting == "none"
+        weights = ones(size(inputData));
+        data    = inputData;
+    elseif fitS.weighting == "depth"
+        weights = depthDiffs;
+        data    = makeWeightedReplicates(inputData, weights, weightRepDP, weightRepInflator);
+    elseif fitS.weighting == "age"
+        weights = ageDiffs;
+        data    = makeWeightedReplicates(inputData, weights, weightRepDP, weightRepInflator);
     else
-        %% Run chi2gof on the fits
-        %chi2gof on MLN
-        MLNVEC = [];
-        MLNVEC.x = x';
-        MLNVEC.px = MixLogNormPDFHOLDER(:,2);
-        MLNVEC.numParams = 5;
-        MLNVEC.pdfName = "2 Component Mixed Log Normal";
-        [MLNVEC.mu, MLNVEC.var] = muVarPDFVec(MLNVEC);
+        error("Weighting type not recognized, must be 'none', 'depth', or 'age'")
+    end
 
-        logMLNVEC = [];
-        [logMLNVEC.x, logMLNVEC.px] = px_to_pfx(MLNVEC.x, MLNVEC.px, @log);
-        logMLNVEC.numParams = MLNVEC.numParams;
-        logMLNVEC.pdfName = MLNVEC.pdfName;
-        [logMLNVEC.mu, logMLNVEC.var] = muVarPDFVec(logMLNVEC);
+    % Compute run-level summary statistics
+    totalSedLength = sum(OneRunData(3,:), "all", "omitnan");
+    totalSedAge    = sum(OneRunData(4,:), "all", "omitnan");
+    numSRcalcs     = numel(inputData);
+    agediffsWC1R   = makeWeightedBinCounts(ageDiffs, weights, agediffsBinEdges);
 
-        %chi2gof on inverse gamma
-        InvGamVEC = [];
-        InvGamVEC.x = x';
-        InvGamVEC.px = invGamPDFHOLDER;
-        InvGamVEC.numParams = 2;
-        InvGamVEC.pdfName = "Inverse Gamma";
-        [InvGamVEC.mu, InvGamVEC.var] = muVarPDFVec(InvGamVEC);
+    % Optionally resample to original size (removes weighting inflation)
+    if fitS.resampleData
+        rng(1);
+        data = randsample(data, numSRcalcs, false);
+    end
 
-        logInvGamVEC = [];
-        [logInvGamVEC.x, logInvGamVEC.px] = px_to_pfx(InvGamVEC.x, InvGamVEC.px, @log);
-        logInvGamVEC.numParams = InvGamVEC.numParams;
-        logInvGamVEC.pdfName = InvGamVEC.pdfName;
-        [logInvGamVEC.mu, logInvGamVEC.var] = muVarPDFVec(logInvGamVEC);
+    %--- 2. Fit distributions (with retry on ill-conditioned covariance)
 
-        %chi2gof on gamma
-        GamVEC = [];
-        GamVEC.x = x';
-        GamVEC.px = GamPDFHOLDER;
-        GamVEC.numParams = 2;
-        GamVEC.pdfName = "Gamma";
-        [GamVEC.mu, GamVEC.var] = muVarPDFVec(GamVEC);
 
-        logGamVEC = [];
-        [logGamVEC.x, logGamVEC.px] = px_to_pfx(GamVEC.x, GamVEC.px, @log);
-        logGamVEC.numParams = GamVEC.numParams;
-        logGamVEC.pdfName = GamVEC.pdfName;
-        [logGamVEC.mu, logGamVEC.var] = muVarPDFVec(logGamVEC);
+    skipIteration = false; %This will change to true if 10 iterations fail, exiting while loop
 
-        %chi2gof on log normal
-        LNVEC = [];
-        LNVEC.x = x';
-        LNVEC.px = LNPDFHOLDER(:,2);
-        LNVEC.numParams = 2;
-        LNVEC.pdfName = "Log Normal";
-        [LNVEC.mu, LNVEC.var] = muVarPDFVec(LNVEC);
-
-        logLNVEC = [];
-        [logLNVEC.x, logLNVEC.px] = px_to_pfx(LNVEC.x, LNVEC.px, @log);
-        logLNVEC.numParams = LNVEC.numParams;
-        logLNVEC.pdfName = LNVEC.pdfName;
-        [logLNVEC.mu, logLNVEC.var] = muVarPDFVec(logLNVEC);
-
-        if fitS.run_chi2gof
-
-            pdfs = {logLNVEC; logMLNVEC; logGamVEC; logInvGamVEC};
-
-            if i <4
-                fitS.dispChi2 = true;
-            else
-                fitS.dispChi2 = false;
-            end
-            [hi, pri, chiStati] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, pdfs, fitS);
-
-        else %If fitS.run_chi2gof is false, set up dummy variables.
-            % Number of distributions
-            nPdf = 4;
-
-            % h(:,i) = hi'; p(:,i) = pri'; so hi, pri should be 1×nPdf
-            hi  = nan(1, nPdf);
-            pri = nan(1, nPdf);
-
-            % chiStati is a 1×nPdf cell array of structs with the same fields
-            % as returned by chi2_dataVStwopdfVECs, but all NaN.
-            chiStati = cell(1, nPdf);
-            for k = 1:nPdf
-                chiStati{k} = struct( ...
-                    'chi2stat', NaN, ...
-                    'df',       NaN, ...
-                    'edges',    NaN, ...
-                    'O',        NaN, ...
-                    'E',        NaN );
-            end
+    if fitS.fitDists
+        % Ensure data is a row vector for fitting functions
+        if size(data, 1) > size(data, 2)
+            data = data';
         end
 
+        allow2   = false;
+        errorNum = 0;
+        while ~allow2 && ~skipIteration
+            try
+                [MixLogNormPDFHOLDER, ~, MLNfitH] = fitMixLogNorm(data, x, 2, fitS.OneRun.MLNReps, numSRcalcs);
+                [invGamPDFHOLDER,     ~, IGfitH]  = fitInvGamma(data, x, numSRcalcs);
+                [GamPDFHOLDER,           GfitH]   = fitGamma(data, x, numSRcalcs);
+                [LNPDFHOLDER,         ~, LNfitH]  = fitMixLogNorm(data, x, 1, fitS.OneRun.MLNReps, numSRcalcs);
 
+                % Replace any NaNs in PDF outputs (think this is a bug in fitters?)
+                MixLogNormPDFHOLDER(isnan(MixLogNormPDFHOLDER)) = 0;
+                invGamPDFHOLDER(isnan(invGamPDFHOLDER))         = 0;
+                GamPDFHOLDER(isnan(GamPDFHOLDER))               = 0;
+                LNPDFHOLDER(isnan(LNPDFHOLDER))                 = 0;
 
+                allow2 = true;
+            catch
+                % fitMixLogNorm can fail with an ill-conditioned covariance;
+                % retrying with new random initial conditions often succeeds.
+                % If it fails more than 10 times, skip this iteration.
+                errorNum = errorNum + 1;
+                disp("number of failed fittings = " + num2str(errorNum))
+                if errorNum > 10
+                    skipIteration = true;
+                    [MLNfitH, IGfitH, GfitH, LNfitH, ...
+                     MixLogNormPDFHOLDER, invGamPDFHOLDER, GamPDFHOLDER, LNPDFHOLDER] = makeDummyFitResult(nx);
+                end
+            end
+            if mod(i, 50) == 0
+                disp("Fit " + num2str(i) + " samplings")
+            end
+        end
+    else
+        % Distribution fitting disabled — fill with NaN placeholders
+        [MLNfitH, IGfitH, GfitH, LNfitH, ...
+         MixLogNormPDFHOLDER, invGamPDFHOLDER, GamPDFHOLDER, LNPDFHOLDER] = makeDummyFitResult(nx);
     end
-    %Save this round's data
-    agediffsWbC(:,i) = agediffsWC1R';
-    MLNfits{i} = MLNfitH;
-    MLNs(:, i) = MLNVEC.px;
-    MLNmu(i) = MLNVEC.mu;
-    MLNvar(i) = MLNVEC.var;
-    logMLNs(:,i) = logMLNVEC.px;
-    logMLNmu(i) = logMLNVEC.mu;
-    logMLNvar(i) = logMLNVEC.var;
-    LNfits{i} = LNfitH;
-    LNs(:, i) = LNVEC.px;
-    LNmu(i) = LNVEC.mu;
-    LNvar(i) = LNVEC.var;
-    logLNs(:,i) = logLNVEC.px;
-    logLNmu(i) = logLNVEC.mu;
-    logLNvar(i) = logLNVEC.var;
-    IGfits{i} = IGfitH;
-    invGams(:,i) = InvGamVEC.px;
-    invGammu(i) = InvGamVEC.mu;
-    invGamvar(i) = InvGamVEC.var;
-    logInvGams(:,i) = logInvGamVEC.px;
-    loginvGammu(i) = logInvGamVEC.mu;
-    loginvGamvar(i) = logInvGamVEC.var;
-    Gfits{i} = GfitH;
-    Gams(:,i) = GamVEC.px;
-    Gammu(i) = GamVEC.mu;
-    Gamvar(i) = GamVEC.var;
-    logGams(:,i) = logGamVEC.px;
-    logGammu(i) = logGamVEC.mu;
-    logGamvar(i) = logGamVEC.var;
-    weightedC{i} = data;
-    numCpairs(i) = numSRcalcs;
-    sedLength(i) = totalSedLength;
-    sedTimeSpan(i) = totalSedAge;
-    h(:,i) = hi';
-    p(:,i) = pri';
-    MLNchi2stat{i} = chiStati{1}.chi2stat;
-    MLNchiStatTdf(i) = chiStati{1}.df;
-    MLNchiStatTedges{i} = chiStati{1}.edges;
-    MLNchiStatTO{i} = chiStati{1}.O;
-    MLNchiStatTE{i} = chiStati{1}.E;
-    InvGamChi2stat{i} = chiStati{2}.chi2stat;
-    InvGamChiStatTdf(i) = chiStati{2}.df;
-    InvGamChiStatTedges{i} = chiStati{2}.edges;
-    InvGamChiStatTO{i} = chiStati{2}.O;
-    InvGamChiStatTE{i} = chiStati{2}.E;
-    GamChi2stat{i} = chiStati{3}.chi2stat;
-    GamChiStatTdf(i) = chiStati{3}.df;
-    GamChiStatTedges{i} = chiStati{3}.edges;
-    GamChiStatTO{i} = chiStati{3}.O;
-    GamChiStatTE{i} = chiStati{3}.E;
-    LNChi2stat{i} = chiStati{4}.chi2stat;
-    LNChiStatTdf(i) = chiStati{4}.df;
-    LNChiStatTedges{i} = chiStati{4}.edges;
-    LNChiStatTO{i} = chiStati{4}.O;
-    LNChiStatTE{i} = chiStati{4}.E;
+
+    if skipIteration
+        disp("Skipped an iteration in SRun_MLNandInvGam")
+    end
+
+    %--- 3. Build PDF VEC structs
+    % buildVEC computes mu and var from the PDF; works correctly with NaN
+    % PDFs (from skipped/disabled fitting), producing NaN mu and var.
+    MLNVEC       = buildVEC(x, MixLogNormPDFHOLDER(:,2), 5, "2 Component Mixed Log Normal");
+    logMLNVEC    = buildLogVEC(MLNVEC);
+    InvGamVEC    = buildVEC(x, invGamPDFHOLDER,           2, "Inverse Gamma");
+    logInvGamVEC = buildLogVEC(InvGamVEC);
+    GamVEC       = buildVEC(x, GamPDFHOLDER,              2, "Gamma");
+    logGamVEC    = buildLogVEC(GamVEC);
+    LNVEC        = buildVEC(x, LNPDFHOLDER(:,2),          2, "Log Normal");
+    logLNVEC     = buildLogVEC(LNVEC);
+
+    %--- 4. Chi-squared goodness-of-fit test
+
+    if ~skipIteration && fitS.run_chi2gof
+        pdfs = {logLNVEC; logMLNVEC; logGamVEC; logInvGamVEC};
+        fitS.dispChi2 = (i < 4);
+        [hi, pri, chiStati_run] = chi2_dataVStwopdfVECs(log(data), numSRcalcs, 20, pdfs, fitS);
+    else
+        [hi, pri, chiStati_run] = makeDummyChi2(nPdf);
+    end
+
+    %--- 5. Store results directly in outS
+
+    outS.agediffsWbC(:,i)    = agediffsWC1R';
+    outS.weightedC{i}        = data;
+    outS.numCpairs(i)        = numSRcalcs;
+    outS.sedLength(i)        = totalSedLength;
+    outS.sedTimeSpan(i)      = totalSedAge;
+
+    outS.MLN.fits{i}         = MLNfitH;
+    outS.MLN.nSR.px(:,i)     = MLNVEC.px;
+    outS.MLN.nSR.mu(i)       = MLNVEC.mu;
+    outS.MLN.nSR.var(i)      = MLNVEC.var;
+    outS.MLN.lnSR.px(:,i)    = logMLNVEC.px;
+    outS.MLN.lnSR.mu(i)      = logMLNVEC.mu;
+    outS.MLN.lnSR.var(i)     = logMLNVEC.var;
+
+    outS.invGam.fits{i}      = IGfitH;
+    outS.invGam.nSR.px(:,i)  = InvGamVEC.px;
+    outS.invGam.nSR.mu(i)    = InvGamVEC.mu;
+    outS.invGam.nSR.var(i)   = InvGamVEC.var;
+    outS.invGam.lnSR.px(:,i) = logInvGamVEC.px;
+    outS.invGam.lnSR.mu(i)   = logInvGamVEC.mu;
+    outS.invGam.lnSR.var(i)  = logInvGamVEC.var;
+
+    outS.Gam.fits{i}         = GfitH;
+    outS.Gam.nSR.px(:,i)     = GamVEC.px;
+    outS.Gam.nSR.mu(i)       = GamVEC.mu;
+    outS.Gam.nSR.var(i)      = GamVEC.var;
+    outS.Gam.lnSR.px(:,i)    = logGamVEC.px;
+    outS.Gam.lnSR.mu(i)      = logGamVEC.mu;
+    outS.Gam.lnSR.var(i)     = logGamVEC.var;
+
+    outS.LN.fits{i}          = LNfitH;
+    outS.LN.nSR.px(:,i)      = LNVEC.px;
+    outS.LN.nSR.mu(i)        = LNVEC.mu;
+    outS.LN.nSR.var(i)       = LNVEC.var;
+    outS.LN.lnSR.px(:,i)     = logLNVEC.px;
+    outS.LN.lnSR.mu(i)       = logLNVEC.mu;
+    outS.LN.lnSR.var(i)      = logLNVEC.var;
+
+    h(:,i)         = hi';
+    p(:,i)         = pri';
+    allChiStati{i} = chiStati_run;
+
 end
 
-% Return ps.Pool.AutoCreate settings to original settings
-if fitS.useParallelComp
-else
+%% --- Restore parallel pool settings
+
+if ~fitS.useParallelComp
     ps.Pool.AutoCreate = psACset;
 end
 
-outS.OneRunDatas = OneRunDatas;
-outS.agediffsWbC = agediffsWbC;
-outS.weightedC = weightedC;
-outS.numCpairs = numCpairs;
-outS.sedLength = sedLength;
-outS.sedTimeSpan = sedTimeSpan;
-outS.MLN.nSR.px = MLNs;
-outS.MLN.nSR.x = x;
-outS.MLN.nSR.mu = MLNmu;
-outS.MLN.nSR.var = MLNvar;
-outS.MLN.lnSR.px = logMLNs;
-outS.MLN.lnSR.x = logx;
-outS.MLN.lnSR.mu = logMLNmu;
-outS.MLN.lnSR.var = logMLNvar;
-outS.MLN.fits = MLNfits;
-outS.invGam.nSR.px = invGams;
-outS.invGam.nSR.x = x;
-outS.invGam.nSR.mu = invGammu;
-outS.invGam.nSR.var = invGamvar;
-outS.invGam.lnSR.px = logInvGams;
-outS.invGam.lnSR.x = logx;
-outS.invGam.lnSR.mu = loginvGammu;
-outS.invGam.lnSR.var = loginvGamvar;
-outS.invGam.fits = IGfits;
-outS.Gam.nSR.px = Gams;
-outS.Gam.nSR.x = x;
-outS.Gam.nSR.mu = Gammu;
-outS.Gam.nSR.var = Gamvar;
-outS.Gam.lnSR.px = logGams;
-outS.Gam.lnSR.x = logx;
-outS.Gam.lnSR.mu = logGammu;
-outS.Gam.lnSR.var = logGamvar;
-outS.Gam.fits = Gfits;
-outS.LN.nSR.px = LNs;
-outS.LN.nSR.x = x;
-outS.LN.nSR.mu = LNmu;
-outS.LN.nSR.var = LNvar;
-outS.LN.lnSR.px = logLNs;
-outS.LN.lnSR.x = logx;
-outS.LN.lnSR.mu = logLNmu;
-outS.LN.lnSR.var = logLNvar;
-outS.LN.fits = LNfits;
+%% --- Assemble chi-squared statistics tables
 
-MLNchiStatT1 = table(MLNchi2stat, h(1,:)', p(1,:)', MLNchiStatTdf, MLNchiStatTedges, MLNchiStatTO, MLNchiStatTE,'VariableNames', ["chi2stat","h","p","df","edges","O", "E"]);
-outS.MLN.chiStats = MLNchiStatT1;
-InvGamChiStatT1 = table(InvGamChi2stat, h(2,:)', p(2,:)', InvGamChiStatTdf, InvGamChiStatTedges, InvGamChiStatTO, InvGamChiStatTE,'VariableNames', ["chi2stat","h","p","df","edges","O", "E"]);
-outS.invGam.chiStats = InvGamChiStatT1;
-GamChiStatT1 = table(GamChi2stat, h(3,:)', p(3,:)', GamChiStatTdf, GamChiStatTedges, GamChiStatTO, GamChiStatTE,'VariableNames', ["chi2stat","h","p","df","edges","O", "E"]);
-outS.Gam.chiStats = GamChiStatT1;
-LNChiStatT1 = table(LNChi2stat, h(4,:)', p(4,:)', LNChiStatTdf, LNChiStatTedges, LNChiStatTO, LNChiStatTE,'VariableNames', ["chi2stat","h","p","df","edges","O", "E"]);
-outS.LN.chiStats = LNChiStatT1;
+outS.MLN.chiStats    = buildChi2Table(allChiStati, h(1,:)', p(1,:)', 1);
+outS.invGam.chiStats = buildChi2Table(allChiStati, h(2,:)', p(2,:)', 2);
+outS.Gam.chiStats    = buildChi2Table(allChiStati, h(3,:)', p(3,:)', 3);
+outS.LN.chiStats     = buildChi2Table(allChiStati, h(4,:)', p(4,:)', 4);
+
+end
+
+%% =========================================================================
+%  Local helper functions
+%% =========================================================================
+
+function [MLNfitH, IGfitH, GfitH, LNfitH, MixLogNormPDF, invGamPDF, GamPDF, LNPDF] = makeDummyFitResult(nx)
+% Returns NaN-filled fit handles and PDF arrays for use when fitting is
+% skipped (fitDists = false) or has permanently failed (errorNum > 10).
+MLNfitH       = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, ...
+                       'ComponentProportion', NaN, 'NegativeLogLikelihood', NaN, ...
+                       'BIC', NaN, 'BICtaeheefix', NaN);
+IGfitH        = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, ...
+                       'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+GfitH         = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, ...
+                       'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+LNfitH        = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, ...
+                       'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+MixLogNormPDF = NaN(nx, 2);
+invGamPDF     = NaN(nx, 1);
+GamPDF        = NaN(nx, 1);
+LNPDF         = NaN(nx, 2);
+end
+
+function vec = buildVEC(x, px, numParams, pdfName)
+% Constructs a PDF VEC struct and computes its mean and variance.
+% Works with NaN px values (from skipped fitting), returning NaN mu/var.
+vec.x         = x';
+vec.px        = px;
+vec.numParams = numParams;
+vec.pdfName   = pdfName;
+[vec.mu, vec.var] = muVarPDFVec(vec);
+end
+
+function logvec = buildLogVEC(vec)
+% Transforms a VEC struct from nSR space into log(nSR) space.
+[logvec.x, logvec.px] = px_to_pfx(vec.x, vec.px, @log);
+logvec.numParams      = vec.numParams;
+logvec.pdfName        = vec.pdfName;
+[logvec.mu, logvec.var] = muVarPDFVec(logvec);
+end
+
+function [hi, pri, chiStati] = makeDummyChi2(nPdf)
+% Returns NaN-filled chi-squared results for skipped or disabled tests.
+hi       = nan(1, nPdf);
+pri      = nan(1, nPdf);
+chiStati = cell(1, nPdf);
+for k = 1:nPdf
+    chiStati{k} = struct('chi2stat', NaN, 'df', NaN, 'edges', NaN, 'O', NaN, 'E', NaN);
+end
+end
+
+function T = buildChi2Table(allChiStati, h, p, distIdx)
+% Assembles a chi-squared statistics table for one distribution across
+% all runs. distIdx selects which distribution's results to extract from
+% each run's chiStati cell (order matches the pdfs cell in the main loop).
+numruns  = length(allChiStati);
+chi2stat = cell(numruns, 1);
+df       = NaN(numruns, 1);
+edges    = cell(numruns, 1);
+O        = cell(numruns, 1);
+E        = cell(numruns, 1);
+for i = 1:numruns
+    chi2stat{i} = allChiStati{i}{distIdx}.chi2stat;
+    df(i)       = allChiStati{i}{distIdx}.df;
+    edges{i}    = allChiStati{i}{distIdx}.edges;
+    O{i}        = allChiStati{i}{distIdx}.O;
+    E{i}        = allChiStati{i}{distIdx}.E;
+end
+T = table(chi2stat, h, p, df, edges, O, E, ...
+    'VariableNames', ["chi2stat","h","p","df","edges","O","E"]);
+end
