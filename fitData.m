@@ -14,17 +14,18 @@ d.dataT = dataT;
 d.S = S;
 d.label = "AllCores, R200M20";
 split_filepath = split(filepath, ".mat");
-filename2save =  split_filepath(1)+ "_fit13Feb26_depthweight_400R.mat";
+filename2save =  split_filepath(1)+ "_fit26Mar26_noweight_SR2_400R.mat";
 
 %% Set up fitting settings structure
 fitS.Lin2014AgeFilter = [500 4000];
 fitS.merge_small_dt = false;
-fitS.weighting = "depth";    %Can be "depth", "age", or "none"
+fitS.weighting = "none";    %Can be "depth", "age", or "none"
 fitS.minMeanSR = 8;
 fitS.minDepth = 1000;
 fitS.maxLat = 40;
 
 fitS.fitDists = true;
+fitS.non_normalized_SR = true;
 fitS.mlnReps = 3;           %For weighting with depth, best is 3
 fitS.run_chi2gof = false;
 fitS.chi2binN = 5;
@@ -41,14 +42,20 @@ if fitS.weighting == "depth"
     fitS.OneRun.weightRepDP = 3;       %For weighting with depth, best is 3
     fitS.OneRun.weightRepInflator = 1; %For weighting with depth, best is 4
     fitS.OneRun.MLNReps = 3;           %For weighting with depth, best is 3
+    fitS.ManyRuns.weightRepDP = 3;
+    fitS.ManyRuns.weightRepInflator = 1e-1;
 elseif fitS.weighting == "age"
     fitS.OneRun.weightRepDP = 3;
     fitS.OneRun.weightRepInflator = 0.001;
     fitS.OneRun.MLNReps = 3;
+    fitS.ManyRuns.weightRepDP = 3;
+    fitS.ManyRuns.weightRepInflator = 1e-3;
 else
     fitS.OneRun.weightRepDP = 1;       
     fitS.OneRun.weightRepInflator = 1; 
-    fitS.OneRun.MLNReps = 3;           
+    fitS.OneRun.MLNReps = 3;
+    fitS.ManyRuns.weightRepDP = 3;
+    fitS.ManyRuns.weightRepInflator = 1;
 end
 fitS.divideLikelihood = true;
 d.S1.fitS = fitS;
@@ -84,7 +91,7 @@ d.x = exp(d.logx);
 [d.S1.BMedian]=ARfitdists(d.dataT.bchronMedian, d.x, d.S1.chooseLog, fitS.DeterministicRun.weightDP,fitS.DeterministicRun.weightInflator,1, fitS);
 %% Fit dists to all BSamp samples
 countDivisor = 1000;
-[d.S1.BChAR] = ARfitdists(d.dataT.bchronProb, d.x, d.S1.chooseLog, 3, 1e-1, 1000, fitS);
+[d.S1.BChAR] = ARfitdists(d.dataT.bchronProb, d.x, d.S1.chooseLog, fitS.ManyRuns.weightRepDP, fitS.ManyRuns.weightRepInflator, 1000, fitS);
 
 %% Fit dists to individual Bchron Samplings
 % %Fit many individual runs
@@ -94,37 +101,39 @@ fitS.dispChi2 = false;
 rng(2)
 [d.S1.BChIR] = SRun_MLNandInvGam(d.dataT.bchronProb, d.S1.chooseLog, numruns, d.x, fitS);
 
-%% Fit dists to collected Newall Samplings
+%% Fit dists to pooled RSRx Samplings
 %weight replicator = 1e-1 keeps the mean and variance the same as NewIR,
 %but is faster than weightReplicator = 1;
 fitS.Lin2014AgeFiltering = false;
 fitS.dispChi2 = false;
 countDivisor = 400;
-[d.S1.New0AR]    = ARfitdists(d.dataT.nSRcounts, d.x, d.S1.chooseLog, 3,1e-1, countDivisor, fitS); 
-[d.S1.New500AR]  = ARfitdists(d.dataT.nSRcounts500, d.x, d.S1.chooseLog, 3, 1e-1,  countDivisor, fitS);
-[d.S1.New1000AR] = ARfitdists(d.dataT.nSRcounts1000, d.x, d.S1.chooseLog, 3, 1e-1, countDivisor, fitS);
+[d.S1.RSR0AR]    = ARfitdists(d.dataT.nSRcounts, d.x, d.S1.chooseLog, fitS.ManyRuns.weightRepDP, fitS.ManyRuns.weightRepInflator, countDivisor, fitS); 
+[d.S1.RSR500AR]  = ARfitdists(d.dataT.nSRcounts500, d.x, d.S1.chooseLog, fitS.ManyRuns.weightRepDP, fitS.ManyRuns.weightRepInflator,  countDivisor, fitS);
+[d.S1.RSR1000AR] = ARfitdists(d.dataT.nSRcounts1000, d.x, d.S1.chooseLog, fitS.ManyRuns.weightRepDP, fitS.ManyRuns.weightRepInflator, countDivisor, fitS);
 
-%% Fit dists to individual Newall Samplings
+%% Fit dists to individual RSRx Samplings
 fitS.Lin2014AgeFiltering = false;
 fitS.dispChi2 = false;
 rng(2)
-[d.S1.New0IR]    = SRun_MLNandInvGam(d.dataT.nSRcounts, d.S1.chooseLog, numruns, d.x, fitS);
-[d.S1.New500IR]  = SRun_MLNandInvGam(d.dataT.nSRcounts500, d.S1.chooseLog, numruns, d.x, fitS);
-[d.S1.New1000IR] = SRun_MLNandInvGam(d.dataT.nSRcounts1000, d.S1.chooseLog, numruns, d.x, fitS);
+[d.S1.RSR0IR]    = SRun_MLNandInvGam(d.dataT.nSRcounts, d.S1.chooseLog, numruns, d.x, fitS);
+%%
+[d.S1.RSR500IR]  = SRun_MLNandInvGam(d.dataT.nSRcounts500, d.S1.chooseLog, numruns, d.x, fitS);
+%%
+[d.S1.RSR1000IR] = SRun_MLNandInvGam(d.dataT.nSRcounts1000, d.S1.chooseLog, numruns, d.x, fitS);
 
 %% Calculate histogram counts in log Space for each individual run
 bw           = 0.1; %bin width
 logBinEdges  = -5:bw:5;          %lognSR
 d.S1.BChIR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
-d.S1.New0IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
-d.S1.New500IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
-d.S1.New1000IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
+d.S1.RSR0IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
+d.S1.RSR500IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
+d.S1.RSR1000IR.lnSRHistCounts = NaN(numruns, length(logBinEdges)-1);
 
 for i = 1:numruns
     d.S1.BChIR.lnSRHistCounts(i,:)    = histcounts(log(d.S1.BChIR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
-    d.S1.New0IR.lnSRHistCounts(i,:)   = histcounts(log(d.S1.New0IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
-    d.S1.New500IR.lnSRHistCounts(i,:) = histcounts(log(d.S1.New500IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
-    d.S1.New1000IR.lnSRHistCounts(i,:)= histcounts(log(d.S1.New1000IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
+    d.S1.RSR0IR.lnSRHistCounts(i,:)   = histcounts(log(d.S1.RSR0IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
+    d.S1.RSR500IR.lnSRHistCounts(i,:) = histcounts(log(d.S1.RSR500IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
+    d.S1.RSR1000IR.lnSRHistCounts(i,:)= histcounts(log(d.S1.RSR1000IR.weightedC{i}), 'BinEdges', logBinEdges)./d.S1.fitS.OneRun.weightRepInflator;
 end
 
 %% Save data as file
