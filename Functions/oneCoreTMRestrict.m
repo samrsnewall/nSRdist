@@ -1,4 +1,72 @@
 function [nSRcounts, agediffs] = oneCoreTMRestrict(corename, dataLoc, scenarios, LabIDs, incDepths, excLabIDs, excDepths, scenario_meanSR, ageModes, S, minAgeDiff)
+% oneCoreTMRestrict  Compute normalised sedimentation rates (nSR) for a
+%                    single core using random sampling from calibrated
+%                    radiocarbon age PDFs (RSR methods).
+%
+% For each of S.numruns iterations, this function:
+%   1. Randomly selects one age-depth scenario (to handle doubly-dated
+%      depths and age reversals).
+%   2. Samples one age per radiocarbon date from its calibrated PDF
+%      (calibration done by MatCal), enforcing stratigraphic order and an optional minimum
+%      age difference between consecutive dates.
+%   3. Computes the nSR for each depth interval in that run.
+%   4. Appends the run's nSR block to nSRcounts.
+%
+% This function implements the RSR family of methods. The minAgeDiff
+% argument controls which variant is used:
+%   minAgeDiff = 0    ->  RSR0
+%   minAgeDiff = 500  ->  RSR500
+%   minAgeDiff = 1000 ->  RSR1000
+%   minAgeDiff = 1500 ->  RSR1500
+%
+% INPUTS
+%   corename        - (string) Sediment core identifier (e.g. "RC13-228")
+%   dataLoc         - (string) Radiocarbon data source: "WA" (World Atlas)
+%                     or "Lin2014"
+%   scenarios       - (cell array) Each element is a string array of LabIDs
+%                     defining one valid age-depth scenario. Scenarios
+%                     rejected during pre-processing are marked "invalid".
+%   LabIDs          - (string array) Laboratory IDs for filtering
+%                     (passed to filtering.m)
+%   incDepths       - (numeric vector) Depths (cm) forced to be included
+%                     during filtering (passed to filtering.m)
+%   excLabIDs       - (string array) Laboratory IDs to exclude during
+%                     filtering (passed to filtering.m)
+%   excDepths       - (numeric vector) Depths (cm) to exclude during
+%                     filtering (passed to filtering.m)
+%   scenario_meanSR - (numeric vector) Pre-computed mean SR (cm/yr) for
+%                     each scenario; used for normalisation when
+%                     S.normWithRunAve is false
+%   ageModes        - (cell array) Mode age (yr BP) for each date in each
+%                     scenario; used when S.useModes is true instead of
+%                     random sampling
+%   S               - (struct) Settings struct. Relevant fields:
+%                       .numruns          Number of Monte Carlo runs
+%                       .useModes         (logical) Use mode ages instead
+%                                         of random sampling
+%                       .normWithRunAve   (logical) Normalise each run by
+%                                         its own mean SR (true) or by the
+%                                         pre-computed scenario mean SR
+%                                         (false)
+%                       .pdfMinVal        Minimum probability threshold
+%                                         when sampling from age PDFs. This
+%                                         helps speed up runtime
+%   minAgeDiff      - (scalar, years) Minimum age difference enforced
+%                     between consecutively sampled dates. Any sampled age
+%                     that falls within minAgeDiff years of the previous
+%                     accepted age is discarded for that run.
+%
+% OUTPUTS
+%   nSRcounts  - (4 x M) nSR matrix with all runs concatenated horizontally.
+%                See README "Internal Data Formats" for the full format spec.
+%                Note: Row 2 weights are depth-differences divided by
+%                S.numruns, so that summing across all runs gives a weight
+%                proportional to depth span.
+%   agediffs   - (1 x P) All age differences from all runs, concatenated.
+%                Used downstream for diagnostic purposes.
+%
+% See also: calcData, filtering, multiMatcalQ, nSRBchron
+
 %% Check whether the core has previously been rejected
 if isempty(scenarios) %If core has been previously rejected...
     %Core was rejected previously
@@ -113,7 +181,6 @@ for ix = 1:numruns
                     continue
                 end
 
-
                 run_age(i) = randsample(poss_ages, 1, true, age_probs);
                 %%% RESTRICTION CODE
                 %If next age is not more than x years greater than
@@ -147,7 +214,7 @@ for ix = 1:numruns
     end
     %Add normSRs to vector to count them (with their weighting)
     weightingNormaliser = numruns; %Find normalising value based on number of runs
-    nSRinfo = [normSRs; dep_diffs./weightingNormaliser; dep_diffs; age_diffs]; %Set up nSR info (nSR counts, weighting, depth differences, age differences)
+    nSRinfo = [normSRs; dep_diffs; dep_diffs; age_diffs]; %Set up nSR info (nSR counts, weighting, depth differences, age differences)
 
     %Store all nSR info in a single array, with NaNs separating info from
     %different runs (instead of NaN in age-diff row, the first age used
