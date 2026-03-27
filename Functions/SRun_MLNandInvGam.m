@@ -120,6 +120,9 @@ for i = 1:numruns
     allow1 = 0; %If
     skipIteration = 0;
     while skipIteration == 0 & allow1 == 0
+        %Modify OneRunData as desired
+        OneRunData_before = OneRunData;
+
         %Get rid of negative sedimentation rates (ideally, shouldn't be
         %there, but BMode allows them to be there)
         if sum(OneRunData(1,:)<0) ~= 0
@@ -133,7 +136,14 @@ for i = 1:numruns
             OneRunData = OneRunData(:,OneRunData(1,:) ~= 0);
         end
 
-        OneRunData_before = OneRunData;
+        % If wanted - calculate SR to use instead of NSR
+        if fitS.non_normalized_SR;
+            SRs = OneRunData(3,:)./OneRunData(4,:); %Calculate SR from depthdiff and agediff
+            SRs(isnan(OneRunData(1,:))) = NaN;
+            OneRunData(1,:) = SRs;
+        end
+
+        %Instead of removing data by deltat, merge data
         if fitS.merge_small_dt
             [OneRunData, mergeLog] = merge_small_dt_nSR(OneRunData, 500);
         end
@@ -224,25 +234,43 @@ for i = 1:numruns
                     errorNum = errorNum+1;
                     disp("number of failed fittings = " + num2str(errorNum))
                     allow2 = 0;
-                    if errorNum >10
+                    if errorNum > 10
                         skipIteration = 1;
-                        MLNfitH = NaN;
-                        MixLogNormPDFHOLDER = NaN(length(x), 2);
-                        IGfitH = NaN;
-                        invGamPDFHOLDER = NaN(length(x), 1);
-                        %GamPDFHOLDER = NaN(length(x), 1);
-                        hi(:) = NaN;
-                        pri(:) = NaN;
-                        chiStati = cell(1,size(pdfs,1));
-                        for ji = 1:size(pdfs, 1)
-                            chiStati{ji}.chi2stat = NaN;
-                            chiStati{ji}.E = NaN;
-                            chiStati{ji}.O = NaN;
-                            chiStati{ji}.edges = NaN;
-                            chiStati{ji}.df = NaN;
+
+                        nx = numel(x);
+
+                        % --- Fit handles / objects ---
+                        MLNfitH = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, 'ComponentProportion', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+                        IGfitH  = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+                        GfitH   = struct('NumParams', NaN, 'alpha', NaN, 'beta', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+                        LNfitH  = struct('NumParams', NaN, 'mu', NaN, 'Sigma', NaN, 'NegativeLogLikelihood', NaN, 'BIC', NaN, 'BICtaeheefix', NaN);
+
+                        % --- PDF holders (match shapes used later) ---
+                        MixLogNormPDFHOLDER = NaN(nx, 2);   % later uses (:,2)
+                        invGamPDFHOLDER     = NaN(nx, 1);
+                        GamPDFHOLDER        = NaN(nx, 1);
+                        LNPDFHOLDER         = NaN(nx, 2);   % later uses (:,2)
+
+                        % --- VEC structs used later in "Save this round's data" ---
+                        MLNVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        LNVEC  = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        InvGamVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        GamVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+
+                        logMLNVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        logLNVEC     = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        logInvGamVEC = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+                        logGamVEC    = struct('px', NaN(nx,1), 'mu', NaN, 'var', NaN);
+
+                        % --- chi2 outputs (h/p and chiStati) ---
+                        nPdf = 4;
+                        hi  = NaN(1, nPdf);
+                        pri = NaN(1, nPdf);
+
+                        chiStati = cell(1, nPdf);
+                        for k = 1:nPdf
+                            chiStati{k} = struct('chi2stat', NaN, 'E', NaN, 'O', NaN, 'edges', NaN, 'df', NaN);
                         end
-                        logMLNVEC.px = NaN;
-                        logInvGamVEC.px = NaN;
                     end
                 end
                 if mod(i, 50) == 0
@@ -274,12 +302,9 @@ for i = 1:numruns
         end
     end
 
-
     if skipIteration == 1
         disp("Skipped an iteration in SRun_MLNandInvGam")
     else
-
-
         %% Run chi2gof on the fits
         %chi2gof on MLN
         MLNVEC = [];
