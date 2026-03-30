@@ -1,35 +1,60 @@
-function[scenarios, duplicated_depths, chosenLabels] = scenariosDDD(depth_cm, label, corename)
-%Scenarios Doubly Dated Depths - This function deals with doubly dated
-%depths by creating scenarios that each only choose one of the dates at
-%each of those depths
+function [scenarios, duplicated_depths, chosenLabels] = scenariosDDD(depth_cm, label, corename)
+% scenariosDDD  Build age-depth scenarios for a core that has doubly-dated depths.
+%
+% Where two or more radiocarbon dates share exactly the same depth, only
+% one can be used per age-depth model run. This function enumerates all
+% possible "choose one per depth" combinations (via scenariomaker) so that
+% each scenario contains exactly one date per depth. If there are no
+% doubly-dated depths the function returns a single scenario containing all
+% dates.
+%
+% A "doubly-dated depth" (DDD) is identified when two consecutive depth
+% values differ by less than 0.00001 cm (a small tolerance to guard against
+% floating-point imprecision in the input data). Only neighbouring duplicate
+% pairs are caught by this tolerance check; data must be sorted by ascending
+% depth beforehand.
+%
+% INPUTS
+%   depth_cm  - (numeric vector, n×1) Depths of each date (cm), sorted
+%               ascending
+%   label     - (string vector, n×1) Lab IDs corresponding to each date
+%   corename  - (string) Core identifier, used for diagnostic messages
+%
+% OUTPUTS
+%   scenarios         - (cell array, s×1) Each cell holds a string vector of
+%                       lab IDs that belong to that scenario
+%   duplicated_depths - (numeric vector) Depths at which more than one date
+%                       exists. Empty if there are no DDDs.
+%   chosenLabels      - (cell array, s×1) For each scenario, the lab IDs
+%                       that were "chosen" (i.e. one per DDD), so that the
+%                       unchosen sibling can be identified later. Empty cell
+%                       if there are no DDDs.
+%
+% See also: scenariomaker, oneCoreScenarios, scenariosDealWithReversals
 
-%Assumes that all data are ordered by ascending depth
-depth_diffs             = diff(depth_cm);                                   %Find difference between neighbouring depth values (data should be ordered by ascending depths)
-duplicated_firstinds    = depth_diffs <= 0.00001;                           %Find where neighbouring values don't differ (some leeway given in case data aren't processed perfectly)
-duplicated_depths       = unique(depth_cm([duplicated_firstinds' false]));  %Find which depths are duplicated
+%% Identify doubly-dated depths
+% Assumes data are ordered by ascending depth.
+depth_diffs          = diff(depth_cm);
+duplicated_firstinds = depth_diffs <= 0.00001;
+duplicated_depths    = unique(depth_cm([duplicated_firstinds' false]));
 
-if ~isempty(duplicated_depths) %Run loop if there are duplicately dated depths
+%% Build scenarios
+if ~isempty(duplicated_depths)
 
-    %Initialise cell
+    % Collect the lab IDs of every date at each duplicated depth.
     dup_depth_LabIDs = cell(1, length(duplicated_depths));
-
-    %Find labels for each depth
     for idupdepth = 1:length(duplicated_depths)
-        duplicated_allinds          = ismember(depth_cm, duplicated_depths(idupdepth)); %Find the indices of all duplicated depths (duplicated_firstind ony gives indice of first instance of duplicated depth)
-        dup_depth_LabIDs{idupdepth} = label(duplicated_allinds); %Find labels that correspond to duplicated depths.
+        duplicated_allinds         = ismember(depth_cm, duplicated_depths(idupdepth));
+        dup_depth_LabIDs{idupdepth} = label(duplicated_allinds);
     end
-    
-    %Display the core name, the depths that have been dated multiple times,
-    %and the labIDs of the dates for each depth.
-    % disp("Core " + string(corename) + " has " + num2str(length(duplicated_depths)) + " doubly-dated depth(s).")
-    % for n_dupdepth = 1:length(duplicated_depths)
-    %     disp("Depth " + join(num2str(duplicated_depths(n_dupdepth))) + " has dates with the following labIDs " + join(dup_depth_LabIDs{n_dupdepth}))
-    % end
 
+    % Enumerate all combinations (one date per DDD) using scenariomaker.
     [scenarios, chosenLabels, ~] = scenariomaker(dup_depth_LabIDs, [], label);
+
 else
-    %If there are no duplicately dated depths, only 1 scenario, which is
-    %all dates
-    scenarios{1} = label;
+    % No DDDs: only one scenario, consisting of all dates.
+    scenarios{1}    = label;
     chosenLabels{1} = [];
+end
+
 end

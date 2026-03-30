@@ -1,9 +1,52 @@
 function[age, depth, error, label, emptybreak1, emptybreak2, EM, ManE, NotCCR, ageGapTooHigh] = filtering(age, depth, error, label, LabIDs, incDepths, excLabIDs, excDepths, corename, S)
+% filtering  Filter radiocarbon dates for a single sediment core.
+%
+% Applies four successive filters to a core's radiocarbon dataset:
+%   1. Material selection — keep only dates matching the specified LabIDs
+%      (or depths in incDepths), typically used to retain MSPF dates only.
+%   2. Manual exclusion — remove dates flagged by excLabIDs or excDepths
+%      (e.g. known age reversals, non-planktonic material).
+%   3. Calibration curve range — remove dates whose age ± error falls
+%      outside the range S.c14AgeLim (ensures MatCal can calibrate them).
+%   4. Minimum date count — sets emptybreak2 if fewer than S.minNumberOfAges
+%      dates remain after the above filters.
+%
+% INPUTS
+%   age       - (numeric vector) Radiocarbon ages (14C kyr BP)
+%   depth     - (numeric vector) Sample depths (cm)
+%   error     - (numeric vector) Radiocarbon age 1-sigma errors (14C kyr)
+%   label     - (string vector) Laboratory IDs for each date
+%   LabIDs    - (string) Comma-separated lab IDs to keep, or "all" to
+%               retain all dates regardless of material type
+%   incDepths - (string) Comma-separated depths (m) to keep; used as an
+%               alternative to LabIDs when lab IDs are unavailable
+%   excLabIDs - (string) Comma-separated lab IDs to exclude manually
+%   excDepths - (string or numeric) Depths (m) to exclude manually
+%   corename  - (string) Core identifier, used in warning messages
+%   S         - (struct) Settings struct. Relevant fields:
+%                 .c14AgeLim      [min, max] radiocarbon age limits (14C yr)
+%                 .minNumberOfAges  Minimum number of dates required
+%
+% OUTPUTS
+%   age, depth, error, label  - Filtered versions of the input arrays
+%   emptybreak1  - (logical) 1 if no dates matched the material filter
+%                  (LabIDs/incDepths empty or unmatched); caller should
+%                  skip this core
+%   emptybreak2  - (logical) 1 if fewer than S.minNumberOfAges dates
+%                  remain after filtering; caller should skip this core
+%   EM           - Struct of dates excluded by the material filter
+%   ManE         - Struct of dates excluded by manual exclusion
+%   NotCCR       - Struct of dates excluded for being outside the
+%                  calibration curve range
+%   ageGapTooHigh - Struct of dates involved in age gaps > 5 kyr
+%                   (diagnostic only; not used to exclude dates)
+%
+% See also: calcData, oneCoreScenarios, oneCoreRSR, nSRBchron
 
-emptybreak1 = 0;
-emptybreak2 = 0;
+emptybreak1 = 0; % This will signal if core has no data chosen (1 = no data)
+emptybreak2 = 0; % This will signal if core has less than S.minNumberOfAges (1 = less than...)
 
-%% Choose only MSPF dates
+%% Choose dates desired (i.e. planktonic foraminifera dates only)
 %Filter the data so it's only those with MSPF
 if strcmp(string(LabIDs), "all") %if string says all, no dates are excluded for their material
     logi1 = true(length(age), 1);
@@ -36,7 +79,6 @@ elseif ~isempty(LabIDs) & ~isnan(LabIDs)  % if string is not empty, check for de
     logi1 = ismember(strip(string(label)), strip(string(LabIDsSplitGood)));
     if sum(logi1)~=length(LabIDsSplitGood)
         warning("Some of the LabIDs listed to be chosen in the COPYcorechoices_MSPF file for core" + corename + " do not match with the LabIDs read in from the WA2022")
-        pause
     end
 
     %fill excluded material (EM) outputs
@@ -72,7 +114,7 @@ logi31 = false(length(age), 1);
 logi32 = false(length(age), 1);
 
 %Remove the LabIDs of ages that are clearly erroneous (large age
-%reversal - hand picked)
+%reversal - manually chosen)
 
 %specified by LabID
 if ~isempty(excLabIDs) & ~isnan(excLabIDs)
@@ -113,10 +155,6 @@ NotCCR.label = label(~logi4);
 ChosenLogi = logi1 & ~logi3 & logi4;
 
 %fill outputs
-% ChosenMSPF.age = age(ChosenLogi);
-% ChosenMSPF.depth = depth(ChosenLogi);
-% ChosenMSPF.error = error(ChosenLogi);
-% ChosenMSPF.label = label(ChosenLogi);
 age = age(ChosenLogi);
 depth = depth(ChosenLogi);
 error = error(ChosenLogi);

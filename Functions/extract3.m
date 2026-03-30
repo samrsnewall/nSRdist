@@ -1,4 +1,37 @@
 function[LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataMSPF, chosenCoresLog, S)
+% extract3  Extract per-core filtering information from the metadata
+%           spreadsheet for use in radiocarbon date filtering.
+%
+% Reads the relevant columns of the core metadata table and constructs
+% per-core vectors of laboratory IDs to include/exclude and depths to
+% exclude. Also determines which data source (World Atlas or Lin2014)
+% to use for each core. The outputs are passed directly to filtering.m.
+%
+% This is the third (current) version of this extraction function.
+% extract1.m and extract2.m are earlier superseded versions.
+%
+% INPUTS
+%   rawdataMSPF    - (table) Full core metadata table read from the Excel
+%                    spreadsheet (DataSheets/COPYcore40MetadataAndLin2014_2.xlsx)
+%   chosenCoresLog - (logical vector) Selects which rows of rawdataMSPF
+%                    correspond to the cores being analysed
+%   S              - (struct) Settings struct. Relevant fields:
+%                      .useLin           (logical) Include Lin2014 cores
+%                      .usePF            (logical) Include World Atlas cores
+%                      .modifyLin2014Data (logical) Apply manual exclusions
+%                                         to Lin2014 cores
+%                      .removeLargeGaps  (logical) Also exclude dates
+%                                         involved in large age gaps
+%
+% OUTPUTS
+%   LabIDs    - (cell array) Per-core string of lab IDs to keep (or "all")
+%   incDepths - (cell array) Per-core string of depths (m) to keep
+%               (alternative to LabIDs when lab IDs are unavailable)
+%   excLabIDs - (cell array) Per-core string of lab IDs to exclude
+%   excDepths - (cell array) Per-core string of depths (m) to exclude
+%   dataLoc   - (string vector) Per-core data source: "WA" or "Lin2014"
+%
+% See also: calcData, filtering, oneCoreScenarios, oneCoreRSR
 
 %Initialise cells
 numCores    = sum(chosenCoresLog);

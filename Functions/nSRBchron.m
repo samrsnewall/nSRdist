@@ -1,5 +1,64 @@
 function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,LabIDs, incDepths, excLabIDs, excDepths, dataLoc, S)
-%Find Bchron output data
+% nSRBchron  Compute normalised sedimentation rates (nSR) for a single core
+%            using Bchron Bayesian age-depth modelling.
+%
+% Manages the full Bchron workflow for one sediment core:
+%   1. Checks whether Bchron results already exist. Uses them if they do
+%   (unless S.BchronReDo is true) - creates them if not.
+%   2.1. Reads radiocarbon data from the appropriate source (World Atlas or
+%      Lin2014 dataset).
+%   2.2. Optionally filters dates using the same criteria as the RSR methods.
+%   2.3. Writes a Bchron-formatted input file and calls Bchron via Rscript
+%   3. Loads the Bchron output and computes nSR three ways:
+%        BMode   - using the mode   of the Bchron age ensemble
+%        BMedian - using the median of the Bchron age ensemble
+%        BSamp   - using each iteration of the Bchron ensemble individually
+%
+% INPUTS
+%   corename   - (string) Sediment core identifier (e.g. "RC13-228")
+%   LabIDs     - (string array) Laboratory IDs for special-case filtering
+%                (passed to filtering.m)
+%   incDepths  - (numeric vector) Depths (cm) forced to be included during
+%                filtering (passed to filtering.m)
+%   excLabIDs  - (string array) Laboratory IDs to exclude during filtering
+%                (passed to filtering.m)
+%   excDepths  - (numeric vector) Depths (cm) to exclude during filtering
+%                (passed to filtering.m)
+%   dataLoc    - (string) Where to get Radiocarbon data from: "WA" (World Atlas) or
+%                "Lin2014"
+%   S          - (struct) Settings struct. Relevant fields:
+%                  .sandboxPath            Root path of the repository
+%                  .BchronFolderName       Subfolder name under BchronFolders/
+%                  .BchronCalCurve         Calibration curve (e.g. "Marine20")
+%                  .BchronReDo             (logical) Force re-run of Bchron
+%                  .BchronFilter           (logical) Apply date filtering
+%                  .BchronOutlier          Prior outlier probability per date
+%                  .BchronReversalCriteria Rejection threshold (fraction):
+%                                          dates flagged as outliers in more
+%                                          than this fraction of runs are
+%                                          excluded (e.g. 0.5 = 50%)
+%                  .BchronDepthSpacing     Depth resolution (cm) for age
+%                                          predictions
+%                  .DeltaRError            Marine reservoir age correction
+%                  .RscriptPath            Full path to the Rscript executable
+%                  .minNumberOfAges        Minimum accepted ages required per
+%                                          core or per individual run
+%                  .normWithRunAve         (logical) If true, normalise each
+%                                          BSamp run by its own mean SR; if
+%                                          false, normalise all runs by the
+%                                          overall mean SR from the mode solution
+%
+% OUTPUTS
+%   modenSRinfo   - (4 x N) nSR matrix computed using mode ages (BMode)
+%   mediannSRinfo - (4 x N) nSR matrix computed using median ages (BMedian)
+%   nSRcounts     - (4 x M) nSR matrix from individual Bchron runs (BSamp);
+%                   blocks from successive runs are concatenated horizontally
+%   meanSR        - (scalar) Overall mean sedimentation rate (cm/kyr) from
+%                   the depth/age range of the median-age solution
+%
+% See also: calcData, getDataWA, getDatatxt, filtering, oneCoreRSR
+
+%--- Locate Bchron output data
 BchronFolder = S.BchronFolderName;
 
 %Set up directory to where the Bchron Data is
@@ -210,7 +269,8 @@ for i = 1:size(thetaDataR,1)
         runnSR = runSRs./meanSR;
     end
 
-    %Store info in one vector, with my standardised format
+    %Store info in one block using the standard 4-row nSR matrix format
+    %(see function header for full format description)
     nSRinfo = [NaN, runnSR; NaN, runweights; rundepths(1), rundepthdiffs; runages(1), runagediffs];
     if ~exist('nSRcounts','var')
         nSRcounts = nSRinfo;

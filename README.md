@@ -33,6 +33,32 @@ Loads the saved results from Stage 1 and fits four candidate probability distrib
 
 ---
 
+## Internal Data Formats
+
+### The nSR matrix format
+
+Throughout the codebase, NSR data for a single core (or a single Bchron run) is stored as a **4-row matrix**. This format is used by `nSRBchron.m`, `oneCoreTMRestrict.m`, and the functions that aggregate and fit distributions.
+
+Each matrix has 4 rows and **(K + 1)** columns, where **K** is the number of depth intervals (i.e. the number of accepted dated levels minus one).
+
+```
+Row 1: [ NaN,  nSR_1,   nSR_2,   ..., nSR_K   ]
+Row 2: [ NaN,  w_1,     w_2,     ..., w_K     ]
+Row 3: [ d_1,  ddep_1,  ddep_2,  ..., ddep_K  ]
+Row 4: [ a_1,  dage_1,  dage_2,  ..., dage_K  ]
+```
+
+| Row | Column 1 | Remaining columns |
+|-----|----------|-------------------|
+| 1 | `NaN` (block delimiter) | Normalised sedimentation rates (dimensionless) |
+| 2 | `NaN` (block delimiter) | Depth-difference weights = `diff(depth)` in cm |
+| 3 | First depth of sequence (cm) | Depth differences between consecutive dated levels (cm) |
+| 4 | First age of sequence (yr BP) | Age differences between consecutive dated levels (yr) |
+
+The `NaN` in column 1 of rows 1–2 serves as a **block delimiter**. When multiple runs (e.g. BSamp Bchron iterations, or RSR random samples) are concatenated, each run's block is appended horizontally and the NaN marks the start of each new block. Downstream functions use `isnan(matrix(1,:))` to locate block boundaries.
+
+---
+
 ## Requirements
 
 ### MATLAB

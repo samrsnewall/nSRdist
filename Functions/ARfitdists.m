@@ -1,13 +1,56 @@
 function[outS] = ARfitdists(dataTCol, x, chooseLog, weightRepDP, weightRepInflator, countDivisor, fitS)
-%This function fits the 4 distributions to all samples in a dataT column
-%(used for BMode and can be used to fit dists to all BSamp samples instead
-%of fitting to each of 1000 BSamp runs)
+% ARfitdists  Fit four probability distributions to pooled nSR data from a
+%             set of cores.
+%
+% Concatenates nSR data across all selected cores, applies optional
+% filtering and weighting, then fits Mixed Log-Normal (MLN), Log-Normal
+% (LN), Gamma, and Inverse Gamma distributions to the combined dataset.
+% Also transforms each fitted PDF into log(nSR) space.
+%
+% This function is used for the BMode method (one nSR value per depth
+% interval per core) and can also be applied to all pooled BSamp data
+% rather than fitting each Bchron run individually (as IRfitdists does).
+%
+% INPUTS
+%   dataTCol        - (cell array) One cell per core, each containing a
+%                     4-row nSR matrix (see README "Internal Data Formats")
+%   x               - (numeric vector) nSR evaluation points for PDF output
+%   chooseLog       - (logical vector) Selects which cores from dataTCol
+%                     to include (passed to countsCell2Array)
+%   weightRepDP     - Decimal places for weight replication
+%                     (passed to makeWeightedReplicates)
+%   weightRepInflator - Inflator for weight replication
+%                     (passed to makeWeightedReplicates)
+%   countDivisor    - Divisor applied to the raw column count to compute
+%                     outS.numCpairs (e.g. number of runs, to normalise)
+%   fitS            - (struct) Fitting settings. Relevant fields:
+%                       .weighting          "none", "depth", or "age"
+%                       .merge_small_dt     (logical) Merge short intervals
+%                       .non_normalized_SR  (logical) Use raw SR not nSR
+%                       .Lin2014AgeFiltering (logical) Apply age filter
+%                       .resampleData       (logical) Resample dataset
+%                       .run_chi2gof        (logical) Run chi-squared test
+%                       .mlnReps            MLN fitting repetitions
+%
+% OUTPUT
+%   outS - Struct containing fitted distributions and summary info:
+%            .MLN, .LN, .Gam, .invGam  per-distribution results, each with
+%                                       .nSR (x, px, mu, var) and
+%                                       .lnSR (x, px, mu, var) subfields
+%            .weightedC    Weighted (and possibly resampled) data vector
+%            .numCpairs    Number of nSR calculations / countDivisor
+%            .sedLength    Total sediment length spanned (cm)
+%            .sedTimeSpan  Total time spanned (yr)
+%            .agediffsWC   Weighted bin counts of age differences
+%
+% See also: fitData, IRfitdists, countsCell2Array, fitMixLogNorm
 
 %% Combine all counts into one array
 %set up arrays to be concatenated into
 nSRcountsArray = countsCell2Array(dataTCol, chooseLog);
+nSRcountsArray_before = nSRcountsArray;
 
-%Get rid of negative sedimentation rates (ideally should not be there)
+%Get rid of negative sedimentation rates (ideally shouldn't be there)
 if sum(nSRcountsArray(1,:) < 0) ~= 0
     warning("There are negative sed rates!... being removed")
     nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) >= 0);
@@ -19,11 +62,18 @@ if sum(nSRcountsArray(1,:) == 0) ~= 0
     nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) > 0);
 end
 
-% Apply merging of SR measurements to avoid low dt, instead of filtering
+% If wanted - apply merging of SR measurements to avoid low dt, instead of filtering
 % them out
-nSRcountsArray_before = nSRcountsArray;
+
 if fitS.merge_small_dt
     [nSRcountsArray, mergeLog] = merge_small_dt_nSR(nSRcountsArray, 500);
+end
+
+% If wanted - calculate SR to use instead of NSR
+if fitS.non_normalized_SR;
+    SRs = nSRcountsArray(3,:)./nSRcountsArray(4,:); %Calculate SR from depthdiff and agediff
+    SRs(isnan(nSRcountsArray(1,:))) = NaN;
+    nSRcountsArray(1,:) = SRs;
 end
 
 %Apply filtering as done by Lin2014 if desired
@@ -31,9 +81,6 @@ if fitS.Lin2014AgeFiltering
     L2014Log = (nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter)) | isnan(nSRcountsArray(1,:));
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 end
-
-
-
 
 %% Apply weighting
 %Convert the weighted nSR counts to a single dimension array of counts
@@ -51,13 +98,14 @@ if fitS.weighting == "none"
     data = inputData;
 else
     if fitS.weighting == "depth" %This indicates whether to weight by depth or not
-        weights         = depthDiffs; %Weights by depth, not the mixed weighting of depth and scenarios
+        weights         = depthDiffs; %Weights by depth difference
     elseif fitS.weighting == "age"
-        weights         = ageDiffs; %Weights by age, not the mixed weighting of age and scenarios
+        weights         = ageDiffs; %Weights by time span
     else
         error("Weighting type not recognized, must be 'none', 'depth', or 'age'")
     end
     data            = makeWeightedReplicates(inputData, weights, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
+    
 end
 
 %% Resample data if desired
@@ -70,10 +118,6 @@ if fitS.resampleData
 end
 
 %% Calculate the MixLogNorm from these counts
-% [a,b] = size(data);
-% if a>b
-%     data = data';
-% end
 [SR_MixLogNorm, ~, MLN.fitInfo] = fitMixLogNorm(data, x, 2, fitS.mlnReps, outS.numCpairs);
 MLN.nSR.x = SR_MixLogNorm(:,1);
 MLN.nSR.px = SR_MixLogNorm(:,2);

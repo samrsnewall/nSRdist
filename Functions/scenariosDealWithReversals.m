@@ -1,26 +1,93 @@
-function[scenariosNew, scenariosNewCFR, chosenLabels2, scenario_invSRvals2, scenario_invSRprobs2, scenario_meanSR2, numdatepairs2, ageModes2, lengthSed2,  newScenIndicator, MSI_byage2, MSI_bydepth2, IDpairs, agediffV] = scenariosDealWithReversals(scenarios, scenariosCFR, chosenLabels, scenario_invSRvals, scenario_invSRprobs, scenario_meanSR, numdatepairs, ageModes, lengthSed, MSI_byage, MSI_bydepth, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, IDpairs, agediffV, S, plotfigs)
+function [SS, newScenIndicator, IDpairs, agediffV] = scenariosDealWithReversals(SS, depth_cm, ageprobAll, calAge, label, corename, duplicated_depths, IDpairs, agediffV, S, plotfigs)
+% scenariosDealWithReversals  Check each scenario for age reversals and
+%                             split any that contain them into sub-scenarios.
+%
+% Iterates through the current set of scenarios in SS. For each scenario
+% not yet confirmed reversal-free (SS.CFR == 0), it calls scenariopdfNorm
+% to compute the inverse SR PDF and detect reversals. The function processes
+% scenarios one at a time:
+%
+%   - If a scenario has no reversals it is marked as confirmed (CFR = 1)
+%     and its computed outputs are stored in SS.
+%   - If a scenario has reversals, new sub-scenarios are generated (via
+%     scenariomaker) and inserted into SS in place of the original. The
+%     function then returns immediately with newScenIndicator = 1, so that
+%     the caller (oneCoreScenarios) loops and re-checks from scratch.
+%   - If more than 12 reversals are found the core is considered
+%     unanalysable: SS is cleared and newScenIndicator = 0 is returned.
+%
+% Scenarios already confirmed as reversal-free (SS.CFR == 1) are passed
+% through unchanged.
+%
+% INPUTS
+%   SS               - scenarioStruct (see oneCoreScenarios). Fields:
+%                        .scenarios     Cell array of LabID string vectors
+%                        .CFR           Logical vector (1 = reversal-free)
+%                        .chosenLabels  Cell array of chosen label vectors
+%                        .invSRvals     Cell array of inverse-SR value vectors
+%                        .invSRprobs    Cell array of inverse-SR probability vectors
+%                        .meanSR        Numeric vector of mean SRs (cm/kyr)
+%                        .numdatepairs  Numeric vector of date-pair counts
+%                        .ageModes      Cell array of age-mode vectors
+%                        .lengthSed     Numeric vector of sediment lengths (cm)
+%                        .MSI_byage     Numeric vector of age-based MSI values
+%                        .MSI_bydepth   Numeric vector of depth-based MSI values
+%   depth_cm         - (numeric vector) Depth of each date (cm)
+%   ageprobAll       - (matrix) Calibrated age probabilities for all dates
+%   calAge           - (numeric vector) Calibrated age axis
+%   label            - (string vector) Lab IDs after filtering
+%   corename         - (string) Core identifier, used in warning messages
+%   duplicated_depths - (numeric vector) Depths with more than one date
+%   IDpairs          - (string array) Accumulator for date-pair IDs across
+%                      calls (passed through to scenariopdfNorm)
+%   agediffV         - (cell) Accumulator for age differences across calls
+%   S                - (struct) Settings struct
+%   plotfigs         - (logical) Whether to produce diagnostic plots
+%
+% OUTPUTS
+%   SS               - Updated scenarioStruct
+%   newScenIndicator - 1 if scenarios were modified (caller must loop again);
+%                      0 if all scenarios are now confirmed reversal-free
+%                      or if the core was abandoned due to too many reversals
+%   IDpairs          - Updated date-pair ID accumulator
+%   agediffV         - Updated age-difference accumulator
+%
+% See also: oneCoreScenarios, scenariopdfNorm, scenariomaker, removeDuplicateScenarios
 
-%Initiate cells to hold results from each scenario
-numScenarios        = length(scenarios);
+%% Unpack scenarioStruct fields into local variables
+scenarios           = SS.scenarios;
+scenariosCFR        = SS.CFR;
+chosenLabels        = SS.chosenLabels;
+scenario_invSRvals  = SS.invSRvals;
+scenario_invSRprobs = SS.invSRprobs;
+scenario_meanSR     = SS.meanSR;
+numdatepairs        = SS.numdatepairs;
+ageModes            = SS.ageModes;
+lengthSed           = SS.lengthSed;
+MSI_byage           = SS.MSI_byage;
+MSI_bydepth         = SS.MSI_bydepth;
+
+%% Initialise output arrays (sized to match the current scenario count)
+numScenarios         = length(scenarios);
 scenario_invSRvals2  = cell(numScenarios, 1);
 scenario_invSRprobs2 = cell(numScenarios, 1);
 scenario_labels2     = cell(numScenarios, 1);
 scenario_meanSR2     = nan(numScenarios, 1);
-numdatepairs2       = nan(numScenarios, 1);
+numdatepairs2        = nan(numScenarios, 1);
 ageModes2            = cell(numScenarios, 1);
 lengthSed2           = nan(numScenarios, 1);
-lengthAge2           = nan(numScenarios, 1);
+lengthAge2           = nan(numScenarios, 1); %#ok<NASGU>
 MSI_bydepth2         = nan(numScenarios, 1);
 MSI_byage2           = nan(numScenarios, 1);
-scenariosNew        = cell(numScenarios, 1);
-scenariosNewCFR     = zeros(numScenarios, 1);
-chosenLabels2       = cell(numScenarios, 1);
+scenariosNew         = cell(numScenarios, 1);
+scenariosNewCFR      = zeros(numScenarios, 1);
+chosenLabels2        = cell(numScenarios, 1);
 
-%For each scenario, find the possible invSRvals and the probs
+%% Process each scenario
 for j = 1:numScenarios
     if scenariosCFR(j) == 0
-        date_bool           = ismember(string(label), scenarios{j});
-        date_is             = find(date_bool == 1);
+        date_bool            = ismember(string(label), scenarios{j});
+        date_is              = find(date_bool == 1);
         scenario_labels2{j}  = label(date_bool == 1);
 
         %Choose ages in this scenario
@@ -40,42 +107,39 @@ for j = 1:numScenarios
             ageprob, calAge, IDpairs, agediffV, S, plotfigs);
 
         if sum(size(ageModes2{j})) == 0
-            a = 1;
+            a = 1; %#ok<NASGU>
         end
-
 
         %Find number of reversals
         numreversals = sum(reversalpairs);
 
+        %------------------------------------------------------------------
+        % Case 1: too many reversals — abandon this core entirely
+        %------------------------------------------------------------------
         if numreversals > 12
-            %Will be too many scenarios, do not analyse core
             disp("Too many scenarios in core" + corename + ": " + num2str(numreversals))
-            numScenarios = 0;
-            scenario_invSRvals2  = cell(numScenarios, 1);
-            scenario_invSRprobs2 = cell(numScenarios, 1);
-            % scenario_labels     = cell(numScenarios, 1);
-            scenario_meanSR2     = nan(numScenarios, 1);
-            numdatepairs2        = nan(numScenarios, 1);
-            ageModes2            = [];
-            lengthSed2           = nan(numScenarios, 1);
-            % lengthAge           = nan(numScenarios, 1);
-            MSI_bydepth2         = nan(numScenarios, 1);
-            MSI_byage2           = nan(numScenarios, 1);
-            scenariosNew        = cell([]);
-            scenariosNewCFR     = [];
-            chosenLabels2       = cell([]);
+            SS.scenarios    = cell([]);
+            SS.CFR          = [];
+            SS.chosenLabels = cell([]);
+            SS.invSRvals    = cell([]);
+            SS.invSRprobs   = cell([]);
+            SS.meanSR       = nan(0,1);
+            SS.numdatepairs = nan(0,1);
+            SS.ageModes     = [];
+            SS.lengthSed    = nan(0,1);
+            SS.MSI_byage    = nan(0,1);
+            SS.MSI_bydepth  = nan(0,1);
             newScenIndicator = 0;
-            break
+            return
         end
 
-        %If reversals exist, run through process to create new scenarios,
-        %removing those reversals
-        if numreversals ~=0
+        %------------------------------------------------------------------
+        % Case 2: reversals exist — build new sub-scenarios and return
+        %------------------------------------------------------------------
+        if numreversals ~= 0
             % Note down the labIDs of the dates for which there is a reversal
-            rev_labIDs = strings(numreversals,2);                          %Initiate
+            rev_labIDs = strings(numreversals, 2);
             for iii = 1:numreversals
-                %find lab IDs for each reversal, each row represents a reversal
-                %pairing
                 iv  = find(reversalpairs == 1);
                 rev_labIDs(iii,1) = scenario_labels2{j}(iv(iii));
                 rev_labIDs(iii,2) = scenario_labels2{j}(iv(iii)+1);
@@ -83,87 +147,100 @@ for j = 1:numScenarios
 
             %Find out if any of the reversal pairings are related to
             %duplicated depths
-            uniqueDepthLabels        = label(~ismember(depth_cm, duplicated_depths));
-            if ~isempty(duplicated_depths) %if there are duplicated depths
-                indrevmin       = ismember(string(rev_labIDs), uniqueDepthLabels);   %find which labIDs are related to duplicated depths (0 = related, 1 = not related)
-                OneDateDDDrev   = sum(indrevmin,2)==1;                          %Find which reversals have only one age from a duplicately dated depth
+            uniqueDepthLabels = label(~ismember(depth_cm, duplicated_depths));
+            if ~isempty(duplicated_depths)
+                indrevmin     = ismember(string(rev_labIDs), uniqueDepthLabels);
+                OneDateDDDrev = sum(indrevmin, 2) == 1;
 
-                if ismember(1,OneDateDDDrev) %If any reversals have one date from a duplicated depth then remove the date that isn't from the duplicated depth (for all such reversals)
-                    rev_labIDs      = rev_labIDs(OneDateDDDrev, :);
-                    date2removeLog  = ~ismember(rev_labIDs, chosenLabels{j});   %Find logical of date not from the duplicated depth, which will be removed
-                    date2remove     = rev_labIDs(date2removeLog);               %Find label of date...
-                    dates2keepLog   = ~ismember(scenarios{j}, date2remove);     %Find logicals of dates to keep from scenario
-                    scenarios{j}    = scenarios{j}(dates2keepLog);              %Override the old scenario with the new scenario
-                    scenariosNew    = scenarios;
-                    scenariosNewCFR = [scenariosNewCFR(1:j-1);scenariosCFR(j:end)];
-                    chosenLabels2   = chosenLabels;
-                    %scenario_invSRvals2 = [scenario_invSRvals2(1:j-1); scenario_invSRvals();
-                    %scenario_invSRprobs2 = scenario_invSRvals;
-                    % scenario_meanSR2 = scenario_meanSR;
-                    % numdatepairs2 = numdatepairs;
-                    % ageModes2 = ageModes;
-                    % lengthSed2 = lengthSed;
-                    % MSI_bydepth2 = MSI_bydepth;
-                    % MSI_byage2 = MSI_bydepth;
-                    newScenIndicator= 1;
-                    break
+                if ismember(1, OneDateDDDrev)
+                    %One date in the reversal pair is from a doubly-dated
+                    %depth: remove the other date from the scenario
+                    rev_labIDs     = rev_labIDs(OneDateDDDrev, :);
+                    date2removeLog = ~ismember(rev_labIDs, chosenLabels{j});
+                    date2remove    = rev_labIDs(date2removeLog);
+                    dates2keepLog  = ~ismember(scenarios{j}, date2remove);
+                    scenarios{j}   = scenarios{j}(dates2keepLog);
+
+                    SS.scenarios    = scenarios;
+                    SS.CFR          = [scenariosNewCFR(1:j-1); scenariosCFR(j:end)];
+                    SS.chosenLabels = chosenLabels;
+                    SS.invSRvals    = scenario_invSRvals2;
+                    SS.invSRprobs   = scenario_invSRprobs2;
+                    SS.meanSR       = scenario_meanSR2;
+                    SS.numdatepairs = numdatepairs2;
+                    SS.ageModes     = ageModes2;
+                    SS.lengthSed    = lengthSed2;
+                    SS.MSI_byage    = MSI_byage2;
+                    SS.MSI_bydepth  = MSI_bydepth2;
+                    newScenIndicator = 1;
+                    return
                 end
-            %If any reversals have both dates not from a duplicated depth, update scenario with choose one leave one for those reversals
-            %If any reversals have both dates from duplicated depths, update with choose one and leave one
-            %Hence, if there are no reversals with only one date
-            %part of a duplicated depth, then we want to update all
-            %scenarios by leaving one choosing one for each
-            %reversal, the same as how to treat if there are no
-            %duplicate depths
+                %If any reversals have both dates not from a duplicated
+                %depth (or both from duplicated depths), fall through to
+                %the generic handler below.
             end
 
-            %If there are no duplicate depths, all reversals must be generic, so update with choose one leave one
-            genrev_labIDs = cell(1,numreversals);
+            %Generic case: split each reversal pair with choose-one /
+            %leave-one logic to generate new sub-scenarios
+            genrev_labIDs = cell(1, numreversals);
             for vi = 1:sum(reversalpairs)
                 genrev_labIDs{1,vi} = rev_labIDs(vi,:)';
             end
-            [newscenariosNR, ~, ~]      = scenariomaker([], genrev_labIDs,scenario_labels2{j});
-            numNew                      = length(newscenariosNR);
-            chosenLabelsNR(1:numNew,1)  = chosenLabels(j);
-            scenariosNew                = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
-            scenariosNewCFR             = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
-            chosenLabels2               = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
-            scenario_invSRvals2         = [scenario_invSRvals(1:j-1); scenario_invSRvals2(j+1:end); cell(numNew,1)];
-            scenario_invSRprobs2         = [scenario_invSRprobs(1:j-1); scenario_invSRprobs2(j+1:end); cell(numNew,1)];
-            scenario_meanSR2         = [scenario_meanSR(1:j-1); scenario_meanSR2(j+1:end); nan(numNew,1)];
-            numdatepairs2           = [numdatepairs(1:j-1); numdatepairs2(j+1:end); nan(numNew, 1)];
-            ageModes2         = [ageModes(1:j-1); ageModes2(j+1:end); cell(numNew,1)];
-            lengthSed2         = [lengthSed(1:j-1); lengthSed2(j+1:end); nan(numNew,1)];
-            MSI_bydepth2         = [MSI_bydepth(1:j-1); MSI_bydepth2(j+1:end); nan(numNew,1)];
-            MSI_byage2         = [MSI_byage(1:j-1); MSI_byage2(j+1:end); nan(numNew,1)];
-            newScenIndicator = 1;
-            break
-        end
-    
+            [newscenariosNR, ~, ~]     = scenariomaker([], genrev_labIDs, scenario_labels2{j});
+            numNew                     = length(newscenariosNR);
+            chosenLabelsNR(1:numNew,1) = chosenLabels(j);
 
-    %If the scenario shows no reversals, include it in the new scenario
-    %list and label that it has been Checked For Reversals.
-    scenariosNew(j)     = scenarios(j);
-    scenariosNewCFR(j)  = 1;
-    chosenLabels2(j)    = chosenLabels(j);
-    
-    %Transfer over all other information
+            SS.scenarios    = [scenariosNew(1:j-1);    scenarios(j+1:end);    newscenariosNR];
+            SS.CFR          = [scenariosNewCFR(1:j-1); scenariosCFR(j+1:end); zeros(size(newscenariosNR))];
+            SS.chosenLabels = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
+            SS.invSRvals    = [scenario_invSRvals(1:j-1);  scenario_invSRvals2(j+1:end);  cell(numNew,1)];
+            SS.invSRprobs   = [scenario_invSRprobs(1:j-1); scenario_invSRprobs2(j+1:end); cell(numNew,1)];
+            SS.meanSR       = [scenario_meanSR(1:j-1);  scenario_meanSR2(j+1:end);  nan(numNew,1)];
+            SS.numdatepairs = [numdatepairs(1:j-1);     numdatepairs2(j+1:end);      nan(numNew,1)];
+            SS.ageModes     = [ageModes(1:j-1);         ageModes2(j+1:end);          cell(numNew,1)];
+            SS.lengthSed    = [lengthSed(1:j-1);        lengthSed2(j+1:end);         nan(numNew,1)];
+            SS.MSI_byage    = [MSI_byage(1:j-1);        MSI_byage2(j+1:end);         nan(numNew,1)];
+            SS.MSI_bydepth  = [MSI_bydepth(1:j-1);     MSI_bydepth2(j+1:end);       nan(numNew,1)];
+            newScenIndicator = 1;
+            return
+        end
+
+        %------------------------------------------------------------------
+        % Case 3 (no reversals): mark scenario as confirmed and store results
+        %------------------------------------------------------------------
+        scenariosNew(j)    = scenarios(j);
+        scenariosNewCFR(j) = 1;
+        chosenLabels2(j)   = chosenLabels(j);
 
     else
-        %If it has already been checked and found to have no reversals, copy
-        %over all information
-        scenariosNew(j)     = scenarios(j);
-        scenariosNewCFR(j)  = 1;
-        ageModes2(j)        = ageModes(j);
-        chosenLabels2(j)    = chosenLabels(j);
-        scenario_invSRvals2{j} = scenario_invSRvals{j};
+        %Already confirmed reversal-free — copy all information straight through
+        scenariosNew(j)      = scenarios(j);
+        scenariosNewCFR(j)   = 1;
+        ageModes2(j)         = ageModes(j);
+        chosenLabels2(j)     = chosenLabels(j);
+        scenario_invSRvals2{j}  = scenario_invSRvals{j};
         scenario_invSRprobs2{j} = scenario_invSRprobs{j};
-        scenario_meanSR2(j) = scenario_meanSR(j);
-        numdatepairs2(j) = numdatepairs(j);
-        lengthSed2(j) = lengthSed(j);
-        MSI_bydepth2(j) = MSI_bydepth(j);
-        MSI_byage2(j) = MSI_byage(j);
+        scenario_meanSR2(j)  = scenario_meanSR(j);
+        numdatepairs2(j)     = numdatepairs(j);
+        lengthSed2(j)        = lengthSed(j);
+        MSI_bydepth2(j)      = MSI_bydepth(j);
+        MSI_byage2(j)        = MSI_byage(j);
     end
 
-    newScenIndicator    = 0;
+    newScenIndicator = 0;
+end
+
+%% All scenarios confirmed — pack results back into output struct
+SS.scenarios    = scenariosNew;
+SS.CFR          = scenariosNewCFR;
+SS.chosenLabels = chosenLabels2;
+SS.invSRvals    = scenario_invSRvals2;
+SS.invSRprobs   = scenario_invSRprobs2;
+SS.meanSR       = scenario_meanSR2;
+SS.numdatepairs = numdatepairs2;
+SS.ageModes     = ageModes2;
+SS.lengthSed    = lengthSed2;
+SS.MSI_byage    = MSI_byage2;
+SS.MSI_bydepth  = MSI_bydepth2;
+
 end
