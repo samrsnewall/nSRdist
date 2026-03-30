@@ -19,13 +19,13 @@ nSRcountsArray = nSRcountsArraywNaN(:, ~(NaNLog | ZerosLog)); % remove nans and 
 %Remove information from age pairs not within range from
 %fitS.Lin2014AgeFilter
 if fitS.Lin2014AgeFiltering
-    if sum(nSRcountsArray(4,:) < 0) ~= 0
+    if sum(nSRcountsArray(3,:) < 0) ~= 0
         warning("There are negative sed rates being filtered out!")
     end
-    L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
+    L2014Log = nSRcountsArray(3,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(3,:) > min(fitS.Lin2014AgeFilter);
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 else
-    if sum(nSRcountsArray(4,:) < 0) ~= 0
+    if sum(nSRcountsArray(3,:) < 0) ~= 0
         error("There are negative sed rates")
     end
 end
@@ -34,11 +34,11 @@ end
 %Convert the weighted nSR counts to a single dimension array of counts
 %where the number of counts is representative of their weighting
 nSR = nSRcountsArray(1,:)'; %nSR data
-depthDiffs = nSRcountsArray(3,:);  %weightings
-ageDiffs = nSRcountsArray(4,:);
+depthDiffs = nSRcountsArray(2,:);  %weightings
+ageDiffs = nSRcountsArray(3,:);
 if fitS.weighting == "none"
     data = nSR;
-    weightingsArray = ones(1,length(nSRcountsArray(2,:)));
+    weightingsArray = ones(1,size(nSRcountsArray,2));
 elseif fitS.weighting == "depth"
         weightingsArray = depthDiffs;
 elseif fitS.weighting == "age"

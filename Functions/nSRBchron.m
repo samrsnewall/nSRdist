@@ -222,7 +222,7 @@ agediffs = diff(modeAgeUsed);
 weights = diff(depthsUsed);
 
 %Store all nSR info in one matrix, the standard set up I use
-modenSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), depthdiffs'; modeAgeUsed(1), agediffs'];
+modenSRinfo = [NaN, nSRs'; depthsUsed(1), depthdiffs'; modeAgeUsed(1), agediffs'];
 
 %Calculate nSR with median ages **************************
 meanSR = (depthsUsed(end)-depthsUsed(1))./(medianAgeUsed(end) - medianAgeUsed(1));
@@ -232,7 +232,7 @@ weights = diff(depthsUsed);
 agediffs = diff(medianAgeUsed);
 
 %Store all nSR info in one matrix, the standard set up I use
-mediannSRinfo = [NaN, nSRs'; NaN, weights'; depthsUsed(1), weights'; medianAgeUsed(1), agediffs'];
+mediannSRinfo = [NaN, nSRs'; depthsUsed(1), depthdiffs'; medianAgeUsed(1), agediffs'];
 
 %%% Calculate nSR with probability of ages method *********************
 % Find out which runs have less than 4 ages accepted
@@ -271,7 +271,7 @@ for i = 1:size(thetaDataR,1)
 
     %Store info in one block using the standard 4-row nSR matrix format
     %(see function header for full format description)
-    nSRinfo = [NaN, runnSR; NaN, runweights; rundepths(1), rundepthdiffs; runages(1), runagediffs];
+    nSRinfo = [NaN, runnSR; rundepths(1), rundepthdiffs; runages(1), runagediffs];
     if ~exist('nSRcounts','var')
         nSRcounts = nSRinfo;
     else

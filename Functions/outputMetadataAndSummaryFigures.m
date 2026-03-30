@@ -66,11 +66,13 @@ ylabel('Counts')
 title("Cores' Mean Sampling Interval By Depth")
 
 %% Print summary statistics
-% Compute total sediment length from nSRcounts Row 2 (depth-diff weights).
+% Compute total sediment length from nSRcounts Row 2 (dep_diffs), excluding NaN header columns.
 lengthsed_core = nan(numCores, 1);
 for i = 1:numCores
     if ~isempty(dataTbl.nSRcounts{i})
-        lengthsed_core(i) = sum(dataTbl.nSRcounts{i}(2,:), 'omitmissing');
+        nSRi = dataTbl.nSRcounts{i};
+        NaN_logi = ~isnan(nSRi(1,:));
+        lengthsed_core(i) = sum(nSRi(2, NaN_logi), 'omitmissing');
     end
 end
 

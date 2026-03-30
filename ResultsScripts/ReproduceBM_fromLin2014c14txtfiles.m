@@ -80,7 +80,7 @@ figure;
 for i = 1:numCores
     subplot(ceil(numCores./5), 5, i)
     nSRs = dataT.bchronMode{orderInd(i)}(1,2:end);
-    ages = cumsum(dataT.bchronMode{orderInd(i)}(4,:))./1000;
+    ages = cumsum(dataT.bchronMode{orderInd(i)}(3,:))./1000;
     stairs(ages, [nSRs, nSRs(end)], '-b')
     set(gca, 'YScale', 'log')
     ylim([0.1, 10])

@@ -35,7 +35,7 @@ for i = 1:numruns
 
         % use the NaN indeces to choose the data of that run for each core
         % and concatenate it into OneRunData
-        nSRcount_1core1run = nSRcount_opencell(1:4,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)));
+        nSRcount_1core1run = nSRcount_opencell(1:3,split_indexStart(runN(i,j)):split_indexEnd(runN(i, j)));
         OneRunData         = cat(2, OneRunData, nSRcount_1core1run);
     end
 
@@ -43,20 +43,20 @@ for i = 1:numruns
         if sum(OneRunData<0) ~= 0
             warning("There are negative sed rates!")
         end
-        L2014Log = OneRunData(4,:) < 4500 & OneRunData(4,:) > 500;
+        L2014Log = OneRunData(3,:) < 4500 & OneRunData(3,:) > 500;
         OneRunData = OneRunData(:,L2014Log);
     end
 
     %% MUST ADD THIS WEIGHTING COMPONENT!
     if fitS.weighting == "depth" %This indicates whether to weight by depth or not
         inputData       = OneRunData(1,:);
-        weights         = OneRunData(3,:);
+        weights         = OneRunData(2,:);
         inputDataClean  = inputData(~isnan(inputData));
         weightsClean    = weights(~isnan(weights));
         data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
     elseif fitS.weighting == "age"
         inputData       = OneRunData(1,:);
-        weights         = OneRunData(4,:);
+        weights         = OneRunData(3,:);
         inputDataClean  = inputData(~isnan(inputData));
         weightsClean    = weights(~isnan(weights));
         data            = makeWeightedReplicates(inputDataClean, weightsClean, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting

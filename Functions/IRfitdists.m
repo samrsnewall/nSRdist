@@ -154,7 +154,7 @@ for i = 1:numruns
 
     % Optionally use absolute SR instead of normalised SR
     if fitS.non_normalized_SR
-        SRs = OneRunData(3,:) ./ OneRunData(4,:);
+        SRs = OneRunData(2,:) ./ OneRunData(3,:);
         SRs(isnan(OneRunData(1,:))) = NaN;
         OneRunData(1,:) = SRs;
     end
@@ -166,8 +166,8 @@ for i = 1:numruns
 
     % Apply Lin2014 age filter if wanted
     if fitS.Lin2014AgeFiltering
-        L2014Log = (OneRunData(4,:) < max(fitS.Lin2014AgeFilter) & ...
-                    OneRunData(4,:) > min(fitS.Lin2014AgeFilter)) | ...
+        L2014Log = (OneRunData(3,:) < max(fitS.Lin2014AgeFilter) & ...
+                    OneRunData(3,:) > min(fitS.Lin2014AgeFilter)) | ...
                     isnan(OneRunData(1,:));
         OneRunData = OneRunData(:, L2014Log);
     end
@@ -175,8 +175,8 @@ for i = 1:numruns
     % Extract non-NaN data and set up weights
     NaN_logi   = ~isnan(OneRunData(1,:));
     inputData  = OneRunData(1, NaN_logi);
-    depthDiffs = OneRunData(3, NaN_logi);
-    ageDiffs   = OneRunData(4, NaN_logi);
+    depthDiffs = OneRunData(2, NaN_logi);
+    ageDiffs   = OneRunData(3, NaN_logi);
 
     weightRepDP       = fitS.OneRun.weightRepDP;
     weightRepInflator = fitS.OneRun.weightRepInflator;
@@ -195,8 +195,8 @@ for i = 1:numruns
     end
 
     % Compute run-level summary statistics
-    totalSedLength = sum(OneRunData(3,:), "all", "omitnan");
-    totalSedAge    = sum(OneRunData(4,:), "all", "omitnan");
+    totalSedLength = sum(OneRunData(2,:), "all", "omitnan");
+    totalSedAge    = sum(OneRunData(3,:), "all", "omitnan");
     numSRcalcs     = numel(inputData);
     agediffsWC1R   = makeWeightedBinCounts(ageDiffs, weights, agediffsBinEdges);
 

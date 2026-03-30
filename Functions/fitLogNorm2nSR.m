@@ -13,24 +13,24 @@ nSRcountsArray = nSRcountsArraywNaN(:, ~(removeIndex | removeIndex2)); % remove 
 
 %Remove information from age pairs not within 0.5-4 kyr
 if fitS.Lin2014AgeFiltering
-    if sum(nSRcountsArray(4,:) < 0) ~= 0
+    if sum(nSRcountsArray(3,:) < 0) ~= 0
         warning("There are negative sed rates being filtered out!")
     end
-    L2014Log = nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter);
+    L2014Log = nSRcountsArray(3,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(3,:) > min(fitS.Lin2014AgeFilter);
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 else
-    if sum(nSRcountsArray(4,:) < 0) ~= 0
+    if sum(nSRcountsArray(3,:) < 0) ~= 0
         error("There are negative sed rates")
     end
 end
 
 %Apply weighting
 if fitS.weighting == "none"
-    weightingsArray = ones(1,length(nSRcountsArray(2,:)));
+    weightingsArray = ones(1,size(nSRcountsArray,2));
 elseif fitS.weighting == "depth"
-    weightingsArray = nSRcountsArray(3,:);
+    weightingsArray = nSRcountsArray(2,:);
 elseif fitS.weighting == "age"
-    weightingsArray = nSRcountsArray(4,:);
+    weightingsArray = nSRcountsArray(3,:);
 end
 %numSRcalcs = size(nSRcountsArray, 2);
 nSRcounts = nSRcountsArray(1,:);

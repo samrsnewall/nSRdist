@@ -1,7 +1,7 @@
 function[countsArray] = countsCell2Array(countsCell, subsetLogical)
 
 %Initialise array to be added to
-countsArray = ones(4,1);
+countsArray = ones(3,1);
 
 %Concatenate all nSRcounts that are in the desired subset
 for i = 1:length(countsCell)

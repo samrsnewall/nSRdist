@@ -62,23 +62,22 @@ if sum(nSRcountsArray(1,:) == 0) ~= 0
     nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) > 0);
 end
 
-% If wanted - apply merging of SR measurements to avoid low dt, instead of filtering
-% them out
-
-if fitS.merge_small_dt
-    [nSRcountsArray, mergeLog] = merge_small_dt_nSR(nSRcountsArray, 500);
-end
-
 % If wanted - calculate SR to use instead of NSR
 if fitS.non_normalized_SR;
-    SRs = nSRcountsArray(3,:)./nSRcountsArray(4,:); %Calculate SR from depthdiff and agediff
+    SRs = nSRcountsArray(2,:)./nSRcountsArray(3,:); %Calculate SR from depthdiff and agediff
     SRs(isnan(nSRcountsArray(1,:))) = NaN;
     nSRcountsArray(1,:) = SRs;
 end
 
+% If wanted - apply merging of SR measurements to avoid low dt, instead of filtering
+% them out
+if fitS.merge_small_dt
+    [nSRcountsArray, mergeLog] = merge_small_dt_nSR(nSRcountsArray, 500);
+end
+
 %Apply filtering as done by Lin2014 if desired
 if fitS.Lin2014AgeFiltering
-    L2014Log = (nSRcountsArray(4,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(4,:) > min(fitS.Lin2014AgeFilter)) | isnan(nSRcountsArray(1,:));
+    L2014Log = (nSRcountsArray(3,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(3,:) > min(fitS.Lin2014AgeFilter)) | isnan(nSRcountsArray(1,:));
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 end
 
@@ -89,8 +88,8 @@ end
 %Set up nSR counts and weighting vectors without NaNs
 NaN_logi        = ~isnan(nSRcountsArray(1,:));
 inputData       = nSRcountsArray(1,NaN_logi);
-depthDiffs      = nSRcountsArray(3,NaN_logi);
-ageDiffs        = nSRcountsArray(4,NaN_logi);
+depthDiffs      = nSRcountsArray(2,NaN_logi);
+ageDiffs        = nSRcountsArray(3,NaN_logi);
 
 %Prepare data according to weighting choice
 if fitS.weighting == "none"

@@ -197,34 +197,35 @@ for ix = 1:numruns
     % Find out which ages were used and which weren't
     datesUsed = ~isnan(run_age);
     depthOfUsed = depths_scenario(datesUsed);
-    runAgesOfUsed = run_age(datesUsed);
+    runAgesOfUsed = run_age(datesUsed); %y
     %datesUsedStore(runN,:) = datesUsed;
 
     % Calculate average SR for that potential run
     aveSR_run = (depthOfUsed(end)-depthOfUsed(1))./(runAgesOfUsed(end)-runAgesOfUsed(1));
 
     %------ Calculate the sedrates for each pair of ages
-    age_diffs = diff(runAgesOfUsed);
-    dep_diffs = diff(depthOfUsed)';
-    SRs = dep_diffs./age_diffs;
+    age_diffs = diff(runAgesOfUsed); %y
+    dep_diffs = diff(depthOfUsed)'; %cm
+    SRs = dep_diffs./age_diffs; %cm/y
     if S.normWithRunAve
         normSRs = SRs./aveSR_run;
     else
-        normSRs = SRs./(scenario_meanSR(i_sce)./1000); %What is the ./1000 doing here (probably conversion from y to kyr in some way...)?
+        normSRs = SRs./(scenario_meanSR(i_sce)./1000); %the ./1000 is a conversion from cm/kyr to cm/y to be consistent with units of SRs
     end
+
     %Add normSRs to vector to count them (with their weighting)
     weightingNormaliser = numruns; %Find normalising value based on number of runs
-    nSRinfo = [normSRs; dep_diffs; dep_diffs; age_diffs]; %Set up nSR info (nSR counts, weighting, depth differences, age differences)
+    nSRinfo = [normSRs; dep_diffs; age_diffs]; %Set up nSR info (nSR counts, depth differences, age differences)
 
     %Store all nSR info in a single array, with NaNs separating info from
     %different runs (instead of NaN in age-diff row, the first age used
     %is stored, so that the whole time history can be created from
     %this)
     if ix == 1
-        nSRcounts = [[NaN; NaN; min(depthOfUsed); min(runAgesOfUsed)], nSRinfo];
+        nSRcounts = [[NaN; min(depthOfUsed); min(runAgesOfUsed)], nSRinfo];
         agediffs = age_diffs;
     else
-        nSRcounts = cat(2, nSRcounts,[[NaN; NaN; min(depthOfUsed); min(runAgesOfUsed)], nSRinfo]);
+        nSRcounts = cat(2, nSRcounts,[[NaN; min(depthOfUsed); min(runAgesOfUsed)], nSRinfo]);
         agediffs = cat(2, agediffs,age_diffs);
     end
 end
