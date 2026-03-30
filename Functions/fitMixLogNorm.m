@@ -47,19 +47,20 @@ mixLogNormPDF   = [x', z];
 mixNormPDF      = [lx', lz];
 
 % Calculate the negative log likelihood in linear space
+numParams = 2+(numComponents-1)*3;
 nll_mixlogn = gmfit.NegativeLogLikelihood + sum(log(data_linear));          %addition of sum(log(data_linear)) is the Jacobian correction to convert back to linear space
-BIC_mixlogn = 2*nll_mixlogn + numComponents*log(length(data_linear));
+BIC_mixlogn = 2*nll_mixlogn + numParams*log(length(data_linear));
 
 %Calculate NLL and correct for number of repetitions, as suggested by
 %Taehee (divide NLL by number of repetitions)
 
-    info_divisor = length(data_linear)./numObs;
-    nll_taeheeFix = nll_mixlogn./info_divisor;
-    BIC_taeheeFix = 2*nll_taeheeFix + numComponents*log(numObs);
+info_divisor = length(data_linear)./numObs;
+nll_taeheeFix = nll_mixlogn./info_divisor;
+BIC_taeheeFix = 2*nll_taeheeFix + numParams*log(numObs);
 
 
 %Set up output structure
-mlnfit.NumVariables = gmfit.NumVariables;
+mlnfit.NumParams = numParams;
 mlnfit.mu = gmfit.mu;
 mlnfit.Sigma = gmfit.Sigma;
 mlnfit.ComponentProportion = gmfit.ComponentProportion;
