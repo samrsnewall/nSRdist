@@ -87,7 +87,6 @@ fitS.Lin2014AgeFiltering = true;
 d.logx = -6:0.01:6;
 d.x = exp(d.logx);
 
-%[d.S1.BMedian]= SRun_MLNandInvGam(d.dataT.bchronMedian, d.S1.chooseLog, 1, d.x, fitS);
 [d.S1.BMedian]=ARfitdists(d.dataT.bchronMedian, d.x, d.S1.chooseLog, fitS.DeterministicRun.weightDP,fitS.DeterministicRun.weightInflator,1, fitS);
 %% Fit dists to all BSamp samples
 countDivisor = 1000;
@@ -99,7 +98,7 @@ fitS.Lin2014AgeFiltering = true;
 numruns = fitS.OneRun.numruns;
 fitS.dispChi2 = false;
 rng(2)
-[d.S1.BChIR] = SRun_MLNandInvGam(d.dataT.bchronProb, d.S1.chooseLog, numruns, d.x, fitS);
+[d.S1.BChIR] = IRfitdists(d.dataT.bchronProb, d.S1.chooseLog, numruns, d.x, fitS);
 
 %% Fit dists to pooled RSRx Samplings
 %weight replicator = 1e-1 keeps the mean and variance the same as NewIR,
@@ -115,11 +114,11 @@ countDivisor = 400;
 fitS.Lin2014AgeFiltering = false;
 fitS.dispChi2 = false;
 rng(2)
-[d.S1.RSR0IR]    = SRun_MLNandInvGam(d.dataT.nSRcounts, d.S1.chooseLog, numruns, d.x, fitS);
+[d.S1.RSR0IR]    = IRfitdists(d.dataT.nSRcounts, d.S1.chooseLog, numruns, d.x, fitS);
 %%
-[d.S1.RSR500IR]  = SRun_MLNandInvGam(d.dataT.nSRcounts500, d.S1.chooseLog, numruns, d.x, fitS);
+[d.S1.RSR500IR]  = IRfitdists(d.dataT.nSRcounts500, d.S1.chooseLog, numruns, d.x, fitS);
 %%
-[d.S1.RSR1000IR] = SRun_MLNandInvGam(d.dataT.nSRcounts1000, d.S1.chooseLog, numruns, d.x, fitS);
+[d.S1.RSR1000IR] = IRfitdists(d.dataT.nSRcounts1000, d.S1.chooseLog, numruns, d.x, fitS);
 
 %% Calculate histogram counts in log Space for each individual run
 bw           = 0.1; %bin width

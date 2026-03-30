@@ -27,12 +27,15 @@
 addpath('Functions')
 
 %% Create settings structure
-
-%Set up paths to sandbox, full path to Rscript, World Atlas data on
-%computer, 
-S.sandboxPath  = "/Volumes/ExtDrive850X/MATLAB/nSRdist_code";              %This is the path to where this file (and all the other related folders) are kept
-S.RscriptPath  = "/usr/local/bin/Rscript";                                 % Path to the Rscript executable (used to run R scripts from MATLAB)
-S.WApath       = "/Applications/PaleoDataView/WA_Foraminiferal_Isotopes_2022"; %Path to where the Mulitza Dataset is held
+%Set up path to repo
+scriptPath = mfilename('fullpath');
+if isempty(scriptPath)
+    error('Please run calcData.m as a script file, not pasted into the Command Window.');
+end
+S.sandboxPath = fileparts(scriptPath); %This is the path to where this file (and all the other related folders) are kept
+%Set up path to Rscript (so code can run Bchron)
+S.RscriptPath = "/usr/local/bin/Rscript";  % To find the path to Rscript, open Terminal and type "which Rscript". Copy and paste the outcome into the S.RscriptPath variable.;
+S.WApath       = "WA_Foraminiferal_Isotopes_2022";                         %Path to where the Mulitza Dataset is held
 S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";         
 
 %Set up file to save outputs to
@@ -53,7 +56,6 @@ S.modifyLin2014Data = true;     %Whether to use dates as used by Lin2014 or to i
 S.usePF             = true;     %Use the ages I've added
 S.DeltaRError       = 200;      %Error put on the Delta R (reservoir age correction)
 S.c14AgeLim         = [0 50];   %Cutoffs for radiocarbon ages, in kyr
-S.weighting         = "depth";  %How to weight (options are "depth", "age", or "none")
 S.normWithRunAve   = true;     %Use the averageSR from each individual run (true) or use a common averageSR to use when calculating normalised SR (false).
 S.numruns           = 400;     %How many sets of samples to take when using the probabilistic approaches.
 
@@ -67,7 +69,7 @@ S.BchronCalCurve    = "Marine20";%What calibration curve to use in Bchron
 S.BchronDepthSpacing = 0.05;     %Bchron outputs the age estimates from each Bchron MCMC sample for all depths from shallowest to deepest with this interval
 S.BchronReDo        = false;     %Whether to redo all Bchron regardless of whether there is already an existing Bchron run available. Options are false and true
 
-%Set up parameters that influence Newall's Method
+%Set up parameters that influence RSRx Method
 S.minNumberOfAges   = 4;        %Minimum number of ages a core must have (after filtering) to be used
 S.reversalCriteria  = 0.75;     %What fraction of SRs between two ages must be negative to call it a reversal
 S.removeLargeGaps   = true;     %Whether to manually remove large age gaps or leave them in
@@ -82,7 +84,7 @@ if S.replicateLin2014 == 1
     S.c14AgeLim = [0 55];
     S.useBchron = true;
     S.BchronCalCurve = "Marine09";
-    S.BchronRedo = false;
+    S.BchronReDo = false;
 
     %Set up core choice settings (first two explicitly stated, others
     %implicitly taken from cores they used)
@@ -128,18 +130,18 @@ goodLog            = badLog == 0 & restrictions == 1;
 
 %% Create some other useful logicals
 %Test a core based on it's name
- namedLog = ismember(string(rawdataManual.CoreName), "MD03-2698");   
+ namedLog = ismember(string(rawdataManual.CoreName), "M35003-4");   
 
 %Test a subset of cores
 subsetChooser = false(numAllCores,1);
-subsetChooser(1:9) = true;
+subsetChooser(101:119) = true;
 
 %Test all cores
 % subsetChooser = true(numAllCores, 1);
 
 %% Get material data from Excel
 % Get relevant metadata from Excel Spreadsheet into useful variables
-chosenCoresLog = goodLog;
+chosenCoresLog = namedLog;
 numCores    = sum(chosenCoresLog);
 cores       = table2array(rawdataManual(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats        = table2array(rawdataManual(chosenCoresLog, "LatitudeDec"));
@@ -153,11 +155,9 @@ ocean       = table2array(rawdataManual(chosenCoresLog, "Basin"));
 %
 rawdataUse = rawdataManual(chosenCoresLog, :);
 %% Plot calibrated radiocarbon dates against depth
-% %% Plot cores age depth models
-%
-%  for iPlot = (1:length(cores))
-%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
-% end
+ for iPlot = (1:length(cores))
+  corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
+end
 
 %% Get nSR values using Bchron (Mode and Probability)
 % ------ Use Bchron outputs
@@ -199,7 +199,6 @@ newlabels       = cell(numCores,1);
 numreversals    = nan(numCores,1);
 scenario_meanSR = cell(numCores, 1);
 
-%% ----- Apply invSR with loop
 %Calculate SR distribution for each core, as well as meanSR and other
 %useful information
 for i = 1:numCores
@@ -207,7 +206,7 @@ for i = 1:numCores
     [core_invSRvals{i}, core_invSRprobs{i}, meanSR(i), MSI_byage(i),...
         MSI_bydepth(i), sedimentlength(i), num14cpairs(i), ageModes{i},...
         corescenarios{i}, newlabels{i}, numreversals(i), scenario_meanSR{i}]...
-        = oneCoreSRpdf(cores{i}, dataLoc(i), LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, S, 0);
+        = oneCoreScenarios(cores{i}, dataLoc(i), LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, S, 0);
 end
 disp("Created all scenarios")
 
@@ -225,8 +224,8 @@ dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes,...
 %% nSR Random Sampling Approach
 %This section runs a slower, more computationally-expensive estimator of SR
 %to construct the SR distributions. The benefits that this method has over
-%the previous method is that it can be used to create a transition matrix
-%and it can be used to weight by age, and we can create distributions of
+%the previous method is that it can be used to create a transition matrix, 
+% it can be used to weight by age, and we can create distributions of
 %age difference between radiocarbon pairs to test for a resolution effect.
 
 %------ Run through all chosen cores with random sampling approach,
@@ -239,7 +238,7 @@ agediffs        = cell(numCores, 1); % Holds all the age differences for each nS
 
 for i =  1:numCores
     disp(cores{i})
-    [nSRcounts{i}, agediffs{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 0);
+    [nSRcounts{i}, agediffs{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 0);
 end
 
 % ------ Run through all chosen cores with random sampling approach,
@@ -251,7 +250,7 @@ nSRcounts500   = cell(numCores, 1); % Holds all the nSR counts (which form histo
 agediffs500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
 parfor i =  1:numCores
-    [nSRcounts500{i}, agediffs500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 500);
+    [nSRcounts500{i}, agediffs500{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 500);
 end
 
 disp("c")
@@ -264,7 +263,7 @@ nSRcounts1000   = cell(numCores, 1); % Holds all the nSR counts (which form hist
 agediffs1000    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
 parfor i =  1:numCores
-    [nSRcounts1000{i}, agediffs1000{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1000);
+    [nSRcounts1000{i}, agediffs1000{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1000);
 end
 disp("d")
 
@@ -276,7 +275,7 @@ nSRcounts1500   = cell(numCores, 1); % Holds all the nSR counts (which form hist
 agediffs1500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
 parfor i =  1:numCores
-    [nSRcounts1500{i}, agediffs1500{i}] = oneCoreTMRestrict(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
+    [nSRcounts1500{i}, agediffs1500{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
 end
 disp("e")
 

@@ -109,5 +109,5 @@ fitS.OneRun.weightRepDP = 3;
 fitS.OneRun.weightRepInflator = 4;
 fitS.OneRun.MLNReps = 2;
 fitS.dispChi2 = false;
-[outS] = SRun_MLNandInvGam(d.dataT.bchronProb, true(d.numCores,1), 100, BM.x, 2, fitS);
+[outS] = IRfitdists(d.dataT.bchronProb, true(d.numCores,1), 100, BM.x, 2, fitS);
 

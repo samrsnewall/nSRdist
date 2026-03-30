@@ -1,5 +1,5 @@
-function [nSRcounts, agediffs] = oneCoreTMRestrict(corename, dataLoc, scenarios, LabIDs, incDepths, excLabIDs, excDepths, scenario_meanSR, ageModes, S, minAgeDiff)
-% oneCoreTMRestrict  Compute normalised sedimentation rates (nSR) for a
+function [nSRcounts, agediffs] = oneCoreRSR(corename, dataLoc, scenarios, LabIDs, incDepths, excLabIDs, excDepths, scenario_meanSR, ageModes, S, minAgeDiff)
+% oneCoreRSR  Compute normalised sedimentation rates (nSR) for a
 %                    single core using random sampling from calibrated
 %                    radiocarbon age PDFs (RSR methods).
 %
@@ -123,7 +123,7 @@ end
 %Perform Calibrations
 [ageprobAll, calAge] = multiMatcalQ(age, error, 1:length(age), S);
 
-% Randomly choose 1000 scenarios
+% Randomly choose which scenario to use for each run
 numruns = S.numruns;
 rndScen = randsample(1:length(scenarios), numruns, 'true');
 

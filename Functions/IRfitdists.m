@@ -1,12 +1,17 @@
-function[outS] = SRun_MLNandInvGam(nSRcounts, coreLog, numruns, x, fitS)
-% SRun_MLNandInvGam  Fit probability distributions to nSR data across
-%                    multiple Monte Carlo runs.
+function[outS] = IRfitdists(nSRcounts, coreLog, numruns, x, fitS)
+% IRfitdists  Fit probability distributions to nSR data across
+%             multiple Monte Carlo runs (Individual Runs).
 %
 % For each of numruns iterations, selects one run's worth of nSR data from
 % each core, applies optional filtering and weighting, then fits four
 % candidate distributions: Mixed Log-Normal (MLN), Log-Normal (LN),
 % Inverse Gamma, and Gamma. Optionally runs chi-squared goodness-of-fit
 % tests on each fitted distribution.
+%
+% Contrast with ARfitdists, which pools all runs from all cores into a
+% single dataset before fitting. IRfitdists instead samples one run per
+% core on each iteration, giving a distribution of fitted parameters
+% that reflects sampling uncertainty across Monte Carlo runs.
 %
 % INPUTS
 %   nSRcounts - (cell array) One cell per core, each containing a 4-row
@@ -203,7 +208,6 @@ for i = 1:numruns
 
     %--- 2. Fit distributions (with retry on ill-conditioned covariance)
 
-
     skipIteration = false; %This will change to true if 10 iterations fail, exiting while loop
 
     if fitS.fitDists
@@ -251,7 +255,7 @@ for i = 1:numruns
     end
 
     if skipIteration
-        disp("Skipped an iteration in SRun_MLNandInvGam")
+        disp("Skipped an iteration in IRfitdists")
     end
 
     %--- 3. Build PDF VEC structs
