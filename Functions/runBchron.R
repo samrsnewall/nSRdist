@@ -59,6 +59,13 @@ chron <- Bchronology(
   predictPositions = seq(rdata$Depth[1], rdata$Depth[length(rdata$Depth)], by = depthSpacing),
                     )
 
+## Get median ages of calibrated radiocarbon ages
+
+calAges_samples <- sampleAges(chron$calAges)
+calAges_medians <- apply(calAges_samples, 2, quantile, prob = c(0.5))
+calAges_medians_df <- stack(calAges_medians)[, c("ind", "values")]
+names(calAges_medians_df) <- c("Date", "pct50")
+
 ##Write useful information out as txt files
 write.csv(chron[["thetaPredict"]], file.path(genPath, subDir, "theta.csv"),
           row.names = FALSE)
@@ -71,4 +78,7 @@ write.csv(chron[["phi"]], file.path(genPath, subDir, "phi.csv"),
 
 write.table(rdata, file.path(genPath, subDir, "inputData.txt"),
             row.names = FALSE)
+
+write.csv(calAges_medians_df, file.path(genPath, subDir, "calAgesMedian.csv"),
+          row.names = FALSE)
 
