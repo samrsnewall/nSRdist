@@ -63,7 +63,7 @@ if sum(nSRcountsArray(1,:) == 0) ~= 0
 end
 
 % If wanted - calculate SR to use instead of NSR
-if fitS.non_normalized_SR;
+if fitS.non_normalized_SR
     SRs = nSRcountsArray(2,:)./nSRcountsArray(3,:); %Calculate SR from depthdiff and agediff
     SRs(isnan(nSRcountsArray(1,:))) = NaN;
     nSRcountsArray(1,:) = SRs;
@@ -80,6 +80,8 @@ if fitS.Lin2014AgeFiltering
     L2014Log = (nSRcountsArray(3,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(3,:) > min(fitS.Lin2014AgeFilter)) | isnan(nSRcountsArray(1,:));
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 end
+
+
 
 %% Apply weighting
 %Convert the weighted nSR counts to a single dimension array of counts
@@ -150,9 +152,6 @@ outS.sedTimeSpan = sum(ageDiffs, "omitnan");
 [Gam.nSR.mu, Gam.nSR.var] = muVarPDFVec(Gam.nSR);
 [LN.nSR.mu, LN.nSR.var] = muVarPDFVec(LN.nSR);
 [MLN.nSR.mu, MLN.nSR.var] = muVarPDFVec(MLN.nSR);
-
-
-%%
 
 
 %% Transform pdf Vecs to log space and set up fo
