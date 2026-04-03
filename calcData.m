@@ -1,81 +1,134 @@
-%% Explanation
-%This script calculates nSR histories for a set of cores.
-%nSR histories are calculated in a few different ways:
-% - BMedian (analogous, although not exact replica, of Lin2014 method)
-% - BSamp (like BMedian, but sampling from Bchron ages, instead of using median)
-% - RSRx  (using samples from calibrated ages, with a restriction on
-% minimum delta time)
-
-%The script accesses data by reading a .xlsx sheet which directs it to
-%choose some cores from the data of Mulitza 2022 World Atlas.
-
-%The .xlsx sheet also contains information to include or exclude some data
-%from the raw Mulitza files. Information is regarding what material the
-%data is from (so that only planktonic foraminifera dates are used), some
-%obvious outliers to avoid, and dates that are spaced too far apart.
-
-%Less obvious outliers and doubly-dated depths are dealt with through a
-%process that creates "scenarios".
-
-%After nSR histories are calculated, they are all saved, so that they can
-%be accessed by a different script which evaluates the results.
-
-%%%%INPUTS
-% S - Settings to use throughout the code.
+%% calcData — Stage 1 of the nSRdist pipeline
+%
+% PURPOSE
+%   Computes normalised sedimentation rate (nSR) histories for a chosen set
+%   of marine sediment cores, using several independent estimation methods.
+%   Results are saved to a .mat file in Results/ for use by fitData.m.
+%
+% PIPELINE OVERVIEW
+%   calcData  →  (saves dataT, S, rawdataManual to Results/)
+%   fitData   →  loads Results file, fits distributions, saves fit results
+%
+% NSR ESTIMATION METHODS
+%   BMedian  — Uses the median of the Bchron posterior age at each dated
+%              depth to compute pairwise sedimentation rates; the mean SR
+%              for normalisation is taken from the full Bchron model.
+%              Conceptually analogous to the Lin et al. (2014) approach,
+%              though not an exact replication.
+%
+%   BSamp    — Like BMedian but samples from the full Bchron posterior age
+%              distribution (bchronProb) across S.numruns iterations.
+%              Propagates age uncertainty more fully than BMedian.
+%              Results stored in bchronProb cell array.
+%
+%   RSR0 / RSR500 / RSR1000 / RSR1500
+%            — Random Sampling from calibrated Radiocarbon (RSR) age PDFs,
+%              with a minimum age-difference restriction (dt_min = 0, 500,
+%              1000, or 1500 yr) between consecutive dated depths. Uses
+%              oneCoreRSR.m; the restriction filters out pairs too close in
+%              age to give reliable sedimentation rate estimates.
+%
+% DOUBLY-DATED DEPTHS AND REVERSALS
+%   Before RSR nSR estimation, oneCoreScenarios.m is called for each core.
+%   It builds "scenarios" — all valid orderings of radiocarbon dates that
+%   avoid age reversals — by handling:
+%     - Doubly-dated depths (DDDs): multiple dates at the same depth
+%     - Age reversals: probabilistic reversals are resolved by constructing
+%       alternative scenario pathways through the dated sequence
+%   The resulting scenarios are shared by all RSRx methods and inform the
+%   per-scenario mean SR used for normalisation.
+%
+% INPUT DATA
+%   Data are loaded from an Excel spreadsheet (S.sheet) which records, for
+%   each core:
+%     - Core name, location, water depth, ocean basin
+%     - Which radiocarbon dates to include (planktonic foraminifera only)
+%     - Which dates to exclude (benthic foram, outliers, large gaps)
+%     - Flags linking rows to the Mulitza 2022 World Atlas (useLin/usePF)
+%   Raw radiocarbon measurement data are read from the Mulitza 2022 dataset
+%   (S.WApath) or from the Lin2014 supplementary database.
+%
+% OUTPUT (saved to Results/S.dataOutputFile.mat)
+%   dataT        — Table with one row per core containing:
+%                    cores, lats, longs, depths, ocean, meanSR, ageModes,
+%                    sedimentlength, agecoverage, num14cpairs,
+%                    MSI_byage, MSI_bydepth,
+%                    LabIDs, incDepths, excLabIDs, excDepths, dataLoc,
+%                    core_invSRvals, core_invSRprobs,
+%                    corescenarios, scenario_meanSR,
+%                    nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500,
+%                    bchronMode, bchronMedian, bchronProb, bchronLin
+%   S            — Settings structure used for this run
+%   rawdataManual — Subset of the raw metadata table used
+%
+% SETTINGS (S structure — set in the "Create settings structure" section)
+%   See inline comments on each field below.
+%
+% DEPENDENCIES
+%   Functions/      — all helper functions (added to path at startup)
+%   MatCal          — matcal / matcalq for radiocarbon calibration
+%   R + Bchron      — called via Rscript for Bchron age-depth modelling
 
 %% Add folder of necessary functions to path
 addpath('Functions')
 
 %% Create settings structure
-%Set up path to repo
+% All run parameters are stored in S and saved alongside the results, so
+% any output file is self-documenting.
+
+% --- Paths ---
 scriptPath = mfilename('fullpath');
 if isempty(scriptPath)
     error('Please run calcData.m as a script file, not pasted into the Command Window.');
 end
-S.sandboxPath = fileparts(scriptPath); %This is the path to where this file (and all the other related folders) are kept
-%Set up path to Rscript (so code can run Bchron)
-S.RscriptPath = "/usr/local/bin/Rscript";  % To find the path to Rscript, open Terminal and type "which Rscript". Copy and paste the outcome into the S.RscriptPath variable.;
-S.WApath       = "WA_Foraminiferal_Isotopes_2022";                         %Path to where the Mulitza Dataset is held
-S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx";         
+S.sandboxPath = fileparts(scriptPath); % Root directory of the repository
+S.RscriptPath = "/usr/local/bin/Rscript";  % Path to Rscript; find yours with `which Rscript` in Terminal
+S.WApath       = "WA_Foraminiferal_Isotopes_2022";         % Path to the Mulitza 2022 World Atlas dataset
+S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx"; % Metadata spreadsheet controlling which cores and dates are used
 
-%Set up file to save outputs to
-stringID = "All1_RLGtrue_DS0p05_Dec9";
-S.dataOutputFile = "dataT_" + stringID;
+% --- Output file ---
+stringID = "All1_RLGtrue_1Apr26";
+S.dataOutputFile = "dataT_" + stringID; % Saved to Results/S.dataOutputFile.mat
 
-%Set up core choice settings
-S.minimumCoreDepth = 1000;%Minimum core depth (mbsf) in m
-S.maxAtlanticLatN   = 40; %Maximum north latitude of Atlantic Cores
-S.maxOtherLatN      = 40; %Maximum north latitude of non-Atlantic Cores
-S.maxAtlanticLatS   = 40; %Maximum south latitude of Atlantic Cores
-S.maxOtherLatS      = 40; %Maximum south latitude of non-Atlantic Cores
+% --- Core selection filters ---
+S.minimumCoreDepth = 1000; % Minimum water depth (m); excludes shallow-water cores
+S.maxAtlanticLatN   = 40;  % Maximum northern latitude for Atlantic cores (degrees)
+S.maxOtherLatN      = 40;  % Maximum northern latitude for non-Atlantic cores
+S.maxAtlanticLatS   = 40;  % Maximum southern latitude for Atlantic cores (degrees)
+S.maxOtherLatS      = 40;  % Maximum southern latitude for non-Atlantic cores
 
-%Set up setting choices for nSR calculations 
-S.replicateLin2014  = false;    %See next Section for Lin2014 Set Up 
-S.useLin            = true;     %Use the ages from Lin2014 database 
-S.modifyLin2014Data = true;     %Whether to use dates as used by Lin2014 or to include my own modifications to remove reversals or large age gaps
-S.usePF             = true;     %Use the ages I've added
-S.DeltaRError       = 200;      %Error put on the Delta R (reservoir age correction)
-S.c14AgeLim         = [0 50];   %Cutoffs for radiocarbon ages, in kyr
-S.normWithRunAve   = true;     %Use the averageSR from each individual run (true) or use a common averageSR to use when calculating normalised SR (false).
-S.numruns           = 400;     %How many sets of samples to take when using the probabilistic approaches.
+% --- Data source and pre-processing ---
+S.replicateLin2014  = false; % If true, overrides other settings to match Lin2014 exactly (see block below)
+S.useLin            = true;  % Include cores from the Lin2014 database
+S.modifyLin2014Data = true;  % If true, applies additional reversals / gap removal on Lin2014 dates
+S.usePF             = true;  % Include cores added from the Mulitza 2022 dataset (planktonic foram dates only)
+S.DeltaRError       = 200;   % 1-sigma error (yr) on the marine reservoir age correction (DeltaR); propagated through calibration
+S.c14AgeLim         = [0 50];% Accepted radiocarbon age range (kyr); dates outside this window are excluded
+S.normWithRunAve    = true;  % If true, normalises each RSR run's SRs by that run's own mean SR;
+                             %   if false, uses a single shared mean SR across all runs for a core
+S.numruns           = 1000;  % Number of Monte Carlo iterations for BSamp and RSRx methods
 
-%Set up parameters that influence Bchron running
-S.useBchron         = true;     % if false, skips BMode and BSamp set up
-S.BchronFilter      = true;     % Filter data (remove outliers and large gaps) before running Bchron or not
-S.BchronFolderName  = "All1_RLGtrue_DS0p05_Jun2";    %What folder to get BchronInputs from
-S.BchronOutlier     = 0.05;     %Value to input to Bchrons OutlierProbs
-S.BchronReversalCriteria = 0.75; % What fraction of Bchron runs must reject an age to classify it as a reversal
-S.BchronCalCurve    = "Marine20";%What calibration curve to use in Bchron
-S.BchronDepthSpacing = 0.05;     %Bchron outputs the age estimates from each Bchron MCMC sample for all depths from shallowest to deepest with this interval
-S.BchronReDo        = false;     %Whether to redo all Bchron regardless of whether there is already an existing Bchron run available. Options are false and true
+% --- Bchron settings ---
+S.useBchron              = true;    % If false, skips BMode and BSamp computation entirely
+S.BchronFilter           = true;    % If true, removes outliers and large age gaps before running Bchron
+S.BchronFolderName       = "All1_RLGtrue_DS0p05_1Apr26"; % Subfolder under BchronInputs/ from which to read pre-computed Bchron outputs
+S.BchronOutlier          = 0.05;    % OutlierProbs value passed to Bchron (prior probability of each date being an outlier)
+S.BchronReversalCriteria = 0.75;    % Fraction of Bchron MCMC samples that must reject an age for it to be flagged as a reversal
+S.BchronCalCurve         = "Marine20"; % Calibration curve to use in Bchron ("Marine20" or "Marine09" for Lin2014 replication)
+S.BchronDepthSpacing     = 0.05;    % Depth interval (cm) at which Bchron reports age estimates along the core
+S.BchronReDo             = false;   % If false, re-uses existing Bchron outputs if available; if true, reruns Bchron for all cores
 
-%Set up parameters that influence RSRx Method
-S.minNumberOfAges   = 4;        %Minimum number of ages a core must have (after filtering) to be used
-S.reversalCriteria  = 0.75;     %What fraction of SRs between two ages must be negative to call it a reversal
-S.removeLargeGaps   = true;     %Whether to manually remove large age gaps or leave them in
-S.pdfMinVal         = 1e-6;     %Cutoff to reduce size of radiocarbon pdf vector to accelerate calculations
-S.pdfMethod         = false;    %Whether to complete all of the pdf method or simply use it for multiply dated depths and reversals
-S.useModes          = false;    %Calculate nSR distribution with the mode of each radiocarbon distribution, not sampling
+% --- RSRx method settings ---
+S.minNumberOfAges   = 4;     % Minimum number of accepted dates a core must have to be processed
+S.reversalCriteria  = 0.75;  % Fraction of sampled SR estimates between two adjacent dates that must be
+                             %   negative to classify the pair as a reversal and trigger scenario branching
+S.removeLargeGaps   = true;  % If true, manually excludes date pairs with very large age gaps before scenario construction
+S.pdfMinVal         = 1e-6;  % Probability density cutoff below which calibrated age PDF tails are truncated,
+                             %   reducing vector length and accelerating calculations
+S.pdfMethod         = false; % If true, runs the full analytical PDF method for all date pairs;
+                             %   if false, uses PDF only for DDDs and reversals, sampling otherwise
+S.useModes          = false; % If true, uses the mode of each calibrated age PDF as a point estimate
+                             %   rather than sampling (diagnostic / fast-approximate mode)
 
 %% Do I want to reproduce Lin2014 approach?
 if S.replicateLin2014 == 1
@@ -94,10 +147,14 @@ if S.replicateLin2014 == 1
     S.maxAtlanticLatS   = 50; % (not explicitly stated in paper, max LatS is -46ish)
     S.maxOtherLatS      = 50; % (not explicitly stated in paper, max LatS is -46ish)
 end
-%% Load Metadata of MSPF cores
-%Go through sheet that has details about which dates are from planktonic
-%foraminifera (to remove any benthic foraminifera dates stored in WA2022,
-%or other undesirable material)
+%% Load metadata from the spreadsheet
+% The spreadsheet (S.sheet) has one row per core and records:
+%   CoreName, LatitudeDec, LongitudeDec, WaterDepthM, Basin
+%   Lin2014    — 1 if the core was used by Lin et al. (2014)
+%   Lin2014Keep — 1 if the core should be kept for replication even if not in WAuse
+%   WAuse      — 1 if the core should be used from the Mulitza 2022 dataset
+% For each core, LabIDs of included dates (planktonic foram only) and
+% excluded dates (benthic foram, outliers, large gaps) are also stored.
 rawdata     = readtable(S.sheet);
 
 % Select relevant information based on what subsets of data has been chosen
@@ -141,7 +198,7 @@ subsetChooser(101:119) = true;
 
 %% Get material data from Excel
 % Get relevant metadata from Excel Spreadsheet into useful variables
-chosenCoresLog = namedLog;
+chosenCoresLog = goodLog;
 numCores    = sum(chosenCoresLog);
 cores       = table2array(rawdataManual(chosenCoresLog, "CoreName")); %take list of MSPF corenames
 lats        = table2array(rawdataManual(chosenCoresLog, "LatitudeDec"));
@@ -152,31 +209,45 @@ ocean       = table2array(rawdataManual(chosenCoresLog, "Basin"));
 
 [LabIDs, incDepths, excLabIDs, excDepths, dataLoc] = extract3(rawdataManual, chosenCoresLog, S);
 
-%
 rawdataUse = rawdataManual(chosenCoresLog, :);
 %% Plot calibrated radiocarbon dates against depth
- for iPlot = (1:length(cores))
-  corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
-end
+%  for iPlot = (1:length(cores))
+%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
+% end
 
-%% Get nSR values using Bchron (Mode and Probability)
-% ------ Use Bchron outputs
+%% Compute nSR histories using Bchron age-depth models (BMode, BMedian, BSamp)
+% nSRBchron runs Bchron for each core (or loads existing results) and
+% returns nSR histories in 3-row matrix format for each method:
+%   bchronMode   — nSR from the modal Bchron age at each dated depth
+%   bchronMedian — nSR from the median Bchron age at each dated depth
+%   bchronProb   — nSRs sampled from the Bchron posterior (S.numruns samples)
+%   bchronLin    — nSR history matching the Lin2014 mean SR normalisation
+% Skipped entirely if S.useBchron is false.
 bchronMode   = cell(numCores, 1);
 bchronMedian = cell(numCores, 1);
 bchronProb   = cell(numCores, 1);
+bchronLin    = cell(numCores, 1);
 bchronMeanSRs= NaN(numCores, 1);
 
-%Choose if you want to get Bchron results
 if S.useBchron
-    %Run through Bchron method for all cores
     for i = 1:numCores
-        [bchronMode{i}, bchronMedian{i}, bchronProb{i}, bchronMeanSRs(i)] = nSRBchron(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, dataLoc(i), S);
+        [bchronMode{i}, bchronMedian{i}, bchronProb{i}, bchronLin{i},  bchronMeanSRs(i)] = nSRBchron(cores{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, dataLoc(i), S);
     end
 end
-%% invSR PDF Approach
-% This section runs through a quick, less-computationally-expensive
-% estimator of SR to find any reversals, create scenarios, to calculate the
-% meanSR and the number of dates used overall
+%% Build scenarios and compute per-core summary statistics (oneCoreScenarios)
+% oneCoreScenarios is called for every core before the RSRx sampling begins.
+% It serves two purposes:
+%   1. Scenario construction — resolves doubly-dated depths (DDDs) and age
+%      reversals by enumerating all valid date orderings ("scenarios"). Each
+%      scenario is a specific assignment of ages to depths that produces no
+%      reversals. These scenarios are later used by oneCoreRSR.
+%   2. Summary statistics — computes the mean SR, mean sampling interval
+%      (MSI by age and by depth), total sediment length, number of 14C date
+%      pairs, per-depth age modes, and per-scenario mean SRs used for
+%      normalisation in the RSRx methods.
+%
+% Also computes an inverse-SR PDF (core_invSRvals / core_invSRprobs) via
+% the analytical PDF method for diagnostic purposes (stored in dataT).
 
 if S.replicateLin2014
     %Code has problems when ages get too large, because they get to the
@@ -221,18 +292,30 @@ dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes,...
 % plotAgeModes(chosenCoresLog, chosenCoresLog, ageModes, cores)
 % %plotAgeModes2Subsets(ageModes, cores, highSRCoresLog, lowSRCoresLog)
 
-%% nSR Random Sampling Approach
-%This section runs a slower, more computationally-expensive estimator of SR
-%to construct the SR distributions. The benefits that this method has over
-%the previous method is that it can be used to create a transition matrix, 
-% it can be used to weight by age, and we can create distributions of
-%age difference between radiocarbon pairs to test for a resolution effect.
+%% Compute nSR histories by Random Sampling from calibrated Radiocarbon PDFs (RSRx)
+% oneCoreRSR samples S.numruns times from the calibrated radiocarbon age
+% PDFs of each core and computes pairwise sedimentation rates. The output
+% is a 3-row nSR matrix (see README "nSR matrix format") holding all sampled
+% nSR values and their associated depth/age differences.
+%
+% Four variants are run, differing only in the minimum age difference (dt_min)
+% required between consecutive dated depths:
+%   RSR0    — no restriction (any dt accepted)
+%   RSR500  — pairs with dt < 500 yr excluded
+%   RSR1000 — pairs with dt < 1000 yr excluded
+%   RSR1500 — pairs with dt < 1500 yr excluded
+%
+% The restriction reduces bias from closely-spaced dates whose calibrated
+% age PDFs overlap substantially. RSR500 and above use parfor for speed.
+%
+% For each variant, nSRcounts holds the nSR matrix cells and agediffs holds
+% the corresponding age-difference histograms (used to characterise the
+% resolution distribution of the dataset).
 
-%------ Run through all chosen cores with random sampling approach,
-% RESTRICTION ON MINIMUM AGE DIFFERENCE = 0
+%------ RSR0: no minimum age-difference restriction
 
 %Initiate variables
-disp("a")
+disp("Starting RSR0")
 nSRcounts       = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs        = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
@@ -241,11 +324,10 @@ for i =  1:numCores
     [nSRcounts{i}, agediffs{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 0);
 end
 
-% ------ Run through all chosen cores with random sampling approach,
-% RESTRICTION ON MINIMUM AGE DIFFERENCE = 500
+%------ RSR500: minimum age-difference restriction = 500 yr
 
 %Initiate variables
-disp("b")
+disp("Starting RSR500")
 nSRcounts500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
 agediffs500    = cell(numCores, 1); % Holds all the age differences for each nSR measurement (resolution pdf)
 
@@ -253,10 +335,8 @@ parfor i =  1:numCores
     [nSRcounts500{i}, agediffs500{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 500);
 end
 
-disp("c")
-
-% ------ Run through all chosen cores with random sampling approach,
-% RESTRICTION ON MINIMUM AGE DIFFERENCE = 1000
+disp("Starting RSR1000")
+%------ RSR1000: minimum age-difference restriction = 1000 yr
 
 %Initiate variables
 nSRcounts1000   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
@@ -265,10 +345,8 @@ agediffs1000    = cell(numCores, 1); % Holds all the age differences for each nS
 parfor i =  1:numCores
     [nSRcounts1000{i}, agediffs1000{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1000);
 end
-disp("d")
-
-% ------ Run through all chosen cores with random sampling approach,
-% RESTRICTION ON MINIMUM AGE DIFFERENCE = 1500
+disp("Starting RSR1500")
+%------ RSR1500: minimum age-difference restriction = 1500 yr
 
 %Initiate variables
 nSRcounts1500   = cell(numCores, 1); % Holds all the nSR counts (which form histogram that makes nSR pdf)
@@ -277,91 +355,12 @@ agediffs1500    = cell(numCores, 1); % Holds all the age differences for each nS
 parfor i =  1:numCores
     [nSRcounts1500{i}, agediffs1500{i}] = oneCoreRSR(cores{i}, dataLoc(i), corescenarios{i}, LabIDs{i}, incDepths{i}, excLabIDs{i}, excDepths{i}, scenario_meanSR{i}, ageModes{i}, S, 1500);
 end
-disp("e")
+disp("All RSRx samples finished")
 
-%% Put all results into dataT table and save to an output folder
-dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, bchronMode, bchronMedian, bchronProb); 
- save(fullfile("Results", S.dataOutputFile), "dataT", "S", "rawdataManual")
+%% Assemble final table and save
+% Append all nSR matrix cell arrays and Bchron outputs to dataT, then save
+% everything (dataT, S, rawdataManual) to Results/S.dataOutputFile.mat.
+% This file is the input to fitData.m.
+dataT = addvars(dataT, nSRcounts, nSRcounts500, nSRcounts1000, nSRcounts1500, bchronMode, bchronMedian, bchronProb, bchronLin);
+save(fullfile("Results", S.dataOutputFile), "dataT", "S", "rawdataManual")
 
-%% Plot a few figures for a quick glance if wanted
-
-%% ------ Define Subsets of interest from calculated metadata
-% high SR and low SR cores (separated by 8cm/kyr following Lin et al., 2014)
-depth1000Log    = depths > 1000;
-lowSRCoresLog   = meanSR<= 8 & depth1000Log;
-highSRCoresLog  = meanSR >8 & depth1000Log;
-allCoresLog     = ~isnan(meanSR) & depth1000Log;
-
-% find 10 highSR cores with most data
-[~,highSRhighResCoresInd]   = maxk(num14cpairs.*highSRCoresLog, 10);
-highSRhighResCoresLog       = unfind(highSRhighResCoresInd, numel(cores));
-
-%% show metadata of a certain subset
-metadataLog = allCoresLog;
-outputMetadataAndSummaryFigures(allCoresLog,dataT)
-
-%% Compare all runs vs individual runs result for a single set up
-lognorm_BIGMACS = readtable("lognormal_BIGMACS.txt");                       % (use x values currently used in BIGMACS)
-x = lognorm_BIGMACS.Var1';
-BIGMACShist = readmatrix("BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
-BIGMACShist = BIGMACShist(:,4);
-[MLN_BIGMACS, ~, gmfitBM] = fitMixLogNorm(BIGMACShist, x, 2, 5);
-numruns2sample = 400;
-desiredLog = highSRCoresLog;
-desiredRestriction = nSRcounts500;
-respectiveString = "HighSR500";
-fitS.Lin2014AgeFiltering = 1;
-fitS.Lin2014AgeFilter = [500 4000];
-fitS.weighting = "depth"; 
-fitS.chi2binN = 10;
-fitS.dispChi2 = true;
-fitS.mln1RunReps = 1;
-fitS.mlnReps = 5;
-fitS.enforceBinSizeLimits = true;
-
-[mixLogAllruns] = plotSRandResHistograms(desiredRestriction, x, desiredLog, 3, 1, 2, 0, respectiveString,true, fitS);
-
-figure;
-hold on
-plot(x, mixLogAllruns(:,2), '-r')
-plot(x, MLN_BIGMACS(:,2), '--r')
-plot(x, lognorm_BIGMACS.Var2, '--k')
-xlim([0 5])
-
-%% Try plotSRandResHistograms for bchronMode data
-% oneCoreLog = allCoresLog;
-% oneCoreLog(2:end) = 0;
-[mixLogBchronMode, BchronModeHist] = plotSRandResHistograms(bchronMode, x, allCoresLog, 3, 1, 2, 0, "", 1, fitS);
-[mixLogBchronMed, BchronMedHist] = plotSRandResHistograms(bchronMedian, x, allCoresLog, 3, 1, 2, 0, "", 1, fitS);
-[mixLogBchronProb, BchronProbHist] = plotSRandResHistograms(bchronProb, x, allCoresLog, 3, 1, 2, 0, "", 1, fitS);
-
-figure;
-subplot(2,1,1)
-hold on
-histogram(BIGMACShist, 'Normalization','pdf', 'FaceColor', [0.5, 0.5, 0.5])
-plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
-xlim([0 6])
-xlabel("nSR")
-title("Original BIGMACS")
-subplot(2,1,2)
-hold on
-histogram(BchronModeHist, 'Normalization','pdf')
-plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
-plot(x, mixLogBchronMode(:,2), '-r', 'LineWidth',2)
-xlim([0 6])
-xlabel("nSR")
-title("Repeated by Newall")
-
-figure;
-hold on
-histogram(BchronProbHist, 'Normalization', 'pdf')
-plot(x, mixLogBchronProb(:,2))
-xlim([0 10])
-xlabel("nSR")
-
-figure;
-hold on
-plot(x, mixLogBchronMode(:,2), '-r', 'LineWidth',2)
-plot(x, mixLogBchronProb(:,2), '-b', 'LineWidth',2)
-plot(x, lognorm_BIGMACS.Var2, '-k', 'LineWidth',2)
-xlim([0 6])
