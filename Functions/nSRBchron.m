@@ -1,4 +1,4 @@
-function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,LabIDs, incDepths, excLabIDs, excDepths, dataLoc, S)
+function[modenSRinfo, mediannSRinfo, nSRcounts, LinNSRcounts, meanSR] = nSRBchron(corename,LabIDs, incDepths, excLabIDs, excDepths, dataLoc, S)
 % nSRBchron  Compute normalised sedimentation rates (nSR) for a single core
 %            using Bchron Bayesian age-depth modelling.
 %
@@ -9,10 +9,11 @@ function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,Lab
 %      Lin2014 dataset).
 %   2.2. Optionally filters dates using the same criteria as the RSR methods.
 %   2.3. Writes a Bchron-formatted input file and calls Bchron via Rscript
-%   3. Loads the Bchron output and computes nSR three ways:
+%   3. Loads the Bchron output and computes nSR four ways:
 %        BMode   - using the mode   of the Bchron age ensemble
 %        BMedian - using the median of the Bchron age ensemble
 %        BSamp   - using each iteration of the Bchron ensemble individually
+%        LinNSR  - using exact method of Lin2014       
 %
 % INPUTS
 %   corename   - (string) Sediment core identifier (e.g. "RC13-228")
@@ -51,23 +52,32 @@ function[modenSRinfo, mediannSRinfo, nSRcounts, meanSR] = nSRBchron(corename,Lab
 % OUTPUTS
 %   modenSRinfo   - (4 x N) nSR matrix computed using mode ages (BMode)
 %   mediannSRinfo - (4 x N) nSR matrix computed using median ages (BMedian)
-%   nSRcounts     - (4 x M) nSR matrix from individual Bchron runs (BSamp);
+%   nSRcounts     - (4 x M) nSR matrix from individual Bchron MCMC iterations (BSamp);
 %                   blocks from successive runs are concatenated horizontally
+%   LinNSRcounts  - (4 x N) nSR matrix computed following approach of Lin
+%                   et al. (2014) code
 %   meanSR        - (scalar) Overall mean sedimentation rate (cm/kyr) from
 %                   the depth/age range of the median-age solution
 %
 % See also: calcData, getDataWA, getDatatxt, filtering, oneCoreRSR
 
-%--- Locate Bchron output data
+%--- Locate Bchron output folders ---
 BchronFolder = S.BchronFolderName;
 
 %Set up directory to where the Bchron Data is
+BchronFolderPath = fullfile(S.sandboxPath, "BchronFolders", BchronFolder);
+
+% If Bchron Folder doesn't yet exist, make it
+if ~isfolder(BchronFolderPath)
+    mkdir(BchronFolderPath)
+end
+
+% Set up path to this core
 coreDir = fullfile(S.sandboxPath, "BchronFolders", BchronFolder, "Outputs",corename);
 
-%Bring in which calibration curve will be used
-calCurve = S.BchronCalCurve;
+% --- See if Bchron needs to be run: if so, run it ----
 
-%If the BchronData Output folder doesn't exist, run Bchronology
+%If the BchronData Output folder for this core doesn't exist, run Bchronology
 if ~isfolder(coreDir) || S.BchronReDo 
 
     %If Bchron Data "/Outputs" folder doesn't exist, create it
@@ -102,6 +112,7 @@ if ~isfolder(coreDir) || S.BchronReDo
                 modenSRinfo = [];
                 mediannSRinfo = [];
                 nSRcounts = [];
+                LinNSRcounts = [];
                 meanSR = NaN;
                 return
             end
@@ -119,9 +130,13 @@ if ~isfolder(coreDir) || S.BchronReDo
 
     end
 
-    %Run Bchronology by sending a line to the terminal (which will allow us
+    %Bring in which calibration curve will be used
+    calCurve = S.BchronCalCurve;
+
+    %Run Bchronology by sending a line to the terminal (which allows us
     %to run Rscript within Matlab), with the name of the folder to save it
-    %in, the name of the core, and the calibration curve to be used
+    %in, the name of the core, and the calibration curve to be used, the
+    %reservoir age error, and the depth spacing to use
     disp("Running Bchronology for core " + corename)
     cmnd = S.RscriptPath + " " +...
         fullfile(S.sandboxPath, "Functions", "runBchron.R")...
@@ -138,6 +153,8 @@ if ~isfolder(coreDir) || S.BchronReDo
         error("Problem in Bchron")
     end
 end
+
+% --- Use Bchron output files to get NSR matrix ---
 
 %Load radiocarbon data
 rData = readtable(fullfile(coreDir, "inputData.txt"));
@@ -180,10 +197,11 @@ modeAge = modeMAT';
 medianAge = medianMAT';
 pctReject = pctRejMAT';
 
-%Remove rejected ages if desired (not sure how Lin2014 handled this)
-%First option is to remove the mode of the age if the age was rejected more
-%than 50% of the time. Note, even in a normal looking radiocarbon profile,
-%good ages are rejected up to 5% of the time
+%Remove rejected ages if desired (Lin2014 did not do this)
+
+%Remove the age if the age was rejected more than some percentage of the
+%time. Note, even in a normal looking radiocarbon profile,
+%good ages are rejected up to 5% of the time.
 removeRejectedAges = true;
 if removeRejectedAges
     rejectLog = pctReject > S.BchronReversalCriteria*100;  %Find which ages were rejected more than the criterium set
@@ -198,19 +216,17 @@ else
     medianAgeUsed = medianAge;
 end
 
-%Handle doubly-dated depths (not sure how Lin2014 handled this)
+%Handle doubly-dated depths
 %First option is to just find the unique depths, because each unique depth
 %has a unique and singular modeAge value.
 [depthsUsed, ia, ~]  = unique(depthsUsed);
 modeAgeUsed = modeAgeUsed(ia);
 medianAgeUsed = medianAgeUsed(ia);
 
-%highlight problem if less than 4 ages are used in bchron median
+%highlight problem if less than 4 ages are used
 if length(depthsUsed) < S.minNumberOfAges
     warning(corename + " has less than " + num2str(S.minNumberOfAges) + " accepted ages after Bchron")
 end
-
-%For the individual runs, as long as R is saving thetaPredict, not theta, then doubly dated depths will be given the same age)
 
 %Calculate nSR with mode ***************************
 %calculate meanSR
@@ -219,7 +235,6 @@ SRs = diff(depthsUsed)./diff(modeAgeUsed);
 nSRs = SRs./meanSR;
 depthdiffs = diff(depthsUsed);
 agediffs = diff(modeAgeUsed);
-weights = diff(depthsUsed);
 
 %Store all nSR info in one matrix, the standard set up I use
 modenSRinfo = [NaN, nSRs'; depthsUsed(1), depthdiffs'; modeAgeUsed(1), agediffs'];
@@ -228,15 +243,14 @@ modenSRinfo = [NaN, nSRs'; depthsUsed(1), depthdiffs'; modeAgeUsed(1), agediffs'
 meanSR = (depthsUsed(end)-depthsUsed(1))./(medianAgeUsed(end) - medianAgeUsed(1));
 SRs = diff(depthsUsed)./diff(medianAgeUsed);
 nSRs = SRs./meanSR;
-weights = diff(depthsUsed);
 agediffs = diff(medianAgeUsed);
 
 %Store all nSR info in one matrix, the standard set up I use
 mediannSRinfo = [NaN, nSRs'; depthsUsed(1), depthdiffs'; medianAgeUsed(1), agediffs'];
 
 %%% Calculate nSR with probability of ages method *********************
-% Find out which runs have less than 4 ages accepted
 
+% Find out which runs have less than 4 ages accepted
 runs_with_less_than_x_ages = sum((size(phiData, 2)-sum(phiData,2))<S.minNumberOfAges);
 if runs_with_less_than_x_ages > size(thetaDataR,1)/5
 warning("Core " + corename + " has " + num2str(runs_with_less_than_x_ages) + "runs with less than " + num2str(S.minNumberOfAges) + " ages" )
@@ -247,18 +261,24 @@ for i = 1:size(thetaDataR,1)
     %with doubly dated depths, by finding unique depths and using thetaRs,
     %which only estimate one age per depth)
     keepAges = ~logical(phiData(i,:));
-    if sum(keepAges)<S.minNumberOfAges
-        continue
-    end
-    rundepthspDD = depthR_r2BDS(keepAges)';
-    rundepths = unique(rundepthspDD);
+
+    %See if this run had enough ages (commented out because this reduces
+    %the number of Bchron runs used to below 1000)
+    % if sum(keepAges)<S.minNumberOfAges                
+    %     continue
+    % end
+
+    %Get depths of radiocarbon ages not rejected in this run
+    rundepthspDD = depthR_r2BDS(keepAges)'; 
+    rundepths = unique(rundepthspDD);       
+
+    %Get ages of those depths for this run
     keepThetaRs = ismembertol(rundepths, predictPositionsR);
     runages = thetaDataR(i,keepThetaRs);
     
-    %Calculate SRs, weights, agediffs
+    %Calculate SRs, depthdiffs, agediffs
     runSRs = diff(rundepths)./diff(runages);
     rundepthdiffs = diff(rundepths);
-    runweights = diff(rundepths);
     runagediffs = diff(runages);
 
     %Calculate nSR
@@ -269,8 +289,7 @@ for i = 1:size(thetaDataR,1)
         runnSR = runSRs./meanSR;
     end
 
-    %Store info in one block using the standard 4-row nSR matrix format
-    %(see function header for full format description)
+    %Store info in one block using the 3-row nSR matrix format
     nSRinfo = [NaN, runnSR; rundepths(1), rundepthdiffs; runages(1), runagediffs];
     if ~exist('nSRcounts','var')
         nSRcounts = nSRinfo;
@@ -278,3 +297,52 @@ for i = 1:size(thetaDataR,1)
         nSRcounts = [nSRcounts, nSRinfo]; %#ok<AGROW>
     end
 end
+
+%%% Calculate NSR with lin2014 method %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ------Following code reproduces data that Lin2014 code loaded in ------
+
+% Compute median posterior age at each predictPosition
+medAge = median(thetaData, 1)./1000;  % median ages (in kyr) of each predictPosition
+
+% Interpolate to find depth at each 1 kyr step of median age
+age_targets = ceil(min(medAge)):floor(max(medAge));   % find the relevant 1kyr time steps
+[medAge_unique, idx] = unique(medAge, 'stable'); %make sure medAge is unique - in theory it is, but because it is estimated by sampling, there can be some duplication, very certain this is not a serious problem
+depth_at_age = interp1(medAge_unique, predictPositions(idx), age_targets, 'linear'); %find depths at those 1kyr time steps
+
+% read in median calibrated ages
+calT = readtable(fullfile(coreDir, "calAgesMedian.csv"));
+medCalAge = calT.pct50./1000; %median ages (kyr) of each calibrated radiocarbon age (not influenced by Bchron)
+
+% ------ Following code is exact replica of code used by Lin2014 ---------
+
+% Bchron age models frequently don't include first and last 14c dates
+% due to even 1-kyr increments of output
+% Add these ages back in
+if rData.Depth(1) < min(depth_at_age)
+    depth_at_age=[rData.Depth(1), depth_at_age];
+    age_targets =[medCalAge(1), age_targets];
+end
+if rData.Depth(end) > max(depth_at_age)
+    depth_at_age=[depth_at_age, rData.Depth(end)];
+    age_targets=[age_targets, medCalAge(end)];
+end
+
+%Bchron model ages for depth of each 14c measurement
+Bage_14c=interp1(depth_at_age,age_targets,rData.Depth);
+
+%Calculate sed rates (NaN indicates duplicate 14C at a particular depth)
+cores_sr=diff(rData.Depth)./diff(Bage_14c);
+
+% mean sed rate for core
+cores_meansr=(max(rData.Depth)-min(rData.Depth))/(max(Bage_14c)-min(Bage_14c));
+
+% Divide by mean sed rate to convert to sed rate ratio
+sed_rate_ratio=cores_sr/cores_meansr;
+ind1=find(~isnan(sed_rate_ratio));
+
+% Duration of sed rate
+depint=diff(rData.Depth);
+dur=diff(Bage_14c); 
+ind2=find(dur~=0); %SN Note: ind1 and ind2 will be identical
+LinNSRcounts=[NaN, sed_rate_ratio(ind1)'; rData.Depth(1), depint(ind2)';  Bage_14c(1), dur(ind2)'];
