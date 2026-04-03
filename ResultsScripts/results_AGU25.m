@@ -68,9 +68,9 @@ plotAgeModes(dA.d.S1.chooseLog,dA.d.S1.chooseLog, dA.d.dataT.ageModes, dA.d.data
 dA.d.S1.BMode.weightedC = dA.d.S1.BMode.weightedC;
 dA.d.S1.BMode.MLN.chiStats = dA.d.S1.BMode.MLN.chiStats;
 dA.d.S1.BMode.invGam.chiStats = dA.d.S1.BMode.invGam.chiStats;
-dStrus = {dA.d.S1.BMode, dA.d.S1.BMedian, dA.d.S1.BChIR, dA.d.S1.New0IR, dA.d.S1.New500IR, dA.d.S1.New1000IR, dA.d.S1.New1500IR};
+dStrus = {dA.d.S1.BMode, dA.d.S1.BMedian, dA.d.S1.BSampIR, dA.d.S1.New0IR, dA.d.S1.New500IR, dA.d.S1.New1000IR, dA.d.S1.New1500IR};
 dStrusStrings = ["BMode", "BMedian", "BSamp", "RSR0", "RSR500", "RSR1000", "RSR1500"];
-numRunsEva = length(dA.d.S1.BChIR.MLN.chiStats.h);
+numRunsEva = length(dA.d.S1.BSampIR.MLN.chiStats.h);
 
 MeanAgePairsT  = NaN(length(dStrus),1);
 MeanSedLength  = NaN(length(dStrus),1);
@@ -206,7 +206,7 @@ title("BMedian; var =" + num2str(var(log(dA.d.S1.BMedian.weightedC{1}))))
 
 %% All Bchron and RSR500 samplings, histogram with 68th percentile bars
 nsubs = 3;
-numruns = length(dA.d.S1.BChIR.OneRunDatas);
+numruns = length(dA.d.S1.BSampIR.OneRunDatas);
  figure;
 % subplot(nsubs,1,1)
 % histogram(log(BM.hist),'BinEdges', logBinEdges, 'FaceColor', 'b', 'FaceAlpha', 0.1)
@@ -227,7 +227,7 @@ ylim([0 3500])
 ylabel("cm")
 title("BMedian [500-4000yr]")
 subplot(nsubs,1,3-1)
-BSamp_hists = sort(dA.d.S1.BChIR.lnSRHistCounts, 1);
+BSamp_hists = sort(dA.d.S1.BSampIR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', BSamp_hists(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
@@ -265,7 +265,7 @@ subplot(4,1,2)
 xline(var(dA.d.S1.BMedian.weightedC{1}))
 xlim(commonxlim)
 subplot(4,1,3)
-histogram(cellfun(@var, dA.d.S1.BChIR.weightedC), 20)
+histogram(cellfun(@var, dA.d.S1.BSampIR.weightedC), 20)
 xlim(commonxlim)
 subplot(4,1,4)
 histogram(cellfun(@var, dA.d.S1.New500IR.weightedC), 20)
@@ -314,7 +314,7 @@ xlim([-2.5 2.5])
 ylabel("cm")
 title("BMedian [500-4000yr]")
 subplot(3,1,2)
-A = sort(d1C.d.S1.BChIR.lnSRHistCounts, 1);
+A = sort(d1C.d.S1.BSampIR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', mean(A), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)

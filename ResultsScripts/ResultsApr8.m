@@ -24,10 +24,42 @@ BM.TM = readmatrix("../BIGMACSdata/transition_parameter.txt");
 %% Load data and fits
 dA = load("../Results/dataT_RLGtrue_R200M20_Mar4_fitMar31.mat");
 
-%%
-%Create table of useful information
-%summT = table('VariableNames',{'AgePairs', 'SedLength', 'SedTime', 'nSRmedian', 'nSRmin', 'nSRmax', 'InvGamRej', 'MLNRej'});
+%% Plot map of cores used in dA
 
+%% Take data of interest
+%----- Find corenames, lats, longs, depths of cores included
+dataTbl = dA.d.dataT(dA.d.S1.chooseLog, :);
+%----- Make map with locations denoted as red squares
+figure;
+subplot(2,2,[1 2])
+worldmap('World')
+setm(gca, 'mapprojection', 'robinson')
+geoshow('landareas.shp', 'FaceColor','[0.7 0.7 0.7]', 'EdgeColor', '[0.7 0.7 0.7]')
+load coastlines coastlat coastlon
+plotm(coastlat, coastlon, 'Color', 'k')
+hold on
+plotm(dataTbl.lats, dataTbl.longs, 'rs')
+%Plot histograms of Mean SR, Depths, Resolution by Age, Resolution by Depth
+
+subplot(2,2,3)
+histogram(dataTbl.depths./1000, 0:0.25:6, 'FaceColor', 'k')
+xlim([0 6])
+xlabel("Depth (km)")
+ylabel("Counts")
+xticks(0:0.5:6)
+title("Core Depths")
+
+subplot(2,2,4)
+histogram(dataTbl.meanSR, 0:2:90, 'FaceColor','k')
+xlabel('Mean SR (cm/kyr)')
+ylabel('Counts')
+xlim([0 90])
+title("Cores' Mean SR")
+
+%% Plot age modes (Need to remind myself how age modes were calculated, are they through bchron? the large gaps between ages are kept in)
+plotAgeModes(dA.d.S1.chooseLog, dA.d.dataT.ageModes, dA.d.dataT.cores)
+
+%% %Create table of useful information
 dA.d.S1.BMode.weightedC = dA.d.S1.BMode.weightedC;
 dA.d.S1.BMode.MLN.chiStats = dA.d.S1.BMode.MLN.chiStats;
 dA.d.S1.BMode.invGam.chiStats = dA.d.S1.BMode.invGam.chiStats;
@@ -70,7 +102,7 @@ for i = 1:length(dStrus)
     InvGamAcc(i,1) = sum(dStru.invGam.chiStats.h == 0);
 
 end
-summT = table(MeanAgePairsT, MeanSedLength, MeanSedTime, nSR_median,...
+dA.summT = table(MeanAgePairsT, MeanSedLength, MeanSedTime, nSR_median,...
     nSR_min, nSR_max, nSR_95lo, nSR_95hi,  MLNacc, InvGamAcc,...
     'RowNames', dStrusStrings)
 
@@ -100,7 +132,7 @@ ylabel("cm")
 ax = gca;
 ax.XDir = 'reverse';
 
-%% RSRsamplings Histogram with median and internal 95th percentile bars for each bin
+%% RSRsamplings Histogram with median and internal 68th percentile bars for each bin
 numruns = length(dA.d.S1.New0IR.lnSRHistCounts);
 
 figure;
@@ -151,58 +183,7 @@ ylabel("cm")
 title("RSR1500")
 xlabel("log(nSR)")
 
-%% RSRsamplings Histogram with median and internal 95th percentile bars for each bin
-numruns = length(dA.d.S1.New0IR.lnSRHistCounts);
-
-figure;
-subplot(4,1,1)
-A = sort(dA.d.S1.New0IR.lnSRHistCounts, 1);
-hold on
-box on
-histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
-%errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
-xlim([-2.5 2.5])
-ylim([0 5000])
-ylabel("cm")
-title("RSR0")
-subplot(4,1,2)
-A = sort(dA.d.S1.New500IR.lnSRHistCounts, 1);
-hold on
-box on
-histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
-%errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
-xlim([-2.5 2.5])
-ylim([0 5000])
-ylabel("cm")
-title("RSR500")
-subplot(4,1,3)
-A = sort(dA.d.S1.New1000IR.lnSRHistCounts, 1);
-hold on
-box on
-histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
-%errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
-xlim([-2.5 2.5])
-ylim([0 5000])
-ylabel("cm")
-title("RSR1000")
-subplot(4,1,4)
-A = sort(dA.d.S1.New1500IR.lnSRHistCounts, 1);
-hold on
-box on
-histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
-%errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
-xlim([-2.5 2.5])
-ylim([0 5000])
-ylabel("cm")
-title("RSR1500")
-xlabel("log(nSR)")
-
-%% All Bchron and RSR500 samplings, histogram with 95 percents
-
+%% All Bchron and RSR500 samplings, histogram with 68th percentile bars
 figure;
 subplot(4,1,1)
 histogram(log(BM.hist),'BinEdges', logBinEdges, 'FaceColor', 'b', 'FaceAlpha', 0.1)
@@ -460,168 +441,6 @@ chooseInvGam_Newall1000 = 1 - chooseMLN_Newall1000;
 chooseMLN_Newall1500 = sum(dA.d.S1.New1500IR.MLN.chiStats.p > dA.d.S1.New1500IR.invGam.chiStats.p)./dA.d.S1.fitS.OneRun.numruns;
 chooseInvGam_Newall1500 = 1 - chooseMLN_Newall1500;
 
-% figure()
-% subplot(4,1,1)
-% xlim([-3 3])
-% yyaxis left
-% hold on
-% ylabel("cm")
-% for i = 1:numruns
-%     hold on
-%     if i ==1 
-%     histogram(log(dA.d.S1.New0IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-%     else
-%     histogram(log(dA.d.S1.New0IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-%     end   
-% end
-% yyaxis right
-% hold on
-% ylim([0 1])
-% xlabel("nSR")
-% ylabel("PDF")
-% % legend()
-% title("Newall0 Samplings")
-% subplot(4,1,2)
-% xlim([-3 3])
-% yyaxis left
-% hold on
-% ylabel("cm")
-% for i = 1:numruns
-%     hold on
-%     if i ==1 
-%     histogram(log(dA.d.S1.New500IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-%     else
-%     histogram(log(dA.d.S1.New500IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-%     end   
-% end
-% yyaxis right
-% hold on
-% ylim([0 1])
-% xlabel("nSR")
-% ylabel("PDF")
-% title("Newall500 Samplings")
-% % legend()
-% subplot(4,1,3)
-% xlim([-3 3])
-% yyaxis left
-% hold on
-% ylabel("cm")
-% for i = 1:numruns
-%     hold on
-%     if i ==1 
-%     histogram(log(dA.d.S1.New1000IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-%     else
-%     histogram(log(dA.d.S1.New1000IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-%     end   
-% end
-% yyaxis right
-% hold on
-% ylim([0 1])
-% xlabel("nSR")
-% ylabel("PDF")
-% title("Newall1000 Samplings")
-% % legend()
-% subplot(4,1,4)
-% xlim([-3 3])
-% yyaxis left
-% hold on
-% ylabel("cm")
-% for i = 1:numruns
-%     hold on
-%     if i ==1 
-%     histogram(log(dA.d.S1.New1500IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-%     else
-%     histogram(log(dA.d.S1.New1500IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-%     end   
-% end
-% yyaxis right
-% hold on
-% ylim([0 1])
-% xlabel("nSR")
-% ylabel("PDF")
-% title("Newall1500 Samplings")
-% legend()
-
-%% 
-figure()
-subplot(4,1,1)
-xlim([-3 3])
-yyaxis left
-hold on
-ylabel("cm")
-alph = 0.05;
-for i = 1:numruns
-    hold on
-    if i ==1 
-    histogram('BinCounts',dA.d.S1.New0IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-    else
-    histogram('BinCounts',dA.d.S1.New0IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-    end   
-end
-yyaxis right
-hold on
-ylim([0 1])
-ylabel("PDF")
-% legend()
-title("RSR0")
-subplot(4,1,2)
-xlim([-3 3])
-yyaxis left
-hold on
-ylabel("cm")
-for i = 1:numruns
-    hold on
-    if i ==1 
-    histogram('BinCounts',dA.d.S1.New500IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-    else
-    histogram('BinCounts',dA.d.S1.New500IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-    end   
-end
-yyaxis right
-hold on
-ylim([0 1])
-ylabel("PDF")
-title("RSR500")
-% legend()
-subplot(4,1,3)
-xlim([-3 3])
-yyaxis left
-hold on
-ylabel("cm")
-for i = 1:numruns
-    hold on
-    if i ==1 
-    histogram('BinCounts',dA.d.S1.New1000IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-    else
-    histogram('BinCounts',dA.d.S1.New1000IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-    end   
-end
-yyaxis right
-hold on
-ylim([0 1])
-ylabel("PDF")
-title("RSR1000")
-% legend()
-subplot(4,1,4)
-xlim([-3 3])
-yyaxis left
-hold on
-ylabel("cm")
-for i = 1:numruns
-    hold on
-    if i ==1 
-    histogram('BinCounts',dA.d.S1.New1500IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'on', 'DisplayName', 'Histograms')
-    else
-    histogram('BinCounts',dA.d.S1.New1500IR.lnSRHistCounts(i,:), 'BinEdges', logBinEdges, 'FaceAlpha', alph, 'FaceColor', 'k', 'EdgeColor','none', 'HandleVisibility', 'off')
-    end   
-end
-yyaxis right
-hold on
-ylim([0 1])
-xlabel("log(nSR)")
-ylabel("PDF")
-title("RSR1500")
-
 %% Check impact of using single mean SR vs actual mean SR for sampling
 
 % Load data where meanSR is calculated using sampled data
@@ -674,7 +493,106 @@ ylim([-1e6 1e6])
 title("True - False Bincounts")
 xlabel("log(nSR)")
 
-%% Compare histograms from depth-weighted, age-weighted, unweighted
+%% Evaluate unweighted results
 
 dNW = load("../Results/dataT_RLGtrue_R200M20_Mar4_fitApr8_noweight.mat");
+
+%Create summary table of useful information
+dNW.d.S1.BMode.weightedC = dNW.d.S1.BMode.weightedC;
+dNW.d.S1.BMode.MLN.chiStats = dNW.d.S1.BMode.MLN.chiStats;
+dNW.d.S1.BMode.invGam.chiStats = dNW.d.S1.BMode.invGam.chiStats;
+dStrus = {dNW.d.S1.BMode, dNW.d.S1.BSampIR, dNW.d.S1.New0IR, dNW.d.S1.New500IR, dNW.d.S1.New1000IR, dNW.d.S1.New1500IR};
+dStrusStrings = ["BMode","BSamp", "RSR0", "RSR500", "RSR1000", "RSR1500"];
+
+MeanAgePairsT  = NaN(length(dStrus),1);
+MeanSedLength  = NaN(length(dStrus),1);
+MeanSedTime    = NaN(length(dStrus),1);
+nSR_median     = NaN(length(dStrus),1);
+nSR_min     = NaN(length(dStrus),1);
+nSR_max     = NaN(length(dStrus),1);
+nSR_95lo     = NaN(length(dStrus),1);
+nSR_95hi     = NaN(length(dStrus),1);
+MLNacc      = NaN(length(dStrus),1);
+InvGamAcc   = NaN(length(dStrus),1);
+
+for i = 1:length(dStrus)
+    dStru = dStrus{i};
+    if isa(dStru.weightedC, 'cell')
+        allWC = cell2mat(dStru.weightedC);
+            MeanSedLength(i,1) = mean(dStru.sedLength);
+    MeanSedTime(i,1) = mean(dStru.sedTimeSpan);
+    else
+        allWC = dStru.weightedC;
+        MeanSedLength(i,1) = mean(dStru.sedLength);
+        MeanSedTime(i,1)   = mean(dStru.sedTimeSpan);
+    end
+    
+    MeanAgePairsT(i,1) = mean(dStru.numCpairs);
+    allWCsorted = sort(allWC);
+    numWC = length(allWC);
+    
+    nSR_median(i,1) = median(allWC);
+    nSR_min(i,1) = min(allWC);
+    nSR_max(i,1) = max(allWC);
+    nSR_95lo(i,1) = allWCsorted(ceil(0.025*numWC));
+    nSR_95hi(i,1) = allWCsorted(ceil(0.975*numWC));
+    MLNacc(i,1) = sum(dStru.MLN.chiStats.h == 0);
+    InvGamAcc(i,1) = sum(dStru.invGam.chiStats.h == 0);
+
+end
+dNW.summT = table(MeanAgePairsT, MeanSedLength, MeanSedTime, nSR_median,...
+    nSR_min, nSR_max, nSR_95lo, nSR_95hi,  MLNacc, InvGamAcc,...
+    'RowNames', dStrusStrings)
+
+%% Evaluate unweighted results
+
+dAW = load("../Results/dataT_RLGtrue_R200M20_Mar4_fitApr8_ageweight.mat");
+
+%Create summary table of useful information
+dAW.d.S1.BMode.weightedC = dAW.d.S1.BMode.weightedC;
+dAW.d.S1.BMode.MLN.chiStats = dAW.d.S1.BMode.MLN.chiStats;
+dAW.d.S1.BMode.invGam.chiStats = dAW.d.S1.BMode.invGam.chiStats;
+dStrus = {dAW.d.S1.BMode, dAW.d.S1.BSampIR, dAW.d.S1.New0IR, dAW.d.S1.New500IR, dAW.d.S1.New1000IR, dAW.d.S1.New1500IR};
+dStrusStrings = ["BMode","BSamp", "RSR0", "RSR500", "RSR1000", "RSR1500"];
+
+MeanAgePairsT  = NaN(length(dStrus),1);
+MeanSedLength  = NaN(length(dStrus),1);
+MeanSedTime    = NaN(length(dStrus),1);
+nSR_median     = NaN(length(dStrus),1);
+nSR_min     = NaN(length(dStrus),1);
+nSR_max     = NaN(length(dStrus),1);
+nSR_95lo     = NaN(length(dStrus),1);
+nSR_95hi     = NaN(length(dStrus),1);
+MLNacc      = NaN(length(dStrus),1);
+InvGamAcc   = NaN(length(dStrus),1);
+
+for i = 1:length(dStrus)
+    dStru = dStrus{i};
+    if isa(dStru.weightedC, 'cell')
+        allWC = cell2mat(dStru.weightedC);
+            MeanSedLength(i,1) = mean(dStru.sedLength);
+    MeanSedTime(i,1) = mean(dStru.sedTimeSpan);
+    else
+        allWC = dStru.weightedC;
+        MeanSedLength(i,1) = mean(dStru.sedLength);
+        MeanSedTime(i,1)   = mean(dStru.sedTimeSpan);
+    end
+    
+    MeanAgePairsT(i,1) = mean(dStru.numCpairs);
+    allWCsorted = sort(allWC);
+    numWC = length(allWC);
+    
+    nSR_median(i,1) = median(allWC);
+    nSR_min(i,1) = min(allWC);
+    nSR_max(i,1) = max(allWC);
+    nSR_95lo(i,1) = allWCsorted(ceil(0.025*numWC));
+    nSR_95hi(i,1) = allWCsorted(ceil(0.975*numWC));
+    MLNacc(i,1) = sum(dStru.MLN.chiStats.h == 0);
+    InvGamAcc(i,1) = sum(dStru.invGam.chiStats.h == 0);
+
+end
+dAW.summT = table(MeanAgePairsT, MeanSedLength, MeanSedTime, nSR_median,...
+    nSR_min, nSR_max, nSR_95lo, nSR_95hi,  MLNacc, InvGamAcc,...
+    'RowNames', dStrusStrings)
+
 

@@ -22,16 +22,18 @@ BM.nSR.px = BMlognorm.Var2;
 BM.hist = readmatrix("../BIGMACSdata/Lin2014_sedrateratio_cm_wo_NaN.txt");
 BM.hist = BM.hist(:,4);
 BM.TM = readmatrix("../BIGMACSdata/transition_parameter.txt");
-[MLN_BIGMACS, ~, BM.gmfit] = fitMixLogNorm(BM.hist, BM.nSR.x, 2, 3, 343);
-[invGam_BIGMACS, ~, BM.invgamfit] = fitInvGamma(BM.hist, BM.nSR.x, 343);
+[MLN_BIGMACS, ~, BM.gm2fit] = fitMixLogNorm(BM.hist, BM.nSR.x, 2, 3, 343);
+[LN_BIGMACS, ~, BM.gm1fit] = fitMixLogNorm(BM.hist, BM.nSR.x, 1, 3, 343);
+[~, invGam_BIGMACS, BM.invgamfit] = fitInvGamma(BM.hist, BM.nSR.x, 343);
+[~,BM.gamfit] = fitGamma(BM.hist, BM.nSR.x, 343);
 [BM.lnSR.x, BM.lnSR.px] = px_to_pfx(BM.nSR.x, BM.nSR.px, @log);
 BMpdf.numParams = 6;
 BMpdf.x = BM.lnSR.x;
 BMpdf.px = BM.lnSR.px;
 
 %% Load data and fits
-%load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit28Feb26_depthweight_400R");
-load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit26Mar26_noweight_SR_400R.mat")
+load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit28Feb26_depthweight_400R");
+
 
 %% Take data of interest
 %----- Find corenames, lats, longs, depths of cores included
@@ -41,8 +43,7 @@ dataTbl = d.dataT(d.S1.chooseLog, :);
 % Define tick locations
 lonTicks = -180:20:180;
 latTicks = -40:20:40;
-tickLen = 2; % in degrees, adjust to taste
-
+tickLen = 2; % in degrees
 
 figure;
 
@@ -142,7 +143,7 @@ usedLog = ~isnan(d.dataT.meanSR);
 plotAgeModes(d.S1.chooseLog,d.S1.chooseLog, d.dataT.ageModes, d.dataT.cores)
 
 %% %Create table of useful information
-dStrus = {d.S1.BMedian, d.S1.BChIR, d.S1.RSR0IR, d.S1.RSR500IR, d.S1.RSR1000IR};
+dStrus = {d.S1.BMedian, d.S1.BSampIR, d.S1.RSR0IR, d.S1.RSR500IR, d.S1.RSR1000IR};
 dStrusStrings = ["BMedian", "BSamp", "RSR0", "RSR500", "RSR1000"];
 
 MeanAgePairsT  = NaN(length(dStrus),1);
@@ -349,11 +350,11 @@ ylims = ylim;
 
 %% All sampling approaches histogram of median with 68th percentile bars + dt histogram
 nsubs = 4;
-numruns = length(d.S1.BChIR.OneRunDatas);
+numruns = length(d.S1.BSampIR.OneRunDatas);
 fB = figure;
 fB.Position = [100, 100, 1000, 800]; % Wide and short: [left, bottom, width, height]
 subplot(4,2,1)
-A = sort(d.S1.BChIR.lnSRHistCounts, 1);
+A = sort(d.S1.BSampIR.lnSRHistCounts, 1);
 hold on
 box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceColor', '[0.8 0.8 0.8]')
@@ -368,7 +369,7 @@ ylabel("cm")
 text(0.02, 0.9, 'A', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold')
 
 subplot(4,2,2)
-B = sort(d.S1.BChIR.agediffsWbC', 1);
+B = sort(d.S1.BSampIR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceColor', '[0.8 0.8 0.8]')
@@ -469,10 +470,10 @@ text(0.02, 0.9, 'H', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold'
 
 %% All sampling approaches histogram pooled
 nsubs = 4;
-numruns = length(d.S1.BChIR.OneRunDatas);
+numruns = length(d.S1.BSampIR.OneRunDatas);
 figure;
 subplot(4,2,1)
-A = sort(d.S1.BChIR.lnSRHistCounts, 1);
+A = sort(d.S1.BSampIR.lnSRHistCounts, 1);
 box on
 histogram('BinCounts', sum(A,1), 'BinEdges', logBinEdges, 'FaceAlpha', 0.1)
 hold on
@@ -482,7 +483,7 @@ xlabel("log(NSR)")
 ylabel("cm")
 title("BSamp [500-4000yr]")
 subplot(4,2,2)
-B = sort(d.S1.BChIR.agediffsWbC', 1);
+B = sort(d.S1.BSampIR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', sum(B,1), 'BinEdges', 0:0.1:10, 'FaceAlpha', 0.1)
@@ -558,7 +559,7 @@ ylabel("cm")
 %This is the BIC (with the correction to the likelihood) for each 
 
 BIC_BMedian = round([d.S1.BMedian.LN.fitInfo.BICtaeheefix, d.S1.BMedian.MLN.fitInfo.BICtaeheefix, d.S1.BMedian.Gam.fitInfo.BICtaeheefix, d.S1.BMedian.invGam.fitInfo.BICtaeheefix])
-BIC_BChAR = round([d.S1.BChAR.LN.fitInfo.BICtaeheefix, d.S1.BChAR.MLN.fitInfo.BICtaeheefix, d.S1.BChAR.Gam.fitInfo.BICtaeheefix, d.S1.BChAR.invGam.fitInfo.BICtaeheefix])
+BIC_BSampAR = round([d.S1.BSampAR.LN.fitInfo.BICtaeheefix, d.S1.BSampAR.MLN.fitInfo.BICtaeheefix, d.S1.BSampAR.Gam.fitInfo.BICtaeheefix, d.S1.BSampAR.invGam.fitInfo.BICtaeheefix])
 BIC_RSR0AR = round([d.S1.RSR0AR.LN.fitInfo.BICtaeheefix, d.S1.RSR0AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR0AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR0AR.invGam.fitInfo.BICtaeheefix])
 BIC_RSR500AR = round([d.S1.RSR500AR.LN.fitInfo.BICtaeheefix, d.S1.RSR500AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR500AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR500AR.invGam.fitInfo.BICtaeheefix])
 BIC_RSR1000AR = round([d.S1.RSR1000AR.LN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR1000AR.invGam.fitInfo.BICtaeheefix])
@@ -566,37 +567,37 @@ BIC_RSR1000AR = round([d.S1.RSR1000AR.LN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.ML
 %% Standard Deviation of NSR counts for each approach
 
 std(d.S1.BMedian.weightedC)
-std(d.S1.BChAR.weightedC)
+std(d.S1.BSampAR.weightedC)
 
 %% Inverse Gamma Parameters for each method
 
 invGam_BMedian = [d.S1.BMedian.invGam.fitInfo.alpha, d.S1.BMedian.invGam.fitInfo.beta];
-invGam_BChAR = [d.S1.BChAR.invGam.fitInfo.alpha, d.S1.BChAR.invGam.fitInfo.beta];
+invGam_BSampAR = [d.S1.BSampAR.invGam.fitInfo.alpha, d.S1.BSampAR.invGam.fitInfo.beta];
 invGam_RSR0AR = [d.S1.RSR0AR.invGam.fitInfo.alpha, d.S1.RSR0AR.invGam.fitInfo.beta];
 invGam_RSR500AR = [d.S1.RSR500AR.invGam.fitInfo.alpha, d.S1.RSR500AR.invGam.fitInfo.beta];
 invGam_RSR1000AR =[d.S1.RSR1000AR.invGam.fitInfo.alpha, d.S1.RSR1000AR.invGam.fitInfo.beta];
 
-invGam_parameters = [invGam_BMedian; invGam_BChAR; invGam_RSR0AR; invGam_RSR500AR; invGam_RSR1000AR]
+invGam_parameters = [invGam_BMedian; invGam_BSampAR; invGam_RSR0AR; invGam_RSR500AR; invGam_RSR1000AR]
 
 %% Gamma parameters for each method
 
 Gam_BMedian = [d.S1.BMedian.Gam.fitInfo.alpha, d.S1.BMedian.Gam.fitInfo.beta];
-Gam_BChAR = [d.S1.BChAR.Gam.fitInfo.alpha, d.S1.BChAR.Gam.fitInfo.beta];
+Gam_BSampAR = [d.S1.BSampAR.Gam.fitInfo.alpha, d.S1.BSampAR.Gam.fitInfo.beta];
 Gam_RSR0AR = [d.S1.RSR0AR.Gam.fitInfo.alpha, d.S1.RSR0AR.Gam.fitInfo.beta];
 Gam_RSR500AR = [d.S1.RSR500AR.Gam.fitInfo.alpha, d.S1.RSR500AR.Gam.fitInfo.beta];
 Gam_RSR1000AR =[d.S1.RSR1000AR.Gam.fitInfo.alpha, d.S1.RSR1000AR.Gam.fitInfo.beta];
 
-Gam_parameters = [Gam_BMedian; Gam_BChAR; Gam_RSR0AR; Gam_RSR500AR; Gam_RSR1000AR]
+Gam_parameters = [Gam_BMedian; Gam_BSampAR; Gam_RSR0AR; Gam_RSR500AR; Gam_RSR1000AR]
 
 %% LN parameters for each method
 
 LN_BMedian = [d.S1.BMedian.LN.fitInfo.mu, d.S1.BMedian.LN.fitInfo.Sigma];
-LN_BChAR = [d.S1.BChAR.LN.fitInfo.mu, d.S1.BChAR.LN.fitInfo.Sigma];
+LN_BSampAR = [d.S1.BSampAR.LN.fitInfo.mu, d.S1.BSampAR.LN.fitInfo.Sigma];
 LN_RSR0AR = [d.S1.RSR0AR.LN.fitInfo.mu, d.S1.RSR0AR.LN.fitInfo.Sigma];
 LN_RSR500AR = [d.S1.RSR500AR.LN.fitInfo.mu, d.S1.RSR500AR.LN.fitInfo.Sigma];
 LN_RSR1000AR =[d.S1.RSR1000AR.LN.fitInfo.mu, d.S1.RSR1000AR.LN.fitInfo.Sigma];
 
-LN_parameters = [LN_BMedian; LN_BChAR; LN_RSR0AR; LN_RSR500AR; LN_RSR1000AR]
+LN_parameters = [LN_BMedian; LN_BSampAR; LN_RSR0AR; LN_RSR500AR; LN_RSR1000AR]
 
 %%
 % Provide evidence that fitting to the pooled data

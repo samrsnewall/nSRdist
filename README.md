@@ -28,7 +28,7 @@ Loads the saved results from Stage 1 and fits four candidate probability distrib
 |---|---|
 | **BMedian** | Uses the median of the Bchron age-depth model at each radiocarbon dated depth. Analogous to the Lin et al. (2014) approach. |
 | **BMode** | Uses the mode of the Bchron age-depth model. |
-| **BSamp (BChAR / BChIR)** | Samples directly from the Bchron posterior age-depth distribution across many runs. |
+| **BSamp (BSampAR / BSampIR)** | Samples directly from the Bchron posterior age-depth distribution across many runs. |
 | **RSR0 / RSR500 / RSR1000 / RSR1500** | Random sampling from calibrated radiocarbon age probability distributions, with an optional minimum age-difference restriction (0, 500, 1000, or 1500 years) between consecutive dates. |
 
 ---

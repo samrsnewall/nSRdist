@@ -1,3 +1,13 @@
+%% Add necessary paths
+addpath("../Functions/")
+
+%% Set up histogram settings
+%Create binedges
+maxbinedge   = 20;
+bw           = 0.1; %bin width
+binEdges     =  0:bw:maxbinedge; %nSR
+invBinEdges  =  0:bw:maxbinedge; %invnSR
+logBinEdges  = -5:bw:5;          %lognSR
 
 %% Fit Mix Log Norm to BIGMACS data for comparison reasons
 %Load BIGMACS files
@@ -11,26 +21,37 @@ BM.TM = readmatrix("../BIGMACSdata/transition_parameter.txt");
 
 [BM.lnSR.x, BM.lnSR.px] = px_to_pfx(BM.nSR.x, BM.nSR.px, @log);
 
+%% Figure of BM histogram in nSR, log(nSR) and inv(nSR)
+
+figure;
+subplot(3,1,1)
+title("BIGMACS HIST")
+xlim([0 exp(2)])
+hold on
+ylabel("cm")
+histogram(BM.hist, 'BinEdges', binEdges)
+xlabel("nSR")
+subplot(3,1,2)
+hold on
+histogram(log(BM.hist), 'BinEdges', logBinEdges)
+xlim([-4 4])
+xlabel("log(nSR)")
+ylabel("cm")
+subplot(3,1,3)
+hold on
+histogram(1./(BM.hist), 'BinEdges', invBinEdges)
+xlim([0 (exp(2))])
+xlabel("inv(nSR)")
+ylabel("cm")
+ax = gca;
+ax.XDir = 'reverse';
+
 %% Figure of All Data, Newall500 Sampling in nSR, log(nSR) and inv(nSR)
+
 % Load data
-dAD = load("../Results/dataT_PFandLin_R200M20_Feb4_fitFeb18.mat");
+dAD = load("../Results/dataT_PFandLin_R200M20_Feb19_nSRmeanTrue_fitFeb19.mat");
 d = dAD.d;
 dN500_label = "Newall500";
-
-%Create binedges in invnSR
-if max(cell2mat(dAD.d.S1.BSampIR.weightedC)) < 15
-    binEdges = 0:0.1:15; else
-    binEdges = [0:0.1:15, ceil(max(cell2mat(dAD.d.S1.BSampIR.weightedC)))];
-end
-
-%Create binedges in lognSR
-logBinEdges = -5:0.1:5;
-
-%Create binedges in invnSR
-if 1/(min(cell2mat(dAD.d.S1.BSampIR.weightedC))) < 15
-    invBinEdges = 0:0.1:15; else
-    invBinEdges = [0:0.1:15, 1./min(cell2mat(dAD.d.S1.BSampIR.weightedC))];
-end
 
 %How many runs to plot
 numruns = 100;
@@ -58,26 +79,28 @@ ylabel("cm")
 ax = gca;
 ax.XDir = 'reverse';
 
-
 %% Transparent BchronMode, Bchron Samples and Newall500 histograms in log(nSR) space
 
 figure;
-subplot(3,1,1)
-histogram(log(dAD.d.S1.BMode.Hist), 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
+subplot(4,1,1)
+histogram(log(BM.hist),'BinEdges', logBinEdges, 'FaceColor', 'b', 'FaceAlpha', 0.1)
+xlim([-4 4])
+title("BIGMACS Histogram")
+subplot(4,1,2)
+histogram(log(dAD.d.S1.BMode.Hist),'BinEdges', logBinEdges, 'FaceColor', 'r', 'FaceAlpha', 0.1, 'DisplayName', 'Replicated nSR counts');
 xlim([-4 4])
 title("BchronMode")
-subplot(3,1,2)
+subplot(4,1,3)
 for i = 1:numruns
     hold on
     histogram(log(dAD.d.S1.BSampIR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none')
 end
 xlim([-4 4])
-
 title("Bchron Samples, Transparent Histograms")
 %Now plot each individual histogram with a transparent face color
-subplot(3,1,3)
+subplot(4,1,4)
 for i = 1:numruns
-    hold on
+    hold on         
     histogram(log(dAD.d.S1.New500IR.weightedC{i}), 'BinEdges', logBinEdges, 'FaceAlpha', 0.05, 'FaceColor', 'k', 'EdgeColor','none')
 end
 xlim([-4 4])
@@ -133,6 +156,9 @@ OneNewInvGampdf.numParams = 2;
 fitS.dispChi2 = true;
 
 [h1, p1, chiStat1, h2, p2, chiStat2] = chi2_dataVStwopdfVECs(log(dAD.d.S1.New500IR.weightedC{r}), dAD.d.S1.New500IR.numCpairs(r), 20,OneNewMLNpdf , OneNewInvGampdf, fitS);
+gcf
+xlabel("log(nSR)")
+
 
 %% Compare newall sampled data and fits to Bchron sampled data and fits
 
@@ -177,6 +203,7 @@ chooseInvGam_Newall500 = numruns - chooseMLN_Newall500;
 figure()
 subplot(2,1,1)
 xlim([-3 3])
+ylim([0 15000])
 yyaxis left
 hold on
 ylabel("cm")
@@ -201,6 +228,7 @@ legend()
 title("Bchron Samplings")
 subplot(2,1,2)
 xlim([-3 3])
+ylim([0 15000])
 yyaxis left
 hold on
 ylabel("cm")
@@ -262,7 +290,6 @@ end
 %Find which distribution fits better for each run
 chooseMLN_Newall1000 = sum(dAD.d.S1.New1000IR.MLNchiStats.p > dAD.d.S1.New1000IR.InvGamChiStats.p);
 chooseInvGam_Newall1000 = numruns - chooseMLN_Newall1000;
-
 
 figure()
 subplot(3,1,1)
@@ -340,6 +367,55 @@ legend()
 
 %% Check impact of using single mean SR vs actual mean SR for sampling
 
+% Load data where meanSR is calculated using sampled data
+dADT = load("../Results/dataT_PFandLin_R200M20_Feb19_nSRmeanTrue_fitFeb19.mat");
+
+% Load data where meanSR is calculated using mode of Bchron run
+dADF = load("../Results/dataT_PFandLin_R200M20_Feb19_nSRmeanFalse_fitFeb19.mat");
+
+%Create binedges in lognSR
+logBinEdges = -5:0.1:5;
+logBinCenters = (logBinEdges(1:end-1)+logBinEdges(2:end))./2;
+
+figure;
+subplot(3,2,1)
+NT = histogram(log(cell2mat(dADT.d.S1.New500IR.weightedC)), 'BinEdges', logBinEdges, 'FaceColor', [0.8, 0, 0]);
+xlim([-4 4])
+ylim([0 1e6])
+xlabel("log(nSR)")
+ylabel("cm")
+title("True, Newall500")
+subplot(3,2,2)
+BT = histogram(log(cell2mat(dADT.d.S1.BSampIR.weightedC)), 'BinEdges', logBinEdges, 'FaceColor', [0, 0, 0.8]);
+xlim([-4 4])
+ylim([0 1e6])
+xlabel("log(nSR)")
+ylabel("cm")
+title("True, Bchron")
+subplot(3,2,3)
+NF = histogram(log(cell2mat(dADF.d.S1.New500IR.weightedC)), 'BinEdges', logBinEdges, 'FaceColor', [0.8, 0, 0]);
+xlim([-4 4])
+ylim([0 1e6])
+xlabel("log(nSR)")
+ylabel("cm")
+title("False, Newall500")
+subplot(3,2,4)
+BF = histogram(log(cell2mat(dADF.d.S1.BSampIR.weightedC)), 'BinEdges', logBinEdges, 'FaceColor', [0, 0, 0.8]);
+xlim([-4 4])
+ylim([0 1e6])
+xlabel("log(nSR)")
+ylabel("cm")
+title("False, Bchron")
+subplot(3,2,5)
+plot(logBinCenters, NT.BinCounts - NF.BinCounts, 'r')
+ylim([-1e6 1e6])
+title("True - False Bincounts")
+xlabel("log(nSR)")
+subplot(3,2,6)
+plot(logBinCenters, BT.BinCounts - BF.BinCounts, 'b')
+ylim([-1e6 1e6])
+title("True - False Bincounts")
+xlabel("log(nSR)")
 
 %% Compare histograms from depth-weighted, age-weighted, unweighted
 
