@@ -1,4 +1,4 @@
-function [interp_invSR, iProbs_wdN, meanSR, reversalpairs, numpairs, ageMode, depdiff, agediff, MSI_byage, MSI_bydepth, IDpairs, agediffV] = scenariopdfNorm(depth, date_is, label, ageprob, calAge, IDpairs, agediffV, S, plotfigs)
+function [interp_invSR, iProbs_wdN, aveSR, reversalpairs, numpairs, ageMode, depdiff, agediff, MSI_byage, MSI_bydepth, IDpairs, agediffV] = scenariopdfNorm(depth, date_is, label, ageprob, calAge, IDpairs, agediffV, S, plotfigs)
 % scenariopdfNorm  Compute the normalised inverse-SR PDF for a single
 %                  age-depth scenario, and detect age reversals.
 %
@@ -8,15 +8,15 @@ function [interp_invSR, iProbs_wdN, meanSR, reversalpairs, numpairs, ageMode, de
 %   2. If any reversals are found, returns early (outputs zeroed) so the
 %      caller (scenariosDealWithReversals) can split the scenario.
 %   3. Otherwise, calls agediffcalc to compute the age-difference PDF for
-%      each pair, converts to inverse SR, normalises by the mean SR of the
+%      each pair, converts to inverse SR, normalises by the average SR of the
 %      scenario, interpolates onto a common grid, then depth-weights and
 %      sums the per-pair PDFs into a single scenario PDF.
 %
 % NORMALISATION
-% Inverse SR values are normalised by the mean SR (computed as total
+% Inverse SR values are normalised by the average SR (computed as total
 % sediment length divided by total time span, in cm/kyr) so that the
 % resulting PDF is in dimensionless units of normalised inverse SR (nSR = 1
-% at the mean SR). This allows PDFs from different cores and time periods
+% at the average SR). This allows PDFs from different cores and time periods
 % to be combined.
 %
 % INPUTS
@@ -51,7 +51,7 @@ function [interp_invSR, iProbs_wdN, meanSR, reversalpairs, numpairs, ageMode, de
 %   iProbs_wdN    - (numeric vector) Normalised, depth-weighted sum of all
 %                   per-pair PDFs on the interp_invSR grid. Empty if
 %                   S.pdfMethod is false or reversals were found.
-%   meanSR        - (numeric scalar) Mean SR for this scenario (cm/kyr),
+%   aveSR        - (numeric scalar) Average SR for this scenario (cm/kyr),
 %                   computed as total depth span / total time span using
 %                   mode ages.
 %   reversalpairs - (logical vector, 1×numpairs) Entry m is 1 if the pair
@@ -105,8 +105,9 @@ end
 
 % Return early if any reversals exist: the caller will split this scenario.
 if sum(reversalpairs) > 0
-    interp_invSR = 0;
-    iProbs_wdN   = 0;
+    interp_invSR = NaN;
+    iProbs_wdN   = NaN;
+    aveSR = NaN;
     return
 end
 
@@ -132,7 +133,7 @@ for m = 1:numpairs
     invSR_probsums{m} = agediff_probsumsPos{m} ./ invSRAUC(m);
 end
 
-%% Compute mean SR for this scenario (cm/kyr)
+%% Compute average SR for this scenario (cm/kyr)
 % Uses the mode ages of the outermost dates and the total depth span.
 [~, topage_ind]    = max(ageprob(:,1));
 [~, bottomage_ind] = max(ageprob(:,end));
@@ -140,12 +141,12 @@ topage_mode     = calAgekyrs(topage_ind);
 bottomage_mode  = calAgekyrs(bottomage_ind);
 total_agediff   = bottomage_mode - topage_mode;   % kyr
 total_depthdiff = dep_is(end) - dep_is(1);        % cm
-meanSR          = total_depthdiff ./ total_agediff;   % cm/kyr
+aveSR          = total_depthdiff ./ total_agediff;   % cm/kyr
 
-%% Normalise inverse SR by mean SR
-% Multiplying inverse SR (yr/cm) by mean SR (cm/kyr) and a unit-conversion
-% factor (1/1000 yr/kyr) gives dimensionless nSR = invSR / (1/meanSR).
-invSR_normvals = cellfun(@(x) x * (meanSR .* (1/1000)), invSR_vals, 'un', 0);
+%% Normalise inverse SR by average SR
+% Multiplying inverse SR (yr/cm) by average SR (cm/kyr) and a unit-conversion
+% factor (1/1000 yr/kyr) gives dimensionless nSR = invSR / (1/aveSR).
+invSR_normvals = cellfun(@(x) x * (aveSR .* (1/1000)), invSR_vals, 'un', 0);
 
 %% Diagnostic plots (individual pairwise PDFs)
 if plotfigs == 1
