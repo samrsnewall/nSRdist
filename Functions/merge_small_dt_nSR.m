@@ -31,13 +31,14 @@ function [nSR_out, mergeLog] = merge_small_dt_nSR(nSR, dt_min)
         error('No core breaks found: expected at least one NaN in row 1.');
     end
 
-    % Identify core blocks using header columns as starts.
+    % Identify core blocks using header columns (NaNs in first row) as starts.
     coreStarts = find(header);
 
     nSR_out = zeros(3,0);
     mergeLog = struct('core', {}, 'j_in_core', {}, 'direction', {}, 'dt_before', {}, 'dt_after', {});
     logk = 0;
 
+    
     for c = 1:numel(coreStarts)
         s = coreStarts(c);
         if c < numel(coreStarts)
