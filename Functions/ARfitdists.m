@@ -1,4 +1,4 @@
-function[outS] = ARfitdists(dataTCol, x, chooseLog, weightRepDP, weightRepInflator, countDivisor, fitS)
+function[outS] = ARfitdists(dataTCol, x, chooseLog, weightRepDataDP, weightRepInflator, countDivisor, fitS)
 % ARfitdists  Fit four probability distributions to pooled nSR data from a
 %             set of cores.
 %
@@ -53,13 +53,13 @@ nSRcountsArray_before = nSRcountsArray;
 %Get rid of negative sedimentation rates (ideally shouldn't be there)
 if sum(nSRcountsArray(1,:) < 0) ~= 0
     warning("There are negative sed rates!... being removed")
-    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) >= 0);
+    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) >= 0 | isnan(nSRcountsArray(1,:)));
 end
 
 %Get rid of SRs of 0 (ideally shouldn't be there)
 if sum(nSRcountsArray(1,:) == 0) ~= 0
     warning("There are SRs of 0!... being removed")
-    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) > 0);
+    nSRcountsArray = nSRcountsArray(:, nSRcountsArray(1,:) > 0 | isnan(nSRcountsArray(1,:)));
 end
 
 % If wanted - calculate SR to use instead of NSR
@@ -75,13 +75,12 @@ if fitS.merge_small_dt
     [nSRcountsArray, mergeLog] = merge_small_dt_nSR(nSRcountsArray, 500);
 end
 
+nSRcountsArray_nofilt = nSRcountsArray;
 %Apply filtering as done by Lin2014 if desired
 if fitS.Lin2014AgeFiltering
     L2014Log = (nSRcountsArray(3,:) < max(fitS.Lin2014AgeFilter) & nSRcountsArray(3,:) > min(fitS.Lin2014AgeFilter)) | isnan(nSRcountsArray(1,:));
     nSRcountsArray = nSRcountsArray(:,L2014Log);
 end
-
-
 
 %% Apply weighting
 %Convert the weighted nSR counts to a single dimension array of counts
@@ -105,12 +104,12 @@ else
     else
         error("Weighting type not recognized, must be 'none', 'depth', or 'age'")
     end
-    data            = makeWeightedReplicates(inputData, weights, weightRepDP, weightRepInflator); %Weight by replicating data according to weighting
+    data            = makeWeightedReplicates(inputData, weights, weightRepDataDP, weightRepInflator); %Weight by replicating data according to weighting
     
 end
 
 %% Resample data if desired
-outS.numCpairs = size(nSRcountsArray, 2)./countDivisor;
+outS.numCpairs = length(inputData)./countDivisor;
 
 if fitS.resampleData
     rng(3)
@@ -144,8 +143,9 @@ outS.weightedC = data;
 agediffsBinEdges = 0:100:10000;
 outS.agediffsWC= makeWeightedBinCounts(ageDiffs, weights, agediffsBinEdges);
 
-outS.sedLength = sum(depthDiffs, "omitnan");
-outS.sedTimeSpan = sum(ageDiffs, "omitnan");
+numruns         = sum(~NaN_logi)./sum(chooseLog);
+outS.sedLength = sum(depthDiffs, "omitnan")./numruns;
+outS.sedTimeSpan = sum(ageDiffs, "omitnan")./numruns;
 
 %Calculate mean and variance of each pdf
 [invGam.nSR.mu, invGam.nSR.var] = muVarPDFVec(invGam.nSR);
@@ -153,8 +153,7 @@ outS.sedTimeSpan = sum(ageDiffs, "omitnan");
 [LN.nSR.mu, LN.nSR.var] = muVarPDFVec(LN.nSR);
 [MLN.nSR.mu, MLN.nSR.var] = muVarPDFVec(MLN.nSR);
 
-
-%% Transform pdf Vecs to log space and set up fo
+%% Transform pdf Vecs to log space
 f_log = @(x) log(x);
 [MLN.lnSR.x, MLN.lnSR.px] = px_to_pfx(MLN.nSR.x, MLN.nSR.px, f_log);
 [MLN.lnSR.mu, MLN.lnSR.var] = muVarPDFVec(MLN.lnSR);
@@ -195,11 +194,19 @@ if fitS.run_chi2gof
     invGam.chiStats = chiStat{4};
 end
 
+
+%% Calculate TM
+%Not sure from Lin2014 whether the TM was calculated with or without the
+%NSR counts from outside the dt range. If without, how does it deal with
+%the gaps?
+[~,~,TM,~] = TMcalculationAR(nSRcountsArray_nofilt, fitS);
+
 %% Put structures into output structure
 outS.LN = LN;
 outS.MLN = MLN;
 outS.Gam = Gam;
 outS.invGam = invGam;
+outS.TM = TM;
 
 
 end
