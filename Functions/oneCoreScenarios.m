@@ -1,4 +1,4 @@
-function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, ageModes, scenarios, label, numreversals_mean, scenario_meanSR] = oneCoreScenarios(corename, dataLoc, LabIDs, incDepths, excLabIDs, excDepths, S, plotfigs)
+function [core_invSRvals, core_invSRprobs, aveSR, MSI_byage_mean, MSI_bydepth_mean, lengthsed_mean, numdatepairs_mean, ageModes, scenarios, label, numreversals_mean, scenario_aveSR] = oneCoreScenarios(corename, dataLoc, LabIDs, incDepths, excLabIDs, excDepths, S, plotfigs)
 % oneCoreScenarios  Per-core preprocessing: filter dates, build age-depth
 %               scenarios, handle reversals, and compute inverse SR PDF.
 %
@@ -37,7 +37,7 @@ function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_m
 %   core_invSRvals    - Inverse SR values from the combined core PDF
 %                       (empty if S.pdfMethod is false or core rejected)
 %   core_invSRprobs   - Probabilities corresponding to core_invSRvals
-%   meanSR            - Mean SR across all valid scenarios (cm/kyr)
+%   aveSR            - Average SR across all valid scenarios (cm/kyr)
 %   MSI_byage_mean    - Mean Spacing Index by age, averaged across scenarios
 %   MSI_bydepth_mean  - Mean Spacing Index by depth, averaged across scenarios
 %   lengthsed_mean    - Mean sediment length across scenarios (cm)
@@ -48,7 +48,7 @@ function [core_invSRvals, core_invSRprobs, meanSR, MSI_byage_mean, MSI_bydepth_m
 %   label             - (string vector) Lab IDs after filtering
 %   numreversals_mean - Placeholder (currently returns 999; not yet
 %                       implemented)
-%   scenario_meanSR   - (numeric vector) Mean SR for each scenario (cm/kyr)
+%   scenario_aveSR   - (numeric vector) Average SR for each scenario (cm/kyr)
 %
 % See also: calcData, filtering, scenariosDDD, scenariosDealWithReversals,
 %           oneCoreRSR, nSRBchron
@@ -70,7 +70,7 @@ end
 if emptybreak1 == 1 || emptybreak2 == 1
     core_invSRvals = [];
     core_invSRprobs = [];
-    meanSR = NaN;
+    aveSR = NaN;
     MSI_byage_mean = NaN;
     MSI_bydepth_mean = NaN;
     numdatepairs_mean = NaN;
@@ -78,7 +78,7 @@ if emptybreak1 == 1 || emptybreak2 == 1
     lengthsed_mean = NaN;
     scenarios = [];
     numreversals_mean = NaN;
-    scenario_meanSR = [];
+    scenario_aveSR = [];
     return
 end
 
@@ -115,7 +115,7 @@ SS.CFR          = zeros(numScenarios, 1);   % 1 once a scenario is confirmed rev
 SS.chosenLabels = chosenLabels;
 SS.invSRvals    = cell(numScenarios, 1);
 SS.invSRprobs   = cell(numScenarios, 1);
-SS.meanSR       = nan(numScenarios, 1);
+SS.aveSR       = nan(numScenarios, 1);
 SS.numdatepairs = nan(numScenarios, 1);
 SS.ageModes     = cell(numScenarios, 1);
 SS.lengthSed    = nan(numScenarios, 1);
@@ -144,7 +144,7 @@ end
 
 %% Unpack scenarioStruct for downstream calculations
 scenarios       = SS.scenarios;
-scenario_meanSR = SS.meanSR;
+scenario_aveSR = SS.aveSR;
 numdatepairs    = SS.numdatepairs;
 lengthsed       = SS.lengthSed;
 MSI_byage       = SS.MSI_byage;
@@ -154,7 +154,7 @@ scenario_invSRvals  = SS.invSRvals;
 scenario_invSRprobs = SS.invSRprobs;
 
 %% Summary statistics across all valid scenarios
-meanSR            = mean(scenario_meanSR, 'omitmissing');
+aveSR            = mean(scenario_aveSR, 'omitmissing');
 numdatepairs_mean = mean(numdatepairs, 'omitmissing');
 lengthsed_mean    = mean(lengthsed, 'omitmissing');
 numreversals_mean = 999; % placeholder — not yet implemented
