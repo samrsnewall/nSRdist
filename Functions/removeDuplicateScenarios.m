@@ -8,7 +8,7 @@ function SS = removeDuplicateScenarios(SS)
 %
 % INPUT / OUTPUT
 %   SS - scenarioStruct with fields: scenarios, CFR, chosenLabels,
-%        invSRvals, invSRprobs, meanSR, numdatepairs, ageModes,
+%        invSRvals, invSRprobs, aveSR, numdatepairs, ageModes,
 %        lengthSed, MSI_byage, MSI_bydepth
 %
 % See also: oneCoreScenarios, scenariosDealWithReversals
@@ -40,7 +40,7 @@ SS.CFR          = SS.CFR(scenarios2keep);
 SS.chosenLabels = SS.chosenLabels(scenarios2keep);
 SS.invSRvals    = SS.invSRvals(scenarios2keep);
 SS.invSRprobs   = SS.invSRprobs(scenarios2keep);
-SS.meanSR       = SS.meanSR(scenarios2keep);
+SS.aveSR       = SS.aveSR(scenarios2keep);
 SS.numdatepairs = SS.numdatepairs(scenarios2keep);
 SS.ageModes     = SS.ageModes(scenarios2keep);
 SS.lengthSed    = SS.lengthSed(scenarios2keep);
