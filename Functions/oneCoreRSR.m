@@ -57,11 +57,8 @@ function [nSRcounts, agediffs] = oneCoreRSR(corename, dataLoc, scenarios, LabIDs
 %                     accepted age is discarded for that run.
 %
 % OUTPUTS
-%   nSRcounts  - (4 x M) nSR matrix with all runs concatenated horizontally.
+%   nSRcounts  - (3 x M) nSR matrix with all runs concatenated horizontally.
 %                See README "Internal Data Formats" for the full format spec.
-%                Note: Row 2 weights are depth-differences divided by
-%                S.numruns, so that summing across all runs gives a weight
-%                proportional to depth span.
 %   agediffs   - (1 x P) All age differences from all runs, concatenated.
 %                Used downstream for diagnostic purposes.
 %
