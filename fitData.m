@@ -57,8 +57,8 @@
 %       d.S1.RSR1000AR — ARfitdists output for pooled RSR1000
 %       d.S1.BSampIR   — IRfitdists output for individual BSamp runs (if fitS.fitIRs)
 %       d.S1.RSR0IR    — IRfitdists output for individual RSR0 runs (if fitS.fitIRs)
-%       d.S1.RSR500IR  — (if fitS.fitIRs)
-%       d.S1.RSR1000IR — (if fitS.fitIRs)
+%       d.S1.RSR500IR  — IRfitdists output for individual RSR500 runs(if fitS.fitIRs)
+%       d.S1.RSR1000IR — IRfitdists output for individual RSR1000 runs(if fitS.fitIRs)
 %   BM          — BIGMACS reference distribution (fitted MLN and histogram)
 %
 % DEPENDENCIES
@@ -70,36 +70,71 @@ addpath('Functions')
 addpath('Results')
 
 %% Load the calcData results
-filepath =    "Results/dataT_All1_RLGtrue_30Mar26";
+%filepath =    "Results/dataT_All1_RLGtrue_BchronJun2_3Apr26";
+filepath =    "Results/dataT_All1_RLGtrue_Bchron8Apr26";
 load(filepath)
 d.dataT = dataT;
 d.S = S;
 d.label = "AllCores, R200M20";
 split_filepath = split(filepath, ".mat");
-filename2save =  split_filepath(1)+ "_fit1Apr26_depthweight_MSdt.mat";
+filename2save =  split_filepath(1)+ "_fit9Apr26_ageweight.mat";
 
 %% Set up fitting settings structure (fitS)
 % fitS controls all aspects of how distributions are fitted to the nSR data.
+
+% --- Core subset filters (applied to d.dataT) ---
+fitS.minMeanSR = 8;                 % Minimum mean SR (cm/kyr); cores below this are excluded
+fitS.minDepth = 1000;               % Minimum water depth (m)
+fitS.maxLat = 40;                   % Maximum absolute latitude (degrees)
+%Note, filters (that may be different) are also applied in calcData
+
+% --- Distribution fitting options ---
+fitS.fitDists = true;               % If true, fits all four distributions (MLN, LN, Gam, invGam)
+fitS.weighting = "age";           % How nSR estimates are weighted when fitting: "depth", "age", or "none"
+fitS.non_normalized_SR = false;     % If true, fits absolute SR (cm/kyr) rather than nSR
+fitS.mlnReps = 3;                   % Number of EM random restarts when fitting the Mixed Log-Normal;
+                                    %   more restarts reduce the chance of converging to a local optimum
 
 % --- Age filtering ---
 fitS.Lin2014AgeFilter = [500 4000]; % [min max] age difference (yr) allowed between dated pairs
                                     % when fitS.Lin2014AgeFiltering = true; mirrors Lin2014 criterion
 
 % --- Data pre-processing ---
-fitS.merge_small_dt = true;         % If true, adjacent nSR bins with dt < 500 yr are merged before fitting
+fitS.merge_small_dt = false;         % If true, adjacent nSR bins with dt < 500 yr are merged before fitting
                                     % (via merge_small_dt_nSR) to reduce resolution bias
 
-% --- Core subset filters (applied to d.dataT) ---
-fitS.weighting = "depth";           % How nSR estimates are weighted when fitting: "depth", "age", or "none"
-fitS.minMeanSR = 8;                 % Minimum mean SR (cm/kyr); cores below this are excluded
-fitS.minDepth = 1000;               % Minimum water depth (m)
-fitS.maxLat = 40;                   % Maximum absolute latitude (degrees)
+% --- Pooled-run (AR) fitting parameters ---
+fitS.invXbinEdges = 0:0.1:15;                  % Bin edges for inverse-SR histogram (used in invGam fitting)
+fitS.resampleData = false;                     % If true, after weighting resamples data back to%   original N (removes inflation from replication)
+if fitS.weighting == "depth"
+fitS.PooledRuns.weightRepDP = 3;               % Decimal places to round data to in replication process
+fitS.PooledRuns.weightRepInflator = 0.5;         % Multiplier on weights before replication (increase or reduce size of weights; 1 = no inflation)
+elseif fitS.weighting == "age"        
+    fitS.PooledRuns.weightRepDP = 3;
+    fitS.PooledRuns.weightRepInflator = 0.001;
+else
+    fitS.PooledRuns.weightRepDP = 3;
+    fitS.OneRun.weightRepInflator = 1;
+end
 
-% --- Distribution fitting options ---
-fitS.fitDists = true;               % If true, fits all four distributions (MLN, LN, Gam, invGam)
-fitS.non_normalized_SR = false;     % If true, fits absolute SR (cm/kyr) rather than nSR
-fitS.mlnReps = 3;                   % Number of EM random restarts when fitting the Mixed Log-Normal;
-                                    %   more restarts reduce the chance of converging to a local optimum
+
+% --- Individual-run (IR) fitting (BSampIR, RSR0IR, etc.) ---
+fitS.fitIRs = true; % If true, fits distributions to each run separately (slower; gives variability estimate)
+if fitS.fitIRs
+    fitS.OneRun.numruns = 1000;  % Number of individual runs to sample and fit
+            fitS.OneRun.MLNReps = 3;
+    if fitS.weighting == "depth"
+        fitS.OneRun.weightRepDP = 3;        % Decimal places for weight rounding in IR fits
+        fitS.OneRun.weightRepInflator = 1;  % Weight inflator for IR fits
+            % MLN random restarts for IR fits
+    elseif fitS.weighting == "age"
+        fitS.OneRun.weightRepDP = 3;
+        fitS.OneRun.weightRepInflator = 0.001;
+    else
+        fitS.OneRun.weightRepDP = 1;
+        fitS.OneRun.weightRepInflator = 1;
+    end
+end
 
 % --- Chi-squared goodness-of-fit test (optional diagnostic) ---
 fitS.run_chi2gof = false;           % If true, runs chi-squared GOF test on each fit
@@ -109,40 +144,12 @@ fitS.chi2MinCountNum = 5;           % Minimum allowed count per bin (bins are me
 fitS.chi2MaxCountNum = 50;          % Maximum allowed count per bin (bins are split if above this)
 fitS.enforceBinSizeLimits = true;   % If true, enforces the min/max bin count limits above
 
-% --- Pooled-run (AR) fitting parameters ---
-fitS.invXbinEdges = 0:0.1:15;                  % Bin edges for inverse-SR histogram (used in invGam fitting)
-fitS.PooledRuns.weightRepDP = 3;               % Decimal places to round weights to before replication
-fitS.PooledRuns.weightRepInflator = 1;         % Multiplier on weights before replication (controls
-                                               %   effective sample size; 1 = no inflation)
-fitS.resampleData = false;                     % If true, after weighting resamples data back to
-                                               %   original N (removes inflation from replication)
-
-% --- Individual-run (IR) fitting (BSampIR, RSR0IR, etc.) ---
-fitS.fitIRs = false; % If true, fits distributions to each run separately (slower; gives variability estimate)
-if fitS.fitIRs
-    fitS.OneRun.numruns = 400;  % Number of individual runs to sample and fit
-    if fitS.weighting == "depth"
-        fitS.OneRun.weightRepDP = 3;        % Decimal places for weight rounding in IR fits
-        fitS.OneRun.weightRepInflator = 1;  % Weight inflator for IR fits
-        fitS.OneRun.MLNReps = 3;            % MLN random restarts for IR fits
-    elseif fitS.weighting == "age"
-        fitS.OneRun.weightRepDP = 3;
-        fitS.OneRun.weightRepInflator = 0.001;
-        fitS.OneRun.MLNReps = 3;
-    else
-        fitS.OneRun.weightRepDP = 1;
-        fitS.OneRun.weightRepInflator = 1;
-        fitS.OneRun.MLNReps = 3;
-    end
-end
-fitS.divideLikelihood = true;       % If true, divides the log-likelihood by N when computing BIC,
-                                    %   making BIC values comparable across methods with different sample sizes
 d.S1.fitS = fitS;
 
 fitS.useParallelComp = false;       % If true, uses parfor in IRfitdists (requires Parallel Computing Toolbox)
 %% Load BIGMACS reference distribution
 % Reads the BIGMACS (Lin2014-based) nSR log-normal and transition matrix
-% for comparison with the new fits. The MLN fitted here to BM.hist is
+% for comparison with the n5ew fits. The MLN fitted here to BM.hist is
 % used later as a reference when plotting.
 BMlognorm = readtable("BIGMACSdata/lognormal.txt");                  % (use x values currently used in BIGMACS)
 BM.nSR.x = BMlognorm.Var1';
@@ -166,45 +173,51 @@ d.S1.numCores = sum(d.S1.chooseLog);
 % bounded by the dt_min restriction chosen during calcData).
 
 % nSR grid on which all fitted PDFs are evaluated
-fitS.Lin2014AgeFiltering = true;
 d.logx = -6:0.01:6;
 d.x = exp(d.logx);
 
-% BMedian: each core contributes one nSR estimate per dated pair (countDivisor=1)
-[d.S1.BMedian] = ARfitdists(d.dataT.bchronMedian, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, 1, fitS);
+% %Lin2014 Method:
+fitS.Lin2014AgeFiltering = true;
+d.S1.LinNSR = ARfitdists(d.dataT.LinNSR, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, 1, fitS);
 
-% BSampAR: S.numruns runs per core are pooled; countDivisor scales the
-% effective weight so that total weight ≈ BMedian (prevents over-counting)
-countDivisor = 1000;
-[d.S1.BSampAR] = ARfitdists(d.dataT.bchronProb, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, 1000, fitS);
+%%
+% BMedian: 
+fitS.Lin2014AgeFiltering = true;
+fitS.merge_small_dt = false;
+[d.S1.BMedian] = ARfitdists(d.dataT.BMedian, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, 1, fitS);
 
+%%
+% BSampAR: 
+fitS.Lin2014AgeFiltering = true;
+fitS.merge_small_dt = false;
+[d.S1.BSampAR] = ARfitdists(d.dataT.BSamp, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, 1000, fitS);
+
+%%
 % RSRx pooled fits: no Lin2014 age filter (dt_min restriction serves the
 % same purpose); countDivisor set to number of RSR runs per core
 fitS.Lin2014AgeFiltering = false;
-fitS.dispChi2 = false;
-countDivisor = 400;
-[d.S1.RSR0AR]    = ARfitdists(d.dataT.nSRcounts,     d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, countDivisor, fitS);
-[d.S1.RSR500AR]  = ARfitdists(d.dataT.nSRcounts500,  d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, countDivisor, fitS);
-[d.S1.RSR1000AR] = ARfitdists(d.dataT.nSRcounts1000, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, countDivisor, fitS);
+[d.S1.RSR0AR]    = ARfitdists(d.dataT.RSR0,     d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, S.numruns, fitS);
+[d.S1.RSR500AR]  = ARfitdists(d.dataT.RSR500,  d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, S.numruns, fitS);
+[d.S1.RSR1000AR] = ARfitdists(d.dataT.RSR1000, d.x, d.S1.chooseLog, fitS.PooledRuns.weightRepDP, fitS.PooledRuns.weightRepInflator, S.numruns, fitS);
 
+%%
 if fitS.fitIRs
     %% Individual-run (IR) fits — captures run-to-run variability
     % IRfitdists randomly selects one run per core per iteration and fits
     % distributions to that single-run dataset. Repeating this fitS.OneRun.numruns
     % times gives a distribution of fit parameters whose spread quantifies
     % the uncertainty from using any single age model realisation.
-    fitS.Lin2014AgeFiltering = true;
     numruns = fitS.OneRun.numruns;
-    fitS.dispChi2 = false;
     rng(2) % Fixed seed for reproducibility
-    [d.S1.BSampIR] = IRfitdists(d.dataT.bchronProb, d.S1.chooseLog, numruns, d.x, fitS);
+    fitS.Lin2014AgeFiltering = true;
+    [d.S1.BSampIR] = IRfitdists(d.dataT.BSamp, d.S1.chooseLog, numruns, d.x, fitS);
 
     fitS.Lin2014AgeFiltering = false;
     fitS.dispChi2 = false;
     rng(2)
-    [d.S1.RSR0IR]    = IRfitdists(d.dataT.nSRcounts,     d.S1.chooseLog, numruns, d.x, fitS);
-    [d.S1.RSR500IR]  = IRfitdists(d.dataT.nSRcounts500,  d.S1.chooseLog, numruns, d.x, fitS);
-    [d.S1.RSR1000IR] = IRfitdists(d.dataT.nSRcounts1000, d.S1.chooseLog, numruns, d.x, fitS);
+    [d.S1.RSR0IR]    = IRfitdists(d.dataT.RSR0,     d.S1.chooseLog, numruns, d.x, fitS);
+    [d.S1.RSR500IR]  = IRfitdists(d.dataT.RSR500,  d.S1.chooseLog, numruns, d.x, fitS);
+    [d.S1.RSR1000IR] = IRfitdists(d.dataT.RSR1000, d.S1.chooseLog, numruns, d.x, fitS);
 
     %% Log-space histogram counts for each individual run (diagnostic)
     % Stored as numruns x numBins matrices; used to visualise the spread
