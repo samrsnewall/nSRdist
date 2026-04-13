@@ -74,7 +74,7 @@ for i = 1:numruns
             runN(:,j) = randperm(length(split_index), numruns);
         end
 
-        nSRcount_1core1run = nSRcount_opencell(1:4, split_indexStart(runN(i,j)):split_indexEnd(runN(i,j)));
+        nSRcount_1core1run = nSRcount_opencell(1:3, split_indexStart(runN(i,j)):split_indexEnd(runN(i,j)));
         if sum(nSRcount_1core1run(1,:) <= 0) ~= 0
             disp("check this core")
         end
