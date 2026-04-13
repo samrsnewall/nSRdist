@@ -26,7 +26,7 @@ function [SS, newScenIndicator, IDpairs, agediffV] = scenariosDealWithReversals(
 %                        .chosenLabels  Cell array of chosen label vectors
 %                        .invSRvals     Cell array of inverse-SR value vectors
 %                        .invSRprobs    Cell array of inverse-SR probability vectors
-%                        .meanSR        Numeric vector of mean SRs (cm/kyr)
+%                        .aveSR        Numeric vector of ave SRs (cm/kyr)
 %                        .numdatepairs  Numeric vector of date-pair counts
 %                        .ageModes      Cell array of age-mode vectors
 %                        .lengthSed     Numeric vector of sediment lengths (cm)
@@ -60,7 +60,7 @@ scenariosCFR        = SS.CFR;
 chosenLabels        = SS.chosenLabels;
 scenario_invSRvals  = SS.invSRvals;
 scenario_invSRprobs = SS.invSRprobs;
-scenario_meanSR     = SS.meanSR;
+scenario_aveSR     = SS.aveSR;
 numdatepairs        = SS.numdatepairs;
 ageModes            = SS.ageModes;
 lengthSed           = SS.lengthSed;
@@ -72,7 +72,7 @@ numScenarios         = length(scenarios);
 scenario_invSRvals2  = cell(numScenarios, 1);
 scenario_invSRprobs2 = cell(numScenarios, 1);
 scenario_labels2     = cell(numScenarios, 1);
-scenario_meanSR2     = nan(numScenarios, 1);
+scenario_aveSR2     = nan(numScenarios, 1);
 numdatepairs2        = nan(numScenarios, 1);
 ageModes2            = cell(numScenarios, 1);
 lengthSed2           = nan(numScenarios, 1);
@@ -100,7 +100,7 @@ for j = 1:numScenarios
             scenario_labels2{j} = uniqueLabels;
         end
 
-        [scenario_invSRvals2{j}, scenario_invSRprobs2{j}, scenario_meanSR2(j),...
+        [scenario_invSRvals2{j}, scenario_invSRprobs2{j}, scenario_aveSR2(j),...
             reversalpairs, numdatepairs2(j), ageModes2{j}, lengthSed2(j),...
             lengthAge2(j), MSI_byage2(j), MSI_bydepth2(j), IDpairs, agediffV] =...
             scenariopdfNorm(depth_cm, date_is, label, ...
@@ -123,7 +123,7 @@ for j = 1:numScenarios
             SS.chosenLabels = cell([]);
             SS.invSRvals    = cell([]);
             SS.invSRprobs   = cell([]);
-            SS.meanSR       = nan(0,1);
+            SS.aveSR       = nan(0,1);
             SS.numdatepairs = nan(0,1);
             SS.ageModes     = [];
             SS.lengthSed    = nan(0,1);
@@ -166,7 +166,7 @@ for j = 1:numScenarios
                     SS.chosenLabels = chosenLabels;
                     SS.invSRvals    = scenario_invSRvals2;
                     SS.invSRprobs   = scenario_invSRprobs2;
-                    SS.meanSR       = scenario_meanSR2;
+                    SS.aveSR       = scenario_aveSR2;
                     SS.numdatepairs = numdatepairs2;
                     SS.ageModes     = ageModes2;
                     SS.lengthSed    = lengthSed2;
@@ -195,7 +195,7 @@ for j = 1:numScenarios
             SS.chosenLabels = [chosenLabels2(1:j-1);   chosenLabels(j+1:end); chosenLabelsNR];
             SS.invSRvals    = [scenario_invSRvals(1:j-1);  scenario_invSRvals2(j+1:end);  cell(numNew,1)];
             SS.invSRprobs   = [scenario_invSRprobs(1:j-1); scenario_invSRprobs2(j+1:end); cell(numNew,1)];
-            SS.meanSR       = [scenario_meanSR(1:j-1);  scenario_meanSR2(j+1:end);  nan(numNew,1)];
+            SS.aveSR       = [scenario_aveSR(1:j-1);  scenario_aveSR2(j+1:end);  nan(numNew,1)];
             SS.numdatepairs = [numdatepairs(1:j-1);     numdatepairs2(j+1:end);      nan(numNew,1)];
             SS.ageModes     = [ageModes(1:j-1);         ageModes2(j+1:end);          cell(numNew,1)];
             SS.lengthSed    = [lengthSed(1:j-1);        lengthSed2(j+1:end);         nan(numNew,1)];
@@ -220,7 +220,7 @@ for j = 1:numScenarios
         chosenLabels2(j)     = chosenLabels(j);
         scenario_invSRvals2{j}  = scenario_invSRvals{j};
         scenario_invSRprobs2{j} = scenario_invSRprobs{j};
-        scenario_meanSR2(j)  = scenario_meanSR(j);
+        scenario_aveSR2(j)  = scenario_aveSR(j);
         numdatepairs2(j)     = numdatepairs(j);
         lengthSed2(j)        = lengthSed(j);
         MSI_bydepth2(j)      = MSI_bydepth(j);
@@ -236,7 +236,7 @@ SS.CFR          = scenariosNewCFR;
 SS.chosenLabels = chosenLabels2;
 SS.invSRvals    = scenario_invSRvals2;
 SS.invSRprobs   = scenario_invSRprobs2;
-SS.meanSR       = scenario_meanSR2;
+SS.aveSR       = scenario_aveSR2;
 SS.numdatepairs = numdatepairs2;
 SS.ageModes     = ageModes2;
 SS.lengthSed    = lengthSed2;
