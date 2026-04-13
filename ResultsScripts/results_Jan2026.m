@@ -73,8 +73,8 @@ yTickLen = 0.05;
 
 proj = gcm;
 
-[lonTick_x, lonTick_y] = projfwd(proj, repmat(mapLatLim(1), size(lonTicks)), lonTicks);
-[latTick_x, latTick_y] = projfwd(proj, latTicks, repmat(mapLonLim(1), size(latTicks)));
+[lonTick_x, lonTick_y] = projfwd(proj, repmat(latTicks(1), size(lonTicks)), lonTicks);
+[latTick_x, latTick_y] = projfwd(proj, latTicks, repmat(lonTicks(1), size(latTicks)));
 
 % Draw longitude ticks at bottom and top
 for i = 1:length(lonTicks)
@@ -114,7 +114,7 @@ set(yticklabelHandles, {'Position'}, mat2cell(ytickPosition, ones(nyLabeles,1),3
 tightmap
 
 %%
-
+% Histogram of core depths
 subplot(2,2,3)
 histogram(dataTbl.depths./1000, 0:0.5:6, 'FaceColor', [0.8 0.8 0.8])
 xlim([0 6])
@@ -125,6 +125,7 @@ ylims = ylim; ylim(ylims.*1.1)
 set(gca, 'Position', [0.13 0.25 0.33 0.25])
 text(0.02, 0.9, 'B', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold')
 
+% Histogram of core average SRs
 subplot(2,2,4)
 histogram(dataTbl.meanSR, 0:5:90, 'FaceColor', [0.8 0.8 0.8])
 xlabel('Average SR (cm/kyr)')
@@ -134,8 +135,6 @@ ylims = ylim; ylim(ylims.*1.1)
 set(gca, 'Position', [0.57 0.25 0.33 0.25])
 text(0.02, 0.9, 'C', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold')
 
-
-
 %% Plot age modes 
 %Find out which cores passed filtering
 usedLog = ~isnan(d.dataT.meanSR);
@@ -143,7 +142,7 @@ usedLog = ~isnan(d.dataT.meanSR);
 plotAgeModes(d.S1.chooseLog,d.S1.chooseLog, d.dataT.ageModes, d.dataT.cores)
 
 %% %Create table of useful information
-dStrus = {d.S1.BMedian, d.S1.BSampIR, d.S1.RSR0IR, d.S1.RSR500IR, d.S1.RSR1000IR};
+dStrus = {d.S1.BMedian, d.S1.BSampAR, d.S1.RSR0AR, d.S1.RSR500AR, d.S1.RSR1000AR};
 dStrusStrings = ["BMedian", "BSamp", "RSR0", "RSR500", "RSR1000"];
 
 MeanAgePairsT  = NaN(length(dStrus),1);
@@ -159,12 +158,12 @@ for i = 1:length(dStrus)
     dStru = dStrus{i};
     if isa(dStru.weightedC, 'cell')
         allWC = cell2mat(dStru.weightedC);
-            MeanSedLength(i,1) = mean(dStru.sedLength);
-     MeanSedTime(i,1) = mean(dStru.sedTimeSpan);
+        MeanSedLength(i,1) = mean(dStru.sedLength);
+        MeanSedTime(i,1) = mean(dStru.sedTimeSpan);
     else
         allWC = dStru.weightedC;
-        MeanSedLength(i,1) = mean(dStru.sedLength);
-        MeanSedTime(i,1)   = mean(dStru.sedTimeSpan);
+        MeanSedLength(i,1) = dStru.sedLength;
+        MeanSedTime(i,1)   = dStru.sedTimeSpan;
     end
     
     MeanAgePairsT(i,1) = mean(dStru.numCpairs);
@@ -554,20 +553,18 @@ xlabel("\Deltat (kyr)")
 ylabel("cm")
 
 
-
 %% BIC (taeheefix) of each method
 %This is the BIC (with the correction to the likelihood) for each 
 
-BIC_BMedian = round([d.S1.BMedian.LN.fitInfo.BICtaeheefix, d.S1.BMedian.MLN.fitInfo.BICtaeheefix, d.S1.BMedian.Gam.fitInfo.BICtaeheefix, d.S1.BMedian.invGam.fitInfo.BICtaeheefix])
-BIC_BSampAR = round([d.S1.BSampAR.LN.fitInfo.BICtaeheefix, d.S1.BSampAR.MLN.fitInfo.BICtaeheefix, d.S1.BSampAR.Gam.fitInfo.BICtaeheefix, d.S1.BSampAR.invGam.fitInfo.BICtaeheefix])
-BIC_RSR0AR = round([d.S1.RSR0AR.LN.fitInfo.BICtaeheefix, d.S1.RSR0AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR0AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR0AR.invGam.fitInfo.BICtaeheefix])
-BIC_RSR500AR = round([d.S1.RSR500AR.LN.fitInfo.BICtaeheefix, d.S1.RSR500AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR500AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR500AR.invGam.fitInfo.BICtaeheefix])
-BIC_RSR1000AR = round([d.S1.RSR1000AR.LN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR1000AR.invGam.fitInfo.BICtaeheefix])
-
-%% Standard Deviation of NSR counts for each approach
-
-std(d.S1.BMedian.weightedC)
-std(d.S1.BSampAR.weightedC)
+BIC_table = array2table(...
+    round([...
+        d.S1.BMedian.LN.fitInfo.BICtaeheefix,   d.S1.BMedian.MLN.fitInfo.BICtaeheefix,   d.S1.BMedian.Gam.fitInfo.BICtaeheefix,   d.S1.BMedian.invGam.fitInfo.BICtaeheefix;
+        d.S1.BSampAR.LN.fitInfo.BICtaeheefix,   d.S1.BSampAR.MLN.fitInfo.BICtaeheefix,   d.S1.BSampAR.Gam.fitInfo.BICtaeheefix,   d.S1.BSampAR.invGam.fitInfo.BICtaeheefix;
+        d.S1.RSR0AR.LN.fitInfo.BICtaeheefix,    d.S1.RSR0AR.MLN.fitInfo.BICtaeheefix,    d.S1.RSR0AR.Gam.fitInfo.BICtaeheefix,    d.S1.RSR0AR.invGam.fitInfo.BICtaeheefix;
+        d.S1.RSR500AR.LN.fitInfo.BICtaeheefix,  d.S1.RSR500AR.MLN.fitInfo.BICtaeheefix,  d.S1.RSR500AR.Gam.fitInfo.BICtaeheefix,  d.S1.RSR500AR.invGam.fitInfo.BICtaeheefix;
+        d.S1.RSR1000AR.LN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.MLN.fitInfo.BICtaeheefix, d.S1.RSR1000AR.Gam.fitInfo.BICtaeheefix, d.S1.RSR1000AR.invGam.fitInfo.BICtaeheefix]), ...
+    'VariableNames', {'LN', 'MLN', 'Gam', 'invGam'}, ...
+    'RowNames',      {'BMedian', 'BSamp', 'RSR0', 'RSR500', 'RSR1000'})
 
 %% Inverse Gamma Parameters for each method
 
