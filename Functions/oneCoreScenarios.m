@@ -138,7 +138,7 @@ while newScenIndicator == 1
         label, corename, duplicated_depths, IDpairs, agediffV, S, plotfigs);
 
     if sum(size(SS.ageModes)) == 0
-        a = 1; %#ok<NASGU>
+        a = 1; %#ok<NASGU> %This line used for debugging.
     end
 end
 
