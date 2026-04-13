@@ -300,10 +300,11 @@ end
 
 %%% Calculate NSR with lin2014 method %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+if S.Lin2014Method
 % ------Following code reproduces data that Lin2014 code loaded in ------
 
 % Compute median posterior age at each predictPosition
-medAge = median(thetaData, 1)./1000;  % median ages (in kyr) of each predictPosition
+medAge = median(thetaData, 1);  % median ages (in yr) of each predictPosition
 
 % Interpolate to find depth at each 1 kyr step of median age
 age_targets = ceil(min(medAge)):floor(max(medAge));   % find the relevant 1kyr time steps
@@ -312,7 +313,7 @@ depth_at_age = interp1(medAge_unique, predictPositions(idx), age_targets, 'linea
 
 % read in median calibrated ages
 calT = readtable(fullfile(coreDir, "calAgesMedian.csv"));
-medCalAge = calT.pct50./1000; %median ages (kyr) of each calibrated radiocarbon age (not influenced by Bchron)
+medCalAge = calT.pct50; %median ages (yr) of each calibrated radiocarbon age (not influenced by Bchron)
 
 % ------ Following code is exact replica of code used by Lin2014 ---------
 
@@ -346,3 +347,6 @@ depint=diff(rData.Depth);
 dur=diff(Bage_14c); 
 ind2=find(dur~=0); %SN Note: ind1 and ind2 will be identical
 LinNSRcounts=[NaN, sed_rate_ratio(ind1)'; rData.Depth(1), depint(ind2)';  Bage_14c(1), dur(ind2)'];
+else
+    LinNSRcounts = [];
+end
