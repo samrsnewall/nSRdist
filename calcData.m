@@ -137,7 +137,8 @@ S.Lin2014Method     = false; % Whether to calculate NSRs with Lin2014 method
 
 % --- Other settings
 S.matcalFast = true;         % Whether to use my modified version of matcal. Removes need to add MatCal to matlab (copy stored within repo). Speeds up scenario construction for RSRx methods by ~10x.
-
+S.plotAgeModes = false;      % Whether to plot all age modes after creation of scenarios
+S.plotAgeDepthModels = false;% Whether to plot calibrated ages against depth for each core
 %% Do I want to use Lin2014 set up?
 if S.replicateLin2014 == 1
     S.modifyLin2014Data = false;
@@ -219,9 +220,11 @@ ocean       = table2array(rawdataManual(chosenCoresLog, "Basin"));
 
 rawdataUse = rawdataManual(chosenCoresLog, :);
 %% Plot calibrated radiocarbon dates against depth
-%  for iPlot = (1:length(cores))
-%   corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
-% end
+if S.plotAgeDepthModels
+ for iPlot = (1:length(cores))
+  corePlotCal(cores{iPlot}, LabIDs{iPlot}, incDepths{iPlot}, excLabIDs{iPlot}, excDepths{iPlot}, dataLoc(iPlot), S)
+ end
+end
 
 %% Compute nSR histories using Bchron age-depth models (BMode, BMedian, BSamp)
 % nSRBchron runs Bchron for each core (or loads existing results) and
@@ -299,9 +302,10 @@ dataT = table(cores,lats, longs, depths, ocean, meanSR, ageModes,...
     LabIDs, incDepths, excLabIDs, excDepths, dataLoc, core_invSRvals,...
     core_invSRprobs, corescenarios, scenario_meanSR);
 
- %% Plot figure showing all the ages being used
-% plotAgeModes(chosenCoresLog, chosenCoresLog, ageModes, cores)
-% %plotAgeModes2Subsets(ageModes, cores, highSRCoresLog, lowSRCoresLog)
+%% Plot figure showing all the ages being used
+if S.plotAgeModes
+    plotAgeModes(chosenCoresLog, chosenCoresLog, ageModes, cores)
+end
 
 %% Compute nSR histories by Random Sampling from calibrated Radiocarbon PDFs (RSRx)
 % oneCoreRSR samples S.numruns times from the calibrated radiocarbon age
