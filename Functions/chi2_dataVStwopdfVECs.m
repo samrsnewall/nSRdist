@@ -1,4 +1,47 @@
 function [h, p, chiStat] = chi2_dataVStwopdfVECs(data, desiredSum, binN, pdfVs, fitS)
+% chi2_dataVStwopdfVECs  Chi-squared goodness-of-fit test of data against
+%                        one or more candidate PDFs.
+%
+% Bins the observed data into binN bins, downscales the bin counts to
+% desiredSum (to correct for weighted replication), and computes expected
+% counts from the CDF of each candidate PDF. Optionally adjusts bin edges
+% to ensure minimum expected counts (via iterateBinSizeNVec), then runs
+% MATLAB's chi2gof for each PDF. A diagnostic figure can be produced
+% showing the observed and expected histograms alongside the p-value and
+% chi-squared statistic.
+%
+% INPUTS
+%   data       - (numeric vector) Observed data values; may be
+%                log-transformed before passing (e.g. log(nSR))
+%   desiredSum - (scalar) True sample size used to downscale counts; set
+%                equal to numel(data) if no replication has been applied
+%   binN       - (integer) Initial number of histogram bins; the function
+%                may adjust this if fitS.enforceBinSizeLimits is true
+%   pdfVs      - (cell array, P×1) Candidate PDFs; each cell is a struct
+%                with fields:
+%                  .x         (numeric vector) PDF evaluation points
+%                  .px        (numeric vector) Probability density values
+%                  .numParams (scalar) Number of free parameters (used to
+%                             adjust degrees of freedom in chi2gof)
+%                  .pdfName   (string) Display name for plot titles
+%   fitS       - (struct) Settings struct. Fields used:
+%                  .enforceBinSizeLimits (logical) If true, call
+%                     iterateBinSizeNVec to adjust bins until each bin has
+%                     an expected count of at least 5
+%                  .dispChi2 (logical) If true, produce a diagnostic figure
+%
+% OUTPUTS
+%   h       - (1 × P logical vector) Rejection decision for each PDF:
+%             1 = reject H₀ (data are not drawn from that PDF) at α = 0.05
+%   p       - (1 × P numeric vector) p-value for each test
+%   chiStat - (1 × P cell array) chi2gof output structs, one per PDF,
+%             each containing fields: chi2stat, df, edges, O, E
+%
+% Note: this function calls iterateBinSizeNVec, which must be present on
+% the MATLAB path.
+%
+% See also: calcBinCounts, ARfitdists, IRfitdists
+
 %Define some initial bins
 binEdges    = linspace(min(data), max(data), binN+1);
 interiorEdges = binEdges(2:end-1);
