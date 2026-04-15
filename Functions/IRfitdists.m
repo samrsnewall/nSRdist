@@ -14,7 +14,7 @@ function[outS] = IRfitdists(nSRcounts, coreLog, numruns, x, fitS)
 % that reflects sampling uncertainty across Monte Carlo runs.
 %
 % INPUTS
-%   nSRcounts - (cell array) One cell per core, each containing a 4-row
+%   nSRcounts - (cell array) One cell per core, each containing a 3-row
 %               nSR matrix (see README "Internal Data Formats")
 %   coreLog   - (logical vector) Selects which cores from nSRcounts to use
 %   numruns   - (scalar) Number of Monte Carlo fitting iterations
