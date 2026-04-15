@@ -1,8 +1,9 @@
 function[] = plotAgeModes(chosenCoresLog, interestCoresLog, ageModesCell, cores)
-%This function plots the age modes of each core on a horizontal line (where
+%This function plots the modes of the calibrated radiocarbon ages of each core on a horizontal line (where
 %x value is depth of the date). This shows all the cores and all the ages
 %that are being used, hence is a good simple representation of the data
 
+% Get age modes (which were calculated in calcData.m)
 ageModes = cell(size(ageModesCell));
 for i = 1:length(ageModesCell)
     holder1 = ageModesCell{i};

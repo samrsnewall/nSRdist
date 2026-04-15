@@ -1,9 +1,45 @@
 function[repData] = makeWeightedReplicates(data, weight, dataRoundingDP, weightsMultiplier)
-%%% This function takes some data and some weighting and creates
-%%% the variable repData, which is a single variable that approximates the
-%%% weighting of the data by replicating each x by approximately it's
-%%% weighting. For example, if x=3 has a weighting y=4, then the value 3
-%%% will be repeated 4 times in repData.
+% makeWeightedReplicates  Approximate a continuous weighting by replicating
+%                         data values according to their weights.
+%
+% Distribution-fitting functions (e.g. fitgmdist, gamfit) require a vector
+% of individual observations and cannot accept histogram bin counts or
+% continuous weights directly. This function bridges that gap by converting
+% a weighted dataset into an unweighted replicate dataset that approximates
+% the same weighting.
+%
+% The procedure is:
+%   1. Round data to dataRoundingDP decimal places, reducing the number of
+%      unique values.
+%   2. Discard any values that round to exactly zero (data are expected to
+%      be strictly positive).
+%   3. For each unique rounded value, accumulate the total weight across all
+%      observations that share that value.
+%   4. Multiply each accumulated weight by weightsMultiplier and round to
+%      the nearest integer, giving an integer replication count.
+%   5. Use repelem to replicate each unique value by its integer count.
+%
+% The resulting repData vector has total length equal to the sum of all
+% integer replication counts. Values with very small accumulated weights
+% may round to zero and be silently dropped; increase weightsMultiplier to
+% reduce this effect if necessary.
+%
+% INPUTS
+%   data             - (numeric vector) Data values to be replicated
+%                      (strictly positive; values rounding to 0 are removed)
+%   weight           - (numeric vector) Non-negative weight for each element
+%                      of data; must be the same length as data
+%   dataRoundingDP   - (integer) Number of decimal places to which data
+%                      values are rounded before accumulation
+%   weightsMultiplier - (scalar) Factor applied to accumulated weights
+%                       before rounding to integers; increase to reduce
+%                       precision loss from rounding small weights to zero
+%
+% OUTPUT
+%   repData - (numeric vector) Replicated data approximating the weighted
+%             distribution; length equals sum of all integer replication counts
+%
+% See also: ARfitdists, IRfitdists, makeWeightedBinCounts
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -1,4 +1,31 @@
 function[age, depth_cm, error, label] = getDatatxt(corename, S)
+% getDatatxt  Read radiocarbon age data from a Bchron-formatted .txt file.
+%
+% Locates and reads the radiocarbon input file for a named sediment core
+% from the Lin2014 dataset. The file is expected to be a tab-delimited
+% table with columns: id (string), Age (yr), Error (yr), Depth (cm). Ages
+% and errors are converted from years to kyr on output. Rows are sorted by
+% ascending depth, and depths are rounded to 2 decimal places to avoid
+% floating-point inconsistencies.
+%
+% INPUTS
+%   corename  - (string) Sediment core identifier used to locate the file.
+%               The function searches for any file in the BchronInput folder
+%               whose name contains corename.
+%   S         - (struct) Settings struct. Field used:
+%                 .sandboxPath  Root path of the repository; the data file
+%                               is expected at:
+%                               <sandboxPath>/Lin2014Cores/BchronInput/
+%
+% OUTPUTS
+%   age       - (numeric vector) Conventional radiocarbon ages (kyr BP),
+%               sorted by ascending depth
+%   depth_cm  - (numeric vector) Sample depths (cm), sorted ascending,
+%               rounded to 2 decimal places
+%   error     - (numeric vector) 1-sigma age uncertainties (kyr)
+%   label     - (string vector) Laboratory IDs for each date
+%
+% See also: getDataWA, filtering, oneCoreScenarios, nSRBchron
 
 %Set path to folder with all txt files
 txt_path = fullfile(S.sandboxPath, "Lin2014Cores", "BchronInput");

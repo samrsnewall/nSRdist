@@ -1,4 +1,35 @@
 function[fx, pfx] = px_to_pfx(x, px, f)
+% px_to_pfx  Transform a PDF through a monotonic function using the
+%            change-of-variables formula.
+%
+% Given a PDF p(x) defined on a vector x, and a strictly monotonic
+% function f, computes the PDF p_f(y) of the transformed variable y = f(x)
+% using the Jacobian correction:
+%
+%   p_f(y) = p(x) / |df/dx|   evaluated at x = f^{-1}(y)
+%
+% The Jacobian is approximated numerically by computing the bin-size change
+% from x-space to f(x)-space at each evaluation point. If x is not on
+% equal spacing, it is first re-interpolated to a uniform grid.
+%
+% The output is normalised so that trapz(fx, pfx) = 1.
+%
+% INPUTS
+%   x   - (numeric vector) Evaluation points of the input PDF. Values at
+%         or below 1e-5 are discarded before the transformation (the PDF
+%         is assumed to be zero in that region).
+%   px  - (numeric vector) Probability density values at each point in x;
+%         must be the same length as x
+%   f   - (function handle) Strictly monotonic transformation to apply,
+%         e.g. @log, @(x) 1./x. Must accept and return numeric vectors.
+%
+% OUTPUTS
+%   fx  - (numeric vector) Evaluation points in the transformed space
+%         (sorted ascending), corresponding to f applied to x
+%   pfx - (numeric vector) Probability density of the transformed variable
+%         at each point in fx, normalised to integrate to 1
+%
+% See also: fitInvGamma, ARfitdists, IRfitdists
 
 % Concatenate x and px above x = 0
 xPOS = x(x>=1e-5);

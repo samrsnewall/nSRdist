@@ -1,5 +1,5 @@
 function [ageprob, calAge] = multiMatcalQ(age, error, date_is, S)
-% multiMatcal  Calibrate multiple radiocarbon ages using the Marine20
+% multiMatcalQ  Calibrate multiple radiocarbon ages using the Marine20
 %               calibration curve (via MatCal).
 %
 % Calls matcal once per date and assembles the resulting probability
