@@ -50,11 +50,11 @@ function[modenSRinfo, mediannSRinfo, nSRcounts, LinNSRcounts, meanSR] = nSRBchro
 %                                          overall mean SR from the mode solution
 %
 % OUTPUTS
-%   modenSRinfo   - (4 x N) nSR matrix computed using mode ages (BMode)
-%   mediannSRinfo - (4 x N) nSR matrix computed using median ages (BMedian)
-%   nSRcounts     - (4 x M) nSR matrix from individual Bchron MCMC iterations (BSamp);
+%   modenSRinfo   - (3 x N) nSR matrix computed using mode ages (BMode)
+%   mediannSRinfo - (3 x N) nSR matrix computed using median ages (BMedian)
+%   nSRcounts     - (3 x M) nSR matrix from individual Bchron MCMC iterations (BSamp);
 %                   blocks from successive runs are concatenated horizontally
-%   LinNSRcounts  - (4 x N) nSR matrix computed following approach of Lin
+%   LinNSRcounts  - (3 x N) nSR matrix computed following approach of Lin
 %                   et al. (2014) code
 %   meanSR        - (scalar) Overall mean sedimentation rate (cm/kyr) from
 %                   the depth/age range of the median-age solution
