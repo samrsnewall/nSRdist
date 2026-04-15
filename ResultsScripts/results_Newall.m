@@ -25,7 +25,10 @@
 % run with the lognormal fit to the pooled data (red) and the lognormal 
 % fits of each individual RSR500 run (thin gray lines).
 
-% Supplementary Figure A1 - 
+% Supplementary Figure A1 - RSR500 pooled histogram, lognormal and inverse
+% gamma, plotted on inverse SR axis.
+
+% Supplementary Figure A2 - 
 
 %% Add necessary paths
 addpath("../Functions/")
@@ -283,7 +286,7 @@ box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceColor', '[0.8 0.8 0.8]')
 hold on
 %plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 1, 'LineStyle', '--')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 %errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
 xlim([-2.5 2.5])
 ylim([0 3500])
@@ -296,7 +299,7 @@ B = sort(d.S1.BSampIR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceColor', '[0.8 0.8 0.8]')
-errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 xlim([0 6])
 ylim([0 2000])
 xlabel("\Deltat (kyr)")
@@ -311,13 +314,13 @@ box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceColor', '[0.8 0.8 0.8]')
 hold on
 %plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 1, 'LineStyle', '--')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 %errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
 xlim([-2.5 2.5])
 ylim([0 3500])
 
 ylabel("cm")
-xlabel("log(nSR)")
+xlabel("log(NSR)")
 text(0.02, 0.9, 'C', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold')
 
 subplot(4,2,4)
@@ -325,7 +328,7 @@ B = sort(d.S1.RSR0IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceColor', '[0.8 0.8 0.8]')
-errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 xlim([0 6])
 ylim([0 2000])
 
@@ -340,7 +343,7 @@ box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceColor', '[0.8 0.8 0.8]')
 hold on
 %plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 1, 'LineStyle', '--')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 %errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
 xlim([-2.5 2.5])
 ylim([0 3500])
@@ -354,7 +357,7 @@ B = sort(d.S1.RSR500IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceColor', '[0.8 0.8 0.8]')
-errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 xlim([0 6])
 ylim([0 2000])
 
@@ -369,7 +372,7 @@ box on
 histogram('BinCounts', A(numruns*0.5, :), 'BinEdges', logBinEdges, 'FaceColor', '[0.8 0.8 0.8]')
 hold on
 %plot(BM.lnSR.x, 2700*BM.lnSR.px, 'Color', 'k', 'LineWidth', 1, 'LineStyle', '--')
-errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.16, :)),(A(numruns*0.84, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 %errorbar(logBinCenters, A(numruns*0.5, :),(A(numruns*0.5, :)-A(numruns*0.025, :)),(A(numruns*0.975, :)-A(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '95% bounds')
 xlim([-2.5 2.5])
 ylim([0 3500])
@@ -383,7 +386,7 @@ B = sort(d.S1.RSR1000IR.agediffsWbC', 1);
 hold on
 box on
 histogram('BinCounts', B(numruns*0.5, :), 'BinEdges', 0:0.1:10, 'FaceColor', '[0.8 0.8 0.8]')
-errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds')
+errorbar(0.05:0.1:9.95, B(numruns*0.5, :),(B(numruns*0.5, :)-B(numruns*0.16, :)),(B(numruns*0.84, :)-B(numruns*0.5, :)), 'LineStyle', 'none', 'DisplayName', '68% bounds', 'Color', 'k')
 xlim([0 6])
 ylim([0 2000])
 xlabel("\Deltat (kyr)")
@@ -483,13 +486,20 @@ text(0.02, 0.9, 'B', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold'
 %% Supplementary Plots and Tables
 %% Plot of pooled samples + fits on inverse NSR axis
 
+%Choose sampling method of interest
 AR = d.S1.RSR500AR;
+
+%define histogram bins to use
 invBinEdges = 0:0.1:6;
 
+%Create pdfs on inverse SR
 f_inv = @(x)(1./x);
 [AR.LN.invSR.x, AR.LN.invSR.px] = px_to_pfx(AR.LN.nSR.x, AR.LN.nSR.px, f_inv);
 [AR.invGam.invSR.x, AR.invGam.invSR.px] = px_to_pfx(AR.invGam.nSR.x, AR.invGam.nSR.px, f_inv);
 
+%Create the bacon default distribution
+shape = 1.5;
+bacon_invGam = gampdf(AR.LN.invSR.x, shape, 1/shape);
 
 figure;
 hold on
@@ -498,7 +508,8 @@ normF = 1./sum((AR_invHC.*uniquetol(diff(invBinEdges), 1e-5)));
 histogram('BinCounts', AR_invHC, 'BinEdges', invBinEdges, 'HandleVisibility', 'off', 'FaceColor', '[0.8 0.8 0.8]')
 plot(AR.LN.invSR.x, AR.LN.invSR.px*(1/normF), 'r', 'LineWidth', 1, 'DisplayName','LN')
 plot(AR.invGam.invSR.x, AR.invGam.invSR.px*(1/normF),  'LineWidth', 1, 'DisplayName','IG', 'Color', 'b')
-xlim([0 6])
+plot(AR.LN.invSR.x, bacon_invGam*(1/normF),  'LineWidth', 1, 'DisplayName','Bacon Default', 'Color', 'g')
+xlim([0 5])
 xlabel("inverse NSR")
 ylabel("Pooled Counts")
 legend()
@@ -575,7 +586,7 @@ xlabel("Alpha")
 ylabel("Beta")
 text(0.02, 0.9, 'H', 'Units', 'normalized', 'FontSize', 12, 'FontWeight', 'bold')
 
-
+%Give all similar figures the same ylims
 max_ylim = 0;
 for i = [1,2,3,4]
     subplot(2,4,i)
@@ -653,9 +664,7 @@ ylabel("Counts")
 xlim([-3 3])
 xlabel("log(NSR)")
 
-%The counts in each of these histograms is equivalent to the number of
-%counts * total weighting * weighting inflator * number of runs.
-
+%Get BIC table of each
 BIC_table_RSR500 = array2table(...
     round([...
         dd.S1.RSR500AR.LN.fitInfo.BICtaeheefix, dd.S1.RSR500AR.MLN.fitInfo.BICtaeheefix, dd.S1.RSR500AR.Gam.fitInfo.BICtaeheefix, dd.S1.RSR500AR.invGam.fitInfo.BICtaeheefix;
@@ -664,8 +673,21 @@ BIC_table_RSR500 = array2table(...
     'VariableNames', {'LN', 'MLN', 'Gam', 'invGam'}, ...
     'RowNames',      {'Depth', 'Age', 'None'})
 
+%% Check influence of not normalizing data
+load("../Results/dataT_All1_RLGtrue_DS0p05_Dec9_fit26Mar26_noweight_SR2_400R")
+dSR = d;
 
+BIC_table2 = array2table(...
+    round([...
+        d.S1.BMedian.LN.fitInfo.BICtaeheefix,   d.S1.BMedian.MLN.fitInfo.BICtaeheefix,   d.S1.BMedian.Gam.fitInfo.BICtaeheefix,   d.S1.BMedian.invGam.fitInfo.BICtaeheefix;
+        d.S1.BChAR.LN.fitInfo.BICtaeheefix,   d.S1.BChAR.MLN.fitInfo.BICtaeheefix,   d.S1.BChAR.Gam.fitInfo.BICtaeheefix,   d.S1.BChAR.invGam.fitInfo.BICtaeheefix;
+        d.S1.New0AR.LN.fitInfo.BICtaeheefix,    d.S1.New0AR.MLN.fitInfo.BICtaeheefix,    d.S1.New0AR.Gam.fitInfo.BICtaeheefix,    d.S1.New0AR.invGam.fitInfo.BICtaeheefix;
+        d.S1.New500AR.LN.fitInfo.BICtaeheefix,  d.S1.New500AR.MLN.fitInfo.BICtaeheefix,  d.S1.New500AR.Gam.fitInfo.BICtaeheefix,  d.S1.New500AR.invGam.fitInfo.BICtaeheefix;
+        d.S1.New1000AR.LN.fitInfo.BICtaeheefix, d.S1.New1000AR.MLN.fitInfo.BICtaeheefix, d.S1.New1000AR.Gam.fitInfo.BICtaeheefix, d.S1.New1000AR.invGam.fitInfo.BICtaeheefix]), ...
+    'VariableNames', {'LN', 'MLN', 'Gam', 'invGam'}, ...
+    'RowNames',      {'BMedian', 'BCh', 'New0', 'New500', 'New1000'})
 
+%% Helper functions
 
 function ARvsIRplots_wph(ARd, IRd, AR, logBinEdges)
 % Plot AR fit on top of IR fit, with pooled histogram underneath
