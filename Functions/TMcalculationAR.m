@@ -1,6 +1,48 @@
 function[transnums, numCSE2x, TM, TMw] = TMcalculationAR(nSRcountsAR,  fitS)
-%This function takes in nSR counts and calculates a transition matrix from
-%it.
+% TMcalculationAR  Compute a 3-state sedimentation transition matrix from
+%                  an nSR counts array.
+%
+% Classifies each nSR value into one of three states — Contraction (C),
+% Steady (S), or Expansion (E) — using the thresholds from Lin et al.
+% (2014): C = [0, 0.922), S = [0.922, 1.085), E = [1.085, inf). NaN
+% values (run-break markers) are assigned the state 'b' and are
+% excluded from transition counts. The function then counts all consecutive-
+% pair transitions between non-break states to build the unweighted 4×3
+% transition matrix TM.
+%
+% Row layout of TM:
+%   Row 1: state frequency vector [fC, fS, fE]   (fraction of transitions
+%          originating from each state)
+%   Row 2: transition probabilities out of C      [P(C→C), P(C→S), P(C→E)]
+%   Row 3: transition probabilities out of S      [P(S→C), P(S→S), P(S→E)]
+%   Row 4: transition probabilities out of E      [P(E→C), P(E→S), P(E→E)]
+%
+% INPUTS
+%   nSRcountsAR - (3 × N numeric matrix) nSR matrix in the standard format
+%                 (see README "Internal Data Formats"). Only row 1 (nSR
+%                 values) is used for the unweighted TM; rows 2–3
+%                 (depth/age differences) are available for the weighted
+%                 calculation below.
+%   fitS        - (struct) Fitting settings struct. Reserved for the
+%                 weighted transition matrix calculation (see commented-out
+%                 code below); not used by the active code path. Relevant
+%                 field when the weighted section is re-enabled:
+%                   .weighting  "depth" | "age" | "none"
+%
+% OUTPUTS
+%   transnums  - (3 × 3 numeric matrix) Raw counts of each pairwise
+%                transition (rows = from-state, cols = to-state; order: C, S, E)
+%   numCSE2x   - (3 × 1 numeric vector) Total number of transitions
+%                originating from each state [nC; nS; nE]
+%   TM         - (4 × 3 numeric matrix) Unweighted transition matrix; see
+%                row layout above
+%   TMw        - (4 × 3 or empty) Weighted transition matrix. Currently
+%                returned as [] because it is unclear from Lin et al. (2014)
+%                whether weighting was applied before or after TM
+%                construction. The weighted implementation is retained below
+%                in commented form for re-verification if needed.
+%
+% See also: ARfitdists, fitData
 %% Get NSR values
 nSRcounts = nSRcountsAR(1,:);
 
