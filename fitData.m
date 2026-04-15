@@ -90,7 +90,7 @@ fitS.maxLat = 40;                   % Maximum absolute latitude (degrees)
 
 % --- Distribution fitting options ---
 fitS.fitDists = true;               % If true, fits all four distributions (MLN, LN, Gam, invGam)
-fitS.weighting = "age";           % How nSR estimates are weighted when fitting: "depth", "age", or "none"
+fitS.weighting = "depth";           % How nSR estimates are weighted when fitting: "depth", "age", or "none"
 fitS.non_normalized_SR = false;     % If true, fits absolute SR (cm/kyr) rather than nSR
 fitS.mlnReps = 3;                   % Number of EM random restarts when fitting the Mixed Log-Normal;
                                     %   more restarts reduce the chance of converging to a local optimum
