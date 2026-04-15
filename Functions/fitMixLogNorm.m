@@ -1,12 +1,60 @@
 function[mixLogNormPDF, mixNormPDF, mlnfit] = fitMixLogNorm(data_linear, x, numComponents, replicates, numObs)
-%%% Create a mixed log normal to fit some dataset (if weighted, this must
-%%% already be applied to data). This function applies a regularization
-%%% value. A regularization value of 0 is the same as not regularising.
-
-%%% INPUT VALUES
-% data_linear   = data on linear scale (i.e. without logarithm applied)
-% x             = x values on linear scale for which you want to know the pdf
-% numComponents = number of components in mixture Log Normal desired
+% fitMixLogNorm  Fit a Mixture Log-Normal distribution to a dataset and
+%                evaluate its PDF.
+%
+% Fits a numComponents-component Mixture Log-Normal (MLN) by taking the
+% logarithm of data_linear and fitting a Gaussian Mixture Model (GMM) in
+% log space using MATLAB's fitgmdist. The component means and standard
+% deviations from the GMM are then used to construct the corresponding
+% log-normal PDFs in the original linear space, which are combined with
+% their mixing proportions to give the final MLN PDF.
+%
+% Passing numComponents = 1 fits a single Log-Normal (LN) distribution.
+%
+% If weighted replicates are used as input, the weighting must be applied
+% before calling this function (i.e. data_linear should already be the
+% replicated dataset).
+%
+% BIC and a replicate-corrected BIC (BICtaeheefix) are computed.
+% BICtaeheefix divides the NLL by the replication factor
+% (length(data_linear)/numObs) before computing BIC, so that model
+% selection is based on the true number of observations rather than the
+% inflated replicate count. The NLL includes a Jacobian correction term
+% (+ sum(log(data_linear))) to express likelihood in the original linear
+% space rather than log space.
+%
+% INPUTS
+%   data_linear   - (numeric vector) Data on the linear (untransformed) scale.
+%                   May be a weighted-replicate dataset; see makeWeightedReplicates.
+%   x             - (numeric vector) Evaluation points (linear scale) at which
+%                   to compute the fitted MLN PDF
+%   numComponents - (integer) Number of log-normal components in the mixture;
+%                   use 1 for a single Log-Normal, 2 for a two-component MLN
+%   replicates    - (integer) Number of random initialisations passed to
+%                   fitgmdist ('Replicates' option); higher values reduce
+%                   the risk of converging to a local optimum
+%   numObs        - (scalar) True number of observations before any replication,
+%                   used to compute BICtaeheefix
+%
+% OUTPUTS
+%   mixLogNormPDF - (N × 2 numeric matrix) Fitted MLN PDF in linear space:
+%                   column 1 is x (evaluation points), column 2 is the
+%                   probability density at each point
+%   mixNormPDF    - (N × 2 numeric matrix) Fitted GMM PDF in log space:
+%                   column 1 is log(x), column 2 is the probability density.
+%                   Useful for diagnostic checking of the fit in log space.
+%   mlnfit        - (struct) Fitting results:
+%                     .NumParams              Number of free parameters
+%                                             (2 for LN; 2 + 3*(K-1) for K-component MLN)
+%                     .mu                     Component means in log space
+%                     .Sigma                  Component variances in log space
+%                     .ComponentProportion    Mixing weights (sum to 1)
+%                     .NegativeLogLikelihood  NLL in linear space (with
+%                                             Jacobian correction applied)
+%                     .BIC                    Bayesian Information Criterion
+%                     .BICtaeheefix           BIC corrected for replicate inflation
+%
+% See also: fitGamma, fitInvGamma, makeWeightedReplicates, ARfitdists, IRfitdists
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Run gmfit
 options = statset('Display', 'off', 'MaxIter', 1000, 'TolFun', 1e-6);       %Set the number of iterations (default=500 often doesn't converge)

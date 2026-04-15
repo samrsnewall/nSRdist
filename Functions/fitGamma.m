@@ -1,10 +1,39 @@
 function[GamPDF, fitStruct] = fitGamma(data_linear, x, numObs)
-%%% Create a Gamma to fit some dataset (if weighted, this must
-%%% already be applied to data). 
-
-%%% INPUT VALUES
-% data_linear   = data on linear scale
-% x             = x values on linear scale for which you want to know the pdf
+% fitGamma  Fit a Gamma distribution to a dataset and evaluate its PDF.
+%
+% Fits a two-parameter Gamma distribution to data_linear using MATLAB's
+% gamfit (maximum likelihood estimation), then evaluates the fitted PDF on
+% the supplied x grid. If weighted replicates are used as input, the
+% weighting must be applied before calling this function (i.e. data_linear
+% should already be the replicated dataset).
+%
+% AIC, BIC, and a replicate-corrected BIC (BICtaeheefix) are computed.
+% BICtaeheefix divides the NLL by the replication factor
+% (length(data_linear)/numObs) before computing BIC, so that model
+% selection is based on the true number of observations rather than the
+% inflated replicate count.
+%
+% INPUTS
+%   data_linear - (numeric vector) Data on the linear (untransformed) scale.
+%                 May be a weighted-replicate dataset; see makeWeightedReplicates.
+%   x           - (numeric vector) Evaluation points (linear scale) at which
+%                 to compute the fitted Gamma PDF
+%   numObs      - (scalar) True number of observations before any replication,
+%                 used to compute BICtaeheefix
+%
+% OUTPUTS
+%   GamPDF    - (numeric vector) Fitted Gamma PDF evaluated at each point
+%               in x; same length as x
+%   fitStruct - (struct) Fitting results:
+%                 .alpha                  Shape parameter
+%                 .beta                   Scale parameter
+%                 .NumParams              Number of free parameters (2)
+%                 .NegativeLogLikelihood  NLL of the fit
+%                 .AIC                    Akaike Information Criterion
+%                 .BIC                    Bayesian Information Criterion
+%                 .BICtaeheefix           BIC corrected for replicate inflation
+%
+% See also: fitInvGamma, fitMixLogNorm, makeWeightedReplicates, ARfitdists
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Run gmfit
 options = statset('Display', 'off', 'MaxIter', 200, 'TolFun', 1e-6);       %Set the number of iterations (default=100 often doesn't converge)

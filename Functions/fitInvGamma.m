@@ -1,10 +1,51 @@
 function[invGamPDF, GamPDF, fitStruct] = fitInvGamma(data_linear, x, numObs)
-%%% Create a Inverse Gamma to fit some dataset (if weighted, this must
-%%% already be applied to data).
-
-%%% INPUT VALUES
-% data_linear   = data on linear scale (i.e. without inverse applied)
-% x             = x values on linear scale for which you want to know the pdf
+% fitInvGamma  Fit an Inverse Gamma distribution to a dataset and evaluate
+%              its PDF.
+%
+% Fits an Inverse Gamma distribution by applying the substitution
+% y = 1/x and fitting a Gamma distribution to the reciprocal data using
+% MATLAB's gamfit (MLE). The Gamma PDF on 1/x space is then transformed
+% back to x space via px_to_pfx, which applies the Jacobian correction
+% for the change of variables. The NLL includes a Jacobian correction term
+% (+ 2*sum(log(data_linear))) to express likelihood in the original x space.
+%
+% If weighted replicates are used as input, the weighting must be applied
+% before calling this function (i.e. data_linear should already be the
+% replicated dataset).
+%
+% AIC, BIC, and a replicate-corrected BIC (BICtaeheefix) are computed.
+% BICtaeheefix divides the NLL by the replication factor
+% (length(data_linear)/numObs) before computing BIC, so that model
+% selection is based on the true number of observations rather than the
+% inflated replicate count.
+%
+% INPUTS
+%   data_linear - (numeric vector) Data on the linear (untransformed) scale,
+%                 i.e. without the inverse applied. May be a weighted-replicate
+%                 dataset; see makeWeightedReplicates.
+%   x           - (numeric vector) Evaluation points (linear scale) at which
+%                 to compute the fitted Inverse Gamma PDF
+%   numObs      - (scalar) True number of observations before any replication,
+%                 used to compute BICtaeheefix
+%
+% OUTPUTS
+%   invGamPDF - (numeric vector) Fitted Inverse Gamma PDF evaluated at each
+%               point in x (linear scale); same length as x
+%   GamPDF    - (numeric vector) Fitted Gamma PDF evaluated on the
+%               reciprocal axis 1/x; same length as x. Intermediate output,
+%               useful for diagnostic checking.
+%   fitStruct - (struct) Fitting results (parameters refer to the fitted
+%               Gamma on 1/x):
+%                 .alpha                  Shape parameter
+%                 .beta                   Scale parameter
+%                 .NumParams              Number of free parameters (2)
+%                 .NegativeLogLikelihood  NLL in original x space (with
+%                                         Jacobian correction applied)
+%                 .AIC                    Akaike Information Criterion
+%                 .BIC                    Bayesian Information Criterion
+%                 .BICtaeheefix           BIC corrected for replicate inflation
+%
+% See also: fitGamma, fitMixLogNorm, px_to_pfx, makeWeightedReplicates, ARfitdists
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Run gmfit
 options = statset('Display', 'off', 'MaxIter', 200, 'TolFun', 1e-6);       %Set the number of iterations (default=100 often doesn't converge)
