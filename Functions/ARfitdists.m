@@ -13,7 +13,7 @@ function[outS] = ARfitdists(dataTCol, x, chooseLog, weightRepDataDP, weightRepIn
 %
 % INPUTS
 %   dataTCol        - (cell array) One cell per core, each containing a
-%                     4-row nSR matrix (see README "Internal Data Formats")
+%                     3-row nSR matrix (see README "Internal Data Formats")
 %   x               - (numeric vector) nSR evaluation points for PDF output
 %   chooseLog       - (logical vector) Selects which cores from dataTCol
 %                     to include (passed to countsCell2Array)
@@ -179,8 +179,6 @@ if fitS.run_chi2gof
     %Make a column cell-vector that holds all pdfs to test
     pdfs = {LN.lnSR; MLN.lnSR; Gam.lnSR; invGam.lnSR};
     fitS.dispChi2 = false;
-    % h = NaN(1,1);
-    % p = NaN(1,1);
     [h, p, chiStat] = chi2_dataVStwopdfVECs(log(data), outS.numCpairs, 20, pdfs, fitS);
 
     %store the chiStats in the data structures
@@ -193,7 +191,6 @@ if fitS.run_chi2gof
     Gam.chiStats = chiStat{3};
     invGam.chiStats = chiStat{4};
 end
-
 
 %% Calculate TM
 %Not sure from Lin2014 whether the TM was calculated with or without the
