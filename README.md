@@ -8,6 +8,8 @@ This code uses radiocarbon dates from sediment cores to estimate **normalised se
 
 The approach builds on the method of [Lin et al. (2014)](https://doi.org/10.1002/2013PA002539), which used Bchron age-depth models to estimate NSR. The primary development in this codebase is a probabilistic extension that propagates the full calibrated age uncertainty of each radiocarbon date, rather than using only the mode or median of the age model. Several NSR estimation methods are implemented and compared.
 
+The code uses data from Lin et al. (2014), stored in the directory Lin2014Cores/BchronInput, and from the World Atlas created by Mulitza et al. (2022). 
+
 ## Pipeline Overview
 
 The code operates in two stages:
@@ -20,7 +22,7 @@ Reads core metadata and radiocarbon data, filters dates, handles doubly-dated de
 
 Loads the saved results from Stage 1 and fits four candidate probability distributions to the NSR data: a 2-component Mixed Log-Normal (MLN), a Log-Normal (LN), a Gamma, and an Inverse Gamma. Fitting is performed under various subset choices and weighting schemes, and results are saved to a new `.mat` file.
 
-**Stage 3 — `results.m`**
+**Stage 3 — `results_Newall.m`**
 
 Loads the saved results from Stage 2 then plots the figures and constructs the tables found in the manuscript.
 
@@ -151,9 +153,10 @@ nSRdist_code/
 ├── fitData.m               # Stage 2 main script
 ├── Functions/              # All helper functions
 ├── ResultsScripts/         # Scripts for producing results figures
-├── BchronFolders/          # Bchron inputs and outputs (generated, not tracked in git)
+├── BchronFolders/          # Bchron inputs and outputs
+├── BIGMACSdata/            # Useful data from BIGMACS development
 ├── DataSheets/             # Excel metadata spreadsheet
-└── Results/                # Saved .mat output files (not tracked in git)
+└── Results/                # Saved .mat output files
 ```
 
 ---
@@ -180,6 +183,14 @@ nSRdist_code/
 | CFR | Confirmed (no) reversals — a flag used internally during scenario construction |
 | S | The settings structure passed throughout the pipeline |
 | fitS | The fitting settings structure used in Stage 2 |
+
+---
+
+## Licence
+
+This code is released under the [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) licence. You are free to share and adapt the material for any purpose, provided appropriate credit is given.
+
+This repository includes a modified version of **MatCal** (`matcalFast.m`), originally written by Lougheed & Obrochta (2016, 2019), which is also licensed under CC BY 4.0. See the `LICENSE` file for full details.
 
 ---
 
