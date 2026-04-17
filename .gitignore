@@ -8,12 +8,3 @@
 # MATLAB figure files
 *.fig
 
-# Results data files
-Results/
-*.mat
-
-# World Atlas dataset (large source data, not code)
-WA_Foraminiferal_Isotopes_2022/
-
-# Bchron run outputs (large generated data)
-BchronFolders/

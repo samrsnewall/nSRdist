@@ -1,0 +1,7 @@
+Labcode Prob1 Prob2 
+Unknown1 0.044 0.001 
+Unknown2 0.036 0.000 
+Unknown3 0.007 0.000 
+Unknown4 0.048 0.001 
+Unknown5 0.052 0.001 
+Unknown6 0.042 0.001 

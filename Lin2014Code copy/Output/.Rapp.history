@@ -1,0 +1,531 @@
+range(x$V1)
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/smoothed_MC_age_model.R")
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+warnings()
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/smoothed_MC_age_model.R")
+source("Documents/research/new_res_age2.R")
+h <- read.table("Desktop/DNA_highlat_age_model_onlowlatage_unsmoothed_110612.txt",header=TRUE)#
+l <- read.table("Desktop/DNA_lowlat_age_model_onlowlatage_unsmoothed_110612.txt",header=TRUE)#
+#
+plot(h$gicc05age,h$meanBchronage,type="l",col="red")#
+lines(l$gicc05age,l$meanBchronage,col="blue")
+core.data <- read.table("Documents/research/dna_dated_core_data_101912.txt",header=TRUE)
+core.data
+i<-1
+core.data <- read.table("Documents/research/dna_dated_core_data_101912.txt",header=TRUE)#
+agemodel <- read.table("Desktop/DNA_lowlat_age_model_onlowlatage_unsmoothed_110612.txt",header=TRUE)#
+#
+all.sed.rates <- matrix(ncol=2)
+	match <- read.table(paste("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/",core.data$Core[i],"_to_MD95-2042gicc05.match",sep=""))
+match
+new.age <- approx(agemodel$gicc05age,agemodel$meanBchronage,match$V4)
+new.age
+match$V2[!is.na(new.age$y)]
+new.age$y[!is.na(new.age$y)]
+match2 <- cbind(match$V2[!is.na(new.age$y)],new.age$y[!is.na(new.age$y)])
+match
+match2
+relative.rate <- diff(match2[,1])/diff(match2[,2])
+relative.rate
+cbind(match2[1:(length(match[,2])-1),2],relative.rate)
+length(match[,2])
+length(match[,2])-1
+cbind(match2[1:(length(match2[,2])-1),2],relative.rate)
+source("Documents/research/sed_rate_stack.R")
+core.data <- read.table("Documents/research/dna_dated_core_data_101912.txt",header=TRUE)#
+agemodel <- read.table("Desktop/DNA_lowlat_age_model_onlowlatage_unsmoothed_110612.txt",header=TRUE)#
+#
+all.sed.rates <- matrix(ncol=2)#
+#
+for (i in 1:16) {#
+	match <- read.table(paste("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/",core.data$Core[i],"_to_MD95-2042gicc05.match",sep=""))#
+	#
+	new.age <- approx(agemodel$gicc05age,agemodel$meanBchronage,match$V4)#
+	match2 <- cbind(match$V2[!is.na(new.age$y)],new.age$y[!is.na(new.age$y)])#
+	relative.rate <- diff(match2[,1])/diff(match2[,2])#
+	new.record <- cbind(match2[1:(length(match2[,2])-1),2],relative.rate)#
+	#
+	#relative.rate <- diff(match$V2)/diff(match$V4)#
+	#new.record <- cbind(match$V4[1:(length(match$V4)-1)],relative.rate)#
+	all.sed.rates <- rbind(all.sed.rates,new.record)	#
+	}
+all.sed.rates <- all.sed.rates[2:length(all.sed.rates[,1]),]#
+#
+res <- 0.5#
+t1 <- seq(from=-1*res/2,to=50+res/2,by=res)#
+stacked.ages <- seq(from=0,to=50,by=res)#
+stack <- vector(); sigma <- vector(); numpts <- vector();
+for (j in 1:length(stacked.ages)) {#
+	ind <- all.sed.rates[,1] >= t1[j] & all.sed.rates[,1] < t1[j+1]#
+	if (sum(ind)>0) {#
+	pts <- all.sed.rates[ind,2]	#
+	stack[j] <- exp(mean(log(pts))) # geometric mean#
+	sigma[j] <- sd(pts)#
+	numpts[j] <- sum(ind)#
+			} }
+stack
+length(stack)
+length(stacked.ages)
+agemodel
+source("Documents/research/sed_rate_stack.R")
+core.data
+source("Documents/research/sed_rate_stack.R")
+core.data <- read.table("Documents/research/dna_dated_core_data_101912.txt",header=TRUE)#
+agemodel <- read.table("Desktop/DNA_lowlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)
+agemodel
+source("Documents/research/sed_rate_stack.R")
+agemodel <- read.table("Desktop/DNA_highlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)
+agemodel
+source("Documents/research/sed_rate_stack.R")
+i<-1
+i<-5
+ird.list <- c("KNR31-GPC5","SU81-18","MD95-2042","SU90-03","MD95-2040","MD95-2039","CH69-K9","SU90-08","SU90-11","MD03-2692","GIK23415-9","ODP980","MD95-2006","V29-202","SU90-24")#
+#
+agemodel <- read.table("Desktop/DNA_lowlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)#
+#
+all.ird <- matrix(ncol=2)
+ird <- read.table(paste("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/",ird.list[i],"_ird_norm.txt",sep=""))#
+	match <- read.table(paste("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/",ird.list[i],"_to_MD95-2042gicc05.match",sep=""))
+match
+aligned.ages <- approx(match$V2,match$V4,ird$V1)
+aligned.ages
+lowlat.ages <- approx(agemodel$gicc05age,agemodel$meanBchronage,aligned.ages$y)
+lowlat.ages
+source("Documents/research/ird_stack.R")
+res.age <- read.table("Desktop/deltaR_110612.txt",header=TRUE)#
+ird.stack <- read.table("Desktop/IRD_stack_lowlatage.txt",header=TRUE)
+res.age
+quartz(width=7,height=9)#
+par(fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age,res.age$deltaR+400,type="l",axes=FALSE)
+quartz(width=7,height=9)#
+par(fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="l",axes=FALSE,xlab="",ylab="",xlim=c(0,40),ylim=c(-1000,2000))
+quartz(width=7,height=9)#
+#
+par(mar=c(3,3,1,1),fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="l",axes=FALSE,xlab="",ylab="",xlim=c(0,40),ylim=c(-1000,2000))#
+lines(res.age$low.lat.age/1000,res.age$lower95+400)#
+lines(res.age$low.lat.age/1000,res.age$upper95+400)
+quartz(width=7,height=9)#
+#
+par(mar=c(3,3,1,1),fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="l",axes=FALSE,xlab="",ylab="",xlim=c(0,40),ylim=c(-1000,2000))#
+lines(res.age$low.lat.age/1000,res.age$lower95+400)#
+lines(res.age$low.lat.age/1000,res.age$upper95+400)#
+axis(1,at=seq(from=-1000,to=2000,by=500))
+quartz(width=7,height=9)#
+#
+par(mar=c(3,3,1,1),fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="l",axes=FALSE,xlab="",ylab="",xlim=c(0,40),ylim=c(-1000,2000))#
+lines(res.age$low.lat.age/1000,res.age$lower95+400)#
+lines(res.age$low.lat.age/1000,res.age$upper95+400)#
+axis(2,at=seq(from=-1000,to=2000,by=500))
+quartz(width=7,height=9)#
+#
+par(mar=c(3,3,1,1),fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="l",axes=FALSE,xlab="",ylab="",xlim=c(0,40),ylim=c(-1000,2000),lwd=2)#
+lines(res.age$low.lat.age/1000,res.age$lower95+400)#
+lines(res.age$low.lat.age/1000,res.age$upper95+400)#
+lines(c(0,40),c(400,400),type=2)#
+axis(2,at=seq(from=-1000,to=2000,by=500))
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+ird.stack
+range(ird.stack$stack)
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+md95.d13c <- read.table("Documents/research/DATA SOURCE FILES FOR CORES/MD95-2042/MD95-2042_Cwuell_d13C.txt")#
+match <- read.table("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/MD95-2042_plank_to_NGRIP.match")#
+lowlat.age <- read.table("Desktop/DNA_lowlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)
+match
+lowlat.age
+range(md95)
+range(md95.d13c$V2)
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+md95.d13c <- read.table("Documents/research/DATA SOURCE FILES FOR CORES/MD95-2042/MD95-2042_Cwuell_d13C.txt")#
+match <- read.table("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/MD95-2042_plank_to_NGRIP.match")#
+lowlat.age <- read.table("Desktop/DNA_lowlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)#
+gicc.age <- approx(match$V2,match$V4,md95.d13c$V1)#
+low.age <- approx(lowlat.age$gicc05age,lowlat.age$meanBchronage,gicc.age$y)
+low.age$y
+quartz(width=7,height=9)#
+#
+par(mar=c(3,4,1,1),fig=c(0,1,0.7,1))#
+plot(res.age$low.lat.age/1000,res.age$deltaR+400,type="n",axes=FALSE,xlab="",ylab="Reservoir age",xlim=c(0,40),ylim=c(-1000,2000))#
+rect(xleft=mis.bound[seq(from=2,to=12,by=2)],ybottom=rep(-500,5),xright=mis.bound[seq(from=3,to=13,by=2)],ytop=rep(2000,5),col="gray85",border=NA)#
+lines(res.age$low.lat.age/1000,res.age$deltaR+400,lwd=2)#
+lines(res.age$low.lat.age/1000,res.age$lower95+400)#
+lines(res.age$low.lat.age/1000,res.age$upper95+400)#
+lines(c(0,40),c(400,400),lty=2)#
+axis(2,at=seq(from=-1000,to=2000,by=500))#
+#
+par(new=TRUE,fig=c(0,1,0.5,0.8))#
+plot(ird.stack$gicc05age,ird.stack$stack,type="n",xlim=c(0,40),axes=FALSE,xlab="",ylab="IRD")#
+rect(xleft=mis.bound[seq(from=2,to=12,by=2)],ybottom=rep(0,5),xright=mis.bound[seq(from=3,to=13,by=2)],ytop=rep(1,5),col="gray85",border=NA)#
+lines(ird.stack$gicc05age,ird.stack$stack,col="violet")#
+axis(2)#
+#
+par(new=TRUE,fig=c(0,1,0.3,0.6))#
+plot(mcmanus$Age,mcmanus$PaTh238,xlim=c(0,40),ylim=c(0.1,0.02),type="n",axes=FALSE,xlab="",ylab="Pa/Th")#
+rect(xleft=mis.bound[seq(from=2,to=12,by=2)],ybottom=rep(0.05,5),xright=mis.bound[seq(from=3,to=13,by=2)],ytop=rep(0.1,5),col="gray85",border=NA)#
+lines(mcmanus$Age,mcmanus$PaTh238,col="blue")#
+lines(lippold$age,lippold$PaTh,col="deepskyblue")
+plot(new=TRUE,fig=c(0,1,0,0.3))
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+benthic <- read.table("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/MD95-2042_CORRECTED.txt")#
+#
+match <- read.table("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/MD95-2042_plank_to_NGRIP.match")#
+lowlat.age <- read.table("Desktop/DNA_lowlat_age_model_ongicc05age_unsmoothed_110612.txt",header=TRUE)#
+#
+gicc <- approx(match$V2,match$V4,benthic$V1)#
+low <- approx(lowlat.age$gicc05age,lowlat.age$meanBchronage,gicc$y)#
+#
+plot(gicc$y,benthic$V2,type="l",ylim=c(5.1,2.7))#
+lines(low$y,benthic$V2,col="red")
+plot(gicc$y,benthic$V2,type="l",ylim=c(5.1,2.7),xlab="age",ylab="benthic d18O")#
+lines(low$y,benthic$V2,col="red")
+plot(gicc$y,benthic$V2,type="l",ylim=c(5.1,3),xlab="age",ylab="benthic d18O")#
+lines(low$y,benthic$V2,col="red")
+plot(gicc$y,benthic$V2,type="l",ylim=c(5.2,3),xlab="age",ylab="benthic d18O")#
+lines(low$y,benthic$V2,col="red")
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/quick_age_models.R")
+age.points <- read.table("Desktop/DNAhigh_constR_gicc05age_all_age_pts_110612.txt")#
+quick.age <- read.table("Desktop/DNA_highlat_quickage_gicc05_unsmoothed_110612.txt")#
+#
+plot(age.points$V1,age.points$V3,col="red",pch=16)#
+lines(quick.age$V1,quick.age$V2,lwd=2)
+age.points <- read.table("Desktop/DNAlow_constR_gicc05age_all_age_pts_110612.txt")#
+quick.age <- read.table("Desktop/DNA_lowlat_quickage_gicc05_unsmoothed_110612.txt")#
+#
+plot(age.points$V1,age.points$V3,col="red",pch=16)#
+lines(quick.age$V1,quick.age$V2,lwd=2)
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/quick_age_models.R")
+age.pts <- read.table("Desktop/DNAlow_constR_lowlatage_all_age_pts_110612.txt")#
+quick.age <- read.table("Desktop/DNA_lowlat_quickage_lowage_unsmoothed_110612.txt")#
+#
+plot(age.pts$V1,age.pts$V3,pch=16,col="red")#
+lines(quick.age$V1,quick.age$V2,lwd=2)
+rm(list=ls())#
+setwd("/Users/joestern/")#
+#
+core.data <- read.table("Documents/research/res_corr_bchron_ver2/agemodel_corelist_DNA_constR.txt",header=TRUE)#
+core.data <- core.data[core.data$lat<40,] # select latitudes#
+#
+agemodel <- read.table("Desktop/DNA_lowlat_quickage_gicc05_unsmoothed_110612.txt",header=FALSE)#
+#
+library(Bchron); library(Hmisc)#
+list.all.final <- array()
+i<-1
+match <- read.table(paste("Documents/research/Match-2.3.1/dna_reservoir_age_alignments/",core.data$core.id[i],"_to_MD95-2042gicc05.match",sep=""),header=FALSE)
+match
+agemodel
+temp <- approx(agemodel$V1,agemodel$V2,match[,4])
+temp
+match[,4] <- temp$y
+match
+coredepths <- approx(match[,4],match[,2],seq(from=0,to=50,by=0.5))
+coredepths
+coredepths2 <- coredepths$y[coredepths$y*100 >= core.data$start.depth[i] & coredepths$y*100 <= core.data$end.depth[i]]
+coredepths2
+core.data
+coredepths3 <- coredepths2[!is.na(coredepths2)]*100
+coredepths3
+mydata <- Bchronload(paste(core.data$core[i],"_radiocarbon",sep=""),fullname=core.data$core[i],path="/Users/joestern/Documents/research/res_corr_bchron_ver2/Bchron",outdepths=coredepths3,calibname="Marine09",extractdate=core.data$extract.date[i],check=FALSE,full=TRUE)#
+#
+	Bchronpredict(mydata,defaults=TRUE) #}
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/quick_age_models.R")
+source("Documents/research/smoothed_MC_age_model.R")
+all.data <- read.table("Desktop/DNAlow_constR_lowlatage_all_age_pts_110612.txt")#
+#
+#all.data <- all.data[all.data$V8<40,] # select latitudes#
+#
+lr04.ages <- seq(from=0,to=50,by=0.5)#
+mc.age <- c(0,0,0,0,0,2)#
+agemodel.samples <- matrix(nrow=10000,ncol=length(lr04.ages))
+lr04.ages
+lr04.ages[71]
+i<-71
+mc.index <- all.data$V1==lr04.ages[i]
+mc.index
+num.cores <- sum(mc.index)
+num.cores
+date.index <- all.data[mc.index,c(1,5,6,7)]
+date.index
+int.mean <- mean(all.data[mc.index,3])
+int.mean
+randomized.dates <- matrix(NA,nrow=10000,ncol=num.cores)#
+		for (j in 1:num.cores) {#
+				chrons <- read.table(paste("Documents/research/res_corr_bchron_ver2/Bchron/Output/",date.index$V5[j],"_radiocarbonchrons.txt",sep=""),header=FALSE)#
+				all.dates <- chrons[,date.index$V6[j]]#
+				random.order <- sample(1:10000,10000)#
+				randomized.dates[,j] <- all.dates[random.order] }
+randomized.dates
+mean(randomized.dates)
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/quick_age_models.R")
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/smoothed_MC_age_model.R")
+source("Documents/research/new_res_age2.R")
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/quick_age_models.R")
+source("Documents/research/smoothed_MC_age_model.R")
+source("Documents/research/new_res_age2.R")
+source("Documents/research/bchron_samedepth_predictions_v2.R")
+source("Documents/research/smoothed_MC_age_model.R")
+source("Documents/research/new_res_age2.R")
+source("Documents/research/ird_stack.R")
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+?par
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+range(hulu$V2)
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+range(ngrip$V2)
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+colors()
+source("Documents/research/res_age_other_circ_proxies_figure.R")
+core.list <- c("GIK23415-9","KNR31-GPC5","MD95-2039","MD95-2040","MD95-2042","ODP980","SU81-18","SU90-08","SU90-11","V29-202","CH69-K9","SU90-24","MD95-2006")
+core.list
+i<-12
+core.list[12]
+ird <- read.table(paste("Documents/research/IRD/",core.list[i],"_ird.txt",sep=""))#
+#
+ird.norm <- ird$V2/max(ird$V2)#
+#
+ird.norm2 <- cbind(ird$V1,round(ird.norm,digits=4))#
+#
+write.table(ird.norm2,file=paste("Documents/research/IRD/",core.list[i],"_ird_norm.txt",sep=""),quote=FALSE,row.names=FALSE,col.names=FALSE)
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+source("Documents/research/heinrich_event_ages.R")
+setwd("/Users/joestern/Documents/research/res_corr_bchron_ver2/Bchron/Output/")
+su8118.h1start <- read.table("SU81-18_radiocarbonEventAgesH1peak.txt")
+setwd("/Users/joestern/Documents/research/res_corr_bchron_ver2/Bchron/Output/")#
+#
+su8118.h1start <- read.table("SU81-18_radiocarbonEventAgesH1start.txt")#
+su8118.h1peak <- read.table("SU81-18_radiocarbonEventAgesH1peak.txt")#
+su8118.h1end <- read.table("SU81-18_radiocarbonEventAgesH1end.txt")#
+su8118.h2peak <- read.table("SU81-18_radiocarbonEventAgesH2peak.txt")#
+su8118.h2end <- read.table("SU81-18_radiocarbonEventAgesH2end.txt")#
+#
+md952042.h2start <- read.table("MD95-2042_radiocarbonEventAgesH2start.txt")#
+md952042.h2peak <- read.table("MD95-2042_radiocarbonEventAgesH2peak.txt")#
+md952042.h2end <- read.table("MD95-2042_radiocarbonEventAgesH2end.txt")#
+md952042.h3start <- read.table("MD95-2042_radiocarbonEventAgesH3start.txt")#
+md952042.h3peak <- read.table("MD95-2042_radiocarbonEventAgesH3peak.txt")#
+md952042.h3end <- read.table("MD95-2042_radiocarbonEventAgesH3end.txt")#
+md952042.h4start <- read.table("MD95-2042_radiocarbonEventAgesH4start.txt")#
+md952042.h4peak <- read.table("MD95-2042_radiocarbonEventAgesH4peak.txt")#
+md952042.h4end <- read.table("MD95-2042_radiocarbonEventAgesH4end.txt")#
+#
+su9003.h1start <- read.table("SU90-03_radiocarbonEventAgesH1start.txt")#
+su9003.h2start <- read.table("SU90-03_radiocarbonEventAgesH2start.txt")#
+su9003.h2peak <- read.table("SU90-03_radiocarbonEventAgesH2peak.txt")#
+su9003.h2end <- read.table("SU90-03_radiocarbonEventAgesH2end.txt")#
+su9003.h4start <- read.table("SU90-03_radiocarbonEventAgesH4start.txt")#
+su9003.h4peak <- read.table("SU90-03_radiocarbonEventAgesH4peak.txt")#
+su9003.h4end <- read.table("SU90-03_radiocarbonEventAgesH4end.txt")#
+#
+md952040.h1start <- read.table("MD95-2040_radiocarbonEventAgesH1start.txt")#
+md952040.h1peak <- read.table("MD95-2040_radiocarbonEventAgesH1peak.txt")#
+md952040.h1end <- read.table("MD95-2040_radiocarbonEventAgesH1end.txt")#
+md952040.h2start <- read.table("MD95-2040_radiocarbonEventAgesH2start.txt")#
+md952040.h2peak <- read.table("MD95-2040_radiocarbonEventAgesH2peak.txt")#
+md952040.h2end <- read.table("MD95-2040_radiocarbonEventAgesH2end.txt")#
+md952040.h3start <- read.table("MD95-2040_radiocarbonEventAgesH3start.txt")#
+md952040.h3peak <- read.table("MD95-2040_radiocarbonEventAgesH3peak.txt")#
+md952040.h3end <- read.table("MD95-2040_radiocarbonEventAgesH3end.txt")#
+md952040.h4end <- read.table("MD95-2040_radiocarbonEventAgesH4end.txt")#
+#
+md952039.h1start <- read.table("MD95-2039_radiocarbonEventAgesH1start.txt")#
+md952039.h1peak <- read.table("MD95-2039_radiocarbonEventAgesH1peak.txt")#
+md952039.h1end <- read.table("MD95-2039_radiocarbonEventAgesH1end.txt")#
+md952039.h2start <- read.table("MD95-2039_radiocarbonEventAgesH2start.txt")#
+md952039.h2peak <- read.table("MD95-2039_radiocarbonEventAgesH2peak.txt")#
+md952039.h2end <- read.table("MD95-2039_radiocarbonEventAgesH2end.txt")#
+md952039.h3start <- read.table("MD95-2039_radiocarbonEventAgesH3start.txt")#
+md952039.h3peak <- read.table("MD95-2039_radiocarbonEventAgesH3peak.txt")#
+md952039.h3end <- read.table("MD95-2039_radiocarbonEventAgesH3end.txt")#
+md952039.h4end <- read.table("MD95-2039_radiocarbonEventAgesH4end.txt")#
+#
+ch69k9.h1start <- read.table("CH69-K9_radiocarbonEventAgesH1start.txt")#
+ch69k9.h1peak <- read.table("CH69-K9_radiocarbonEventAgesH1peak.txt")#
+ch69k9.h1end <- read.table("CH69-K9_radiocarbonEventAgesH1end.txt")#
+ch69k9.h2start <- read.table("CH69-K9_radiocarbonEventAgesH2start.txt")#
+ch69k9.h2peak <- read.table("CH69-K9_radiocarbonEventAgesH2peak.txt")#
+ch69k9.h2end <- read.table("CH69-K9_radiocarbonEventAgesH2end.txt")#
+ch69k9.h3start <- read.table("CH69-K9_radiocarbonEventAgesH3start.txt")#
+ch69k9.h3peak <- read.table("CH69-K9_radiocarbonEventAgesH3peak.txt")#
+ch69k9.h3end <- read.table("CH69-K9_radiocarbonEventAgesH3end.txt")#
+ch69k9.h4start <- read.table("CH69-K9_radiocarbonEventAgesH4start.txt")#
+ch69k9.h4peak <- read.table("CH69-K9_radiocarbonEventAgesH4peak.txt")#
+ch69k9.h4end <- read.table("CH69-K9_radiocarbonEventAgesH4end.txt")#
+#
+su9008.h1start <- read.table("SU90-08_radiocarbonEventAgesH1start.txt")#
+su9008.h1peak <- read.table("SU90-08_radiocarbonEventAgesH1peak.txt")#
+su9008.h2start <- read.table("SU90-08_radiocarbonEventAgesH2start.txt")#
+su9008.h2peak <- read.table("SU90-08_radiocarbonEventAgesH2peak.txt")#
+su9008.h2end <- read.table("SU90-08_radiocarbonEventAgesH2end.txt")#
+su9008.h4start <- read.table("SU90-08_radiocarbonEventAgesH4start.txt")#
+su9008.h4peak <- read.table("SU90-08_radiocarbonEventAgesH4peak.txt")#
+su9008.h4end <- read.table("SU90-08_radiocarbonEventAgesH4end.txt")#
+#
+su9011.h1start <- read.table("SU90-11_radiocarbonEventAgesH1start.txt")#
+su9011.h1peak <- read.table("SU90-11_radiocarbonEventAgesH1peak.txt")#
+su9011.h1end <- read.table("SU90-11_radiocarbonEventAgesH1end.txt")#
+su9011.h2start <- read.table("SU90-11_radiocarbonEventAgesH2start.txt")#
+su9011.h2peak <- read.table("SU90-11_radiocarbonEventAgesH2peak.txt")#
+su9011.h2end <- read.table("SU90-11_radiocarbonEventAgesH2end.txt")#
+su9011.h3start <- read.table("SU90-11_radiocarbonEventAgesH3start.txt")#
+su9011.h3peak <- read.table("SU90-11_radiocarbonEventAgesH3peak.txt")#
+su9011.h3end <- read.table("SU90-11_radiocarbonEventAgesH3end.txt")#
+#
+md032692.h1start <- read.table("MD03-2692_radiocarbonEventAgesH1start.txt")#
+md032692.h1peak <- read.table("MD03-2692_radiocarbonEventAgesH1peak.txt")#
+md032692.h1end <- read.table("MD03-2692_radiocarbonEventAgesH1end.txt")#
+md032692.h2start <- read.table("MD03-2692_radiocarbonEventAgesH2start.txt")#
+md032692.h2peak <- read.table("MD03-2692_radiocarbonEventAgesH2peak.txt")#
+md032692.h2end <- read.table("MD03-2692_radiocarbonEventAgesH2end.txt")#
+#
+gik23415.h1start <- read.table("GIK23415-9_radiocarbonEventAgesH1start.txt")#
+gik23415.h1peak <- read.table("GIK23415-9_radiocarbonEventAgesH1peak.txt")#
+gik23415.h1end <- read.table("GIK23415-9_radiocarbonEventAgesH1end.txt")#
+gik23415.h2peak <- read.table("GIK23415-9_radiocarbonEventAgesH2peak.txt")#
+gik23415.h2end <- read.table("GIK23415-9_radiocarbonEventAgesH2end.txt")#
+#
+md952006.h4start <- read.table("MD95-2006_radiocarbonEventAgesH4start.txt")#
+md952006.h4peak <- read.table("MD95-2006_radiocarbonEventAgesH4peak.txt")#
+#
+su9024.h1start <- read.table("SU90-24_radiocarbonEventAgesH1start.txt")#
+su9024.h1peak <- read.table("SU90-24_radiocarbonEventAgesH1peak.txt")#
+su9024.h1end <- read.table("SU90-24_radiocarbonEventAgesH1end.txt")#
+su9024.h2start <- read.table("SU90-24_radiocarbonEventAgesH2start.txt")#
+su9024.h2peak <- read.table("SU90-24_radiocarbonEventAgesH2peak.txt")#
+su9024.h2end <- read.table("SU90-24_radiocarbonEventAgesH2end.txt")#
+su9024.h3start <- read.table("SU90-24_radiocarbonEventAgesH3start.txt")#
+su9024.h3peak <- read.table("SU90-24_radiocarbonEventAgesH3peak.txt")#
+su9024.h3end <- read.table("SU90-24_radiocarbonEventAgesH3end.txt")#
+su9024.h4start <- read.table("SU90-24_radiocarbonEventAgesH4start.txt")#
+su9024.h4peak <- read.table("SU90-24_radiocarbonEventAgesH4peak.txt")#
+su9024.h4end <- read.table("SU90-24_radiocarbonEventAgesH4end.txt")
+par(mar=c(13,3))#
+hist(su8118.h1end)
+par(mfrow=c(13,3))#
+hist(su8118.h1end)
+su8118.h1end
+par(mfrow=c(13,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+par(mfrow=c(10,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+par(mfrow=c(3,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+par(mfrow=c(4,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+quartz(height=12,width=7)#
+par(mfrow=c(10,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+hist(su8118.h1end$V1)#
+hist(su8118.h1peak$V1)#
+hist(su8118.h1start$V1)
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18")#
+abline(v=mean(su.8118.h1end$V1))#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18")#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18")
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18")#
+abline(v=mean(su8118.h1end$V1))#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18")#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18")
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18")#
+abline(v=mean(su8118.h1end$V1),col="red",lwd=2)#
+abline(v=median(su8118.h1end$V1),col="blue",lwd=2)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18")#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18")
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1end$V1),median(su8118.h1end$V1)),col=c("red","blue"),lwd=2)#
+#abline(v=median(su8118.h1end$V1),col="blue",lwd=2)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18")#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18")
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1end$V1),median(su8118.h1end$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1peak$V1),median(su8118.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1start$V1),median(su8118.h1start$V1)),col=c("red","blue"),lwd=3)
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1end$V1),median(su8118.h1end$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1peak$V1),median(su8118.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1start$V1),median(su8118.h1start$V1)),col=c("red","blue"),lwd=3)#
+#
+plot(0,0,type="n",axes=FALSE,xlab="",ylab="",main="")#
+hist(su9003.h1peak$V1,xlab="Age (ka)",main="SU90-03",col="black")#
+abline(v=c(mean(su9003.h1peak$V1),median(su9003.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su9003.h1start$V1,xlab="Age (ka)",main="SU90-03",col="black")#
+abline(v=c(mean(su9003.h1start$V1),median(su9003.h1start$V1)),col=c("red","blue"),lwd=3)
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1end$V1),median(su8118.h1end$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1peak$V1),median(su8118.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1start$V1),median(su8118.h1start$V1)),col=c("red","blue"),lwd=3)#
+#
+plot(0,0,type="n",axes=FALSE,xlab="",ylab="",main="")#
+hist(su9003.h1peak$V1,xlab="Age (ka)",main="SU90-03",col="black")#
+abline(v=c(mean(su9003.h1peak$V1),median(su9003.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su9003.h1start$V1,xlab="Age (ka)",main="SU90-03",col="black")#
+abline(v=c(mean(su9003.h1start$V1),median(su9003.h1start$V1)),col=c("red","blue"),lwd=3)
+quartz(height=12,width=7)#
+par(mfrow=c(6,3))#
+#
+hist(su8118.h1end$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1end$V1),median(su8118.h1end$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1peak$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1peak$V1),median(su8118.h1peak$V1)),col=c("red","blue"),lwd=3)#
+hist(su8118.h1start$V1,xlab="Age (ka)",main="SU81-18",col="black")#
+abline(v=c(mean(su8118.h1start$V1),median(su8118.h1start$V1)),col=c("red","blue"),lwd=3)#
+#
+plot(0,0,type="n",axes=FALSE,xlab="",ylab="",main="")#
+plot(0,0,type="n",axes=FALSE,xlab="",ylab="",main="")#
+hist(su9003.h1start$V1,xlab="Age (ka)",main="SU90-03",col="black")#
+abline(v=c(mean(su9003.h1start$V1),median(su9003.h1start$V1)),col=c("red","blue"),lwd=3)
