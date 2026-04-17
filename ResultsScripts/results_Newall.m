@@ -213,7 +213,7 @@ dA.summT(:, 1:3)
 
 %% Figure 2: Plot of BIGMACS and BMedian NSR with normalized BIGMACS pdfs and histograms of dt
 
-%Load dts of BIGMACS data
+%Load NSR information of BIGMACS data
 load("../Results/Lin2014_dts.mat")
 
 %Get weighted histogram of dts for BIGMACS

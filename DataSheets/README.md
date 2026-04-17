@@ -4,7 +4,7 @@ This folder contains the metadata spreadsheets and ancillary data files that con
 
 These spreadsheets are necessary because the Lin et al. (2014) and Mulitza et al. (2022) do not provide information about the material dated for every radiocarbon age, hence this sheet tells the code which data to use.
 
-It also facilitates the excluding some data manually if desired.
+It also facilitates the excluding of some data manually if desired. For example, we manually removed outliers that we considered obvious to reduce the burden on the reversal choosing procedure used in the analysis pipeline. We also removed ages that were very far apart to help reduce the spread of the durations for which SR is measured across.
 
 ---
 
