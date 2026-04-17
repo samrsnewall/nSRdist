@@ -6,7 +6,7 @@ MATLAB code for estimating the probability distribution of normalised sedimentat
 
 This code uses radiocarbon dates from sediment cores to estimate **normalised sedimentation rates (NSR)** — the sedimentation rate at each point in a core divided by the average sedimentation rate for that core — and fits probability distributions to them across a large ensemble of cores.
 
-The approach builds on the method of [Lin et al. (2014)](https://doi.org/10.1002/2013PA002539), which used Bchron age-depth models to estimate NSR. The primary development in this codebase is a probabilistic extension that propagates the full calibrated age uncertainty of each radiocarbon date, rather than using only the mode or median of the age model. Several NSR estimation methods are implemented and compared.
+The approach builds on the method of [Lin et al. (2014)](https://doi.org/10.1002/2014PA002713), which used Bchron age-depth models to estimate NSR. The primary development in this codebase is a probabilistic extension that propagates the full calibrated age uncertainty of each radiocarbon date, rather than using only the mode or median of the age model. Several NSR estimation methods are implemented and compared.
 
 The code uses data from Lin et al. (2014), stored in the directory Lin2014Cores/BchronInput, and from the World Atlas created by Mulitza et al. (2022). 
 
@@ -151,11 +151,13 @@ Open `results_Newall.m` and run to generate Figures and Tables from manuscript. 
 nSRdist_code/
 ├── calcData.m              # Stage 1 main script
 ├── fitData.m               # Stage 2 main script
+├── results_Newall.m        # Stage 3 main script
 ├── Functions/              # All helper functions
 ├── ResultsScripts/         # Scripts for producing results figures
 ├── BchronFolders/          # Bchron inputs and outputs
 ├── BIGMACSdata/            # Useful data from BIGMACS development
-├── DataSheets/             # Excel metadata spreadsheet
+├── DataSheets/             # Excel metadata spreadsheet and README
+├── Lin2014Code copy/       # Lin et al. (2014) Bchron pipeline scripts and data
 └── Results/                # Saved .mat output files
 ```
 
