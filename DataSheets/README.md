@@ -8,9 +8,9 @@ It also facilitates the excluding of some data manually if desired. For example,
 
 ---
 
-## COPYcore40MetadataAndLin2014_2.xlsx
+## datasheet.xlsx
 
-This is the primary metadata spreadsheet read by `calcData.m` (via `extract3.m`). It contains one row per sediment core across the combined World Atlas 2022 (WA2022) and Lin et al. (2014) databases — 342 cores in total — regardless of whether a core is ultimately selected for analysis.
+This is the metadata spreadsheet read by `calcData.m` (via `extract3.m`). It contains one row per sediment core across the combined World Atlas 2022 (WA2022) and Lin et al. (2014) databases — 342 cores in total — regardless of whether a core is ultimately selected for analysis.
 
 The spreadsheet serves two roles: (1) it determines *which cores* enter the analysis through a set of flag columns, and (2) it records *which individual radiocarbon dates* within each core should be excluded, and why.
 
