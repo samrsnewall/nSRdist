@@ -86,10 +86,10 @@ end
 S.sandboxPath = fileparts(scriptPath); % Root directory of the repository
 S.RscriptPath = "/usr/local/bin/Rscript";  % Path to Rscript; find yours with `which Rscript` in Terminal
 S.WApath       = "WA_Foraminiferal_Isotopes_2022";         % Path to the Mulitza 2022 World Atlas dataset
-S.sheet        = "DataSheets/COPYcore40MetadataAndLin2014_2.xlsx"; % Metadata spreadsheet controlling which cores and dates are used
+S.sheet        = "DataSheets/datasheet.xlsx"; % Metadata spreadsheet controlling which cores and dates are used
 
 % --- Output file ---
-stringID = "All1_RLGtrue_Bchron8Apr26";
+stringID = "Run1";
 S.dataOutputFile = "dataT_" + stringID; % Saved to Results/S.dataOutputFile.mat
 
 % --- Core selection filters ---

@@ -70,14 +70,13 @@ addpath('Functions')
 addpath('Results')
 
 %% Load the calcData results
-%filepath =    "Results/dataT_All1_RLGtrue_BchronJun2_3Apr26";
-filepath =    "Results/dataT_All1_RLGtrue_Bchron8Apr26";
+filepath =    "Results/Run1";
 load(filepath)
 d.dataT = dataT;
 d.S = S;
 d.label = "AllCores, R200M20";
 split_filepath = split(filepath, ".mat");
-filename2save =  split_filepath(1)+ "_fit9Apr26_ageweight.mat";
+filename2save =  split_filepath(1)+ "_fit1.mat";
 
 %% Set up fitting settings structure (fitS)
 % fitS controls all aspects of how distributions are fitted to the nSR data.
