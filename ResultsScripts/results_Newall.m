@@ -68,8 +68,8 @@ BMpdf.x = BM.lnSR.x;
 BMpdf.px = BM.lnSR.px;
 
 %% Load data and fits
-%load("../Results/dataT_All1_RLGtrue_BchronJun2_3Apr26_fit3Apr26_depthweight.mat");
-load("../Results/dataT_All1_RLGtrue_Bchron8Apr26_fit9Apr26_depthweight");
+load("../Results/dataT_All1_RLGtrue_BchronJun2_3Apr26_fit3Apr26_depthweight.mat");
+
 
 %% Take data of interest
 %----- Find corenames, lats, longs, depths of cores included
