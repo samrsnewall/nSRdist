@@ -156,7 +156,7 @@ nSRdist_code/
 ├── ResultsScripts/         # Scripts for producing results figures
 ├── BchronFolders/          # Bchron inputs and outputs
 ├── BIGMACSdata/            # Useful data from BIGMACS development
-├── DataSheets/             # Excel metadata spreadsheet and README
+├── DataSheets/             # Core metadata and radiocarbon material/usage information in spreadsheet (this folder has it's own README).
 ├── Lin2014Code copy/       # Lin et al. (2014) Bchron pipeline scripts and data
 └── Results/                # Saved .mat output files
 ```
